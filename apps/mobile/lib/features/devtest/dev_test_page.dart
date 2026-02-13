@@ -34,6 +34,7 @@ class _DevTestPageState extends State<DevTestPage> {
   String _chartId = '';
   String _result = '';
   bool _loading = false;
+  List<Map<String, dynamic>> _birthProfiles = const [];
 
   SupabaseClient? get _supabase {
     try {
@@ -134,6 +135,44 @@ class _DevTestPageState extends State<DevTestPage> {
       _setResult({
         'action': 'createBirthProfile',
         'birthProfileId': birthProfileId,
+      });
+    });
+  }
+
+  Future<void> _fetchBirthProfiles() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      final userId = _userIdController.text.trim();
+      if (userId.isEmpty) {
+        throw const EngineApiException(code: 'USER_ID_REQUIRED', message: 'sync session first');
+      }
+
+      final rows = await supabase
+          .from('birth_profiles')
+          .select('id, birth_datetime_local, birth_location, calendar_type, unknown_birth_time')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(20);
+
+      final profiles = List<Map<String, dynamic>>.from(rows as List);
+      setState(() {
+        _birthProfiles = profiles;
+        if (profiles.isNotEmpty) {
+          _birthProfileIdController.text = profiles.first['id'] as String;
+        }
+      });
+
+      _setResult({
+        'action': 'fetchBirthProfiles',
+        'count': profiles.length,
+        'birthProfiles': profiles,
       });
     });
   }
@@ -301,6 +340,36 @@ class _DevTestPageState extends State<DevTestPage> {
           _field(_tokenController, 'Supabase Access Token (JWT)'),
           _field(_userIdController, 'User ID (UUID)'),
           _field(_birthProfileIdController, 'Birth Profile ID (UUID)'),
+          if (_birthProfiles.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: DropdownButtonFormField<String>(
+                value: _birthProfileIdController.text.isEmpty
+                    ? null
+                    : _birthProfileIdController.text,
+                items: _birthProfiles
+                    .map(
+                      (profile) => DropdownMenuItem<String>(
+                        value: profile['id'] as String,
+                        child: Text(
+                          '${profile['birth_datetime_local']} | ${profile['birth_location']} (${profile['calendar_type']})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _birthProfileIdController.text = value;
+                  });
+                },
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Select Existing Birth Profile',
+                ),
+              ),
+            ),
           _field(_birthDateController, 'Birth Date (YYYY-MM-DD)'),
           _field(_birthTimeController, 'Birth Time (HH:mm)'),
           _field(_birthTimezoneController, 'Birth Timezone'),
@@ -343,6 +412,10 @@ class _DevTestPageState extends State<DevTestPage> {
               OutlinedButton(
                 onPressed: _loading ? null : _createBirthProfile,
                 child: const Text('C) Create Birth Profile'),
+              ),
+              OutlinedButton(
+                onPressed: _loading ? null : _fetchBirthProfiles,
+                child: const Text('D) Fetch Birth Profiles'),
               ),
             ],
           ),
