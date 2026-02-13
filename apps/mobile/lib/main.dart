@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/ui/app_theme.dart';
 
 import 'features/auth/login_page.dart';
 import 'features/birth/birth_input_page.dart';
@@ -28,10 +29,7 @@ class FortuneLogApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FortuneLog',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0E7A5F)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
       initialRoute: OnboardingPage.routeName,
       routes: {
         OnboardingPage.routeName: (_) => const OnboardingPage(),

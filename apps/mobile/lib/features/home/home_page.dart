@@ -16,16 +16,22 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _index = 0;
 
-  final _pages = const [
-    DashboardPage(),
-    DailyFortunePage(),
-    MyPage(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final titles = const ['결과 대시보드', '오늘 운세', '마이페이지'];
+
+    final pages = [
+      DashboardPage(onTapDaily: () => setState(() => _index = 1)),
+      const DailyFortunePage(),
+      const MyPage(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: _pages),
+      appBar: AppBar(title: Text(titles[_index])),
+      body: SafeArea(
+        top: false,
+        child: IndexedStack(index: _index, children: pages),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
