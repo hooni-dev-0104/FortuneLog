@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/http_engine_api_client.dart';
@@ -16,6 +17,9 @@ class _DevTestPageState extends State<DevTestPage> {
   final _baseUrlController = TextEditingController(text: 'http://localhost:8080');
   final _tokenController = TextEditingController();
   final _userIdController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
   final _birthProfileIdController = TextEditingController();
   final _birthDateController = TextEditingController(text: '1994-11-21');
   final _birthTimeController = TextEditingController(text: '14:30');
@@ -31,10 +35,112 @@ class _DevTestPageState extends State<DevTestPage> {
   String _result = '';
   bool _loading = false;
 
+  SupabaseClient? get _supabase {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _signInWithEmail() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      _syncSessionInfo();
+      _setResult({'action': 'signInWithEmail', 'status': 'ok'});
+    });
+  }
+
+  Future<void> _syncSessionInfo() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      final session = supabase.auth.currentSession;
+      if (session == null) {
+        throw const EngineApiException(
+          code: 'NO_SESSION',
+          message: 'login first',
+        );
+      }
+
+      setState(() {
+        _tokenController.text = session.accessToken;
+        _userIdController.text = session.user.id;
+      });
+
+      _setResult({
+        'action': 'syncSessionInfo',
+        'userId': session.user.id,
+        'tokenPreview': session.accessToken.substring(0, 16),
+      });
+    });
+  }
+
+  Future<void> _createBirthProfile() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      final userId = _userIdController.text.trim();
+      if (userId.isEmpty) {
+        throw const EngineApiException(code: 'USER_ID_REQUIRED', message: 'sync session first');
+      }
+
+      final timePart = _unknownBirthTime ? '12:00:00' : '${_birthTimeController.text.trim()}:00';
+      final birthDatetime = '${_birthDateController.text.trim()}T$timePart';
+
+      final row = await supabase
+          .from('birth_profiles')
+          .insert({
+            'user_id': userId,
+            'birth_datetime_local': birthDatetime,
+            'birth_timezone': _birthTimezoneController.text.trim(),
+            'birth_location': _birthLocationController.text.trim(),
+            'calendar_type': _calendarType,
+            'is_leap_month': false,
+            'gender': _genderController.text.trim(),
+            'unknown_birth_time': _unknownBirthTime,
+          })
+          .select('id')
+          .single();
+
+      final birthProfileId = row['id'] as String;
+      setState(() {
+        _birthProfileIdController.text = birthProfileId;
+      });
+
+      _setResult({
+        'action': 'createBirthProfile',
+        'birthProfileId': birthProfileId,
+      });
+    });
+  }
+
   Future<void> _calculateChart() async {
     await _withLoading(() async {
-      final client = _client;
-      final response = await client.calculateChart(
+      final response = await _client.calculateChart(
         CalculateChartRequestDto(
           userId: _userIdController.text.trim(),
           birthProfileId: _birthProfileIdController.text.trim(),
@@ -139,6 +245,8 @@ class _DevTestPageState extends State<DevTestPage> {
     _baseUrlController.dispose();
     _tokenController.dispose();
     _userIdController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     _birthProfileIdController.dispose();
     _birthDateController.dispose();
     _birthTimeController.dispose();
@@ -158,6 +266,8 @@ class _DevTestPageState extends State<DevTestPage> {
         padding: const EdgeInsets.all(16),
         children: [
           _field(_baseUrlController, 'Engine Base URL'),
+          _field(_emailController, 'Supabase Email'),
+          _field(_passwordController, 'Supabase Password', obscureText: true),
           _field(_tokenController, 'Supabase Access Token (JWT)'),
           _field(_userIdController, 'User ID (UUID)'),
           _field(_birthProfileIdController, 'Birth Profile ID (UUID)'),
@@ -192,6 +302,25 @@ class _DevTestPageState extends State<DevTestPage> {
             spacing: 8,
             runSpacing: 8,
             children: [
+              OutlinedButton(
+                onPressed: _loading ? null : _signInWithEmail,
+                child: const Text('A) Email Login'),
+              ),
+              OutlinedButton(
+                onPressed: _loading ? null : _syncSessionInfo,
+                child: const Text('B) Sync Session'),
+              ),
+              OutlinedButton(
+                onPressed: _loading ? null : _createBirthProfile,
+                child: const Text('C) Create Birth Profile'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
               FilledButton(
                 onPressed: _loading ? null : _calculateChart,
                 child: const Text('1) Calculate Chart'),
@@ -216,11 +345,12 @@ class _DevTestPageState extends State<DevTestPage> {
     );
   }
 
-  Widget _field(TextEditingController controller, String label) {
+  Widget _field(TextEditingController controller, String label, {bool obscureText = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: TextField(
         controller: controller,
+        obscureText: obscureText,
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           labelText: label,

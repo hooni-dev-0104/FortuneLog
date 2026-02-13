@@ -22,16 +22,17 @@ flutter run \
 ## 3. 앱에서 입력할 값
 
 - `Engine Base URL`: `http://localhost:8080`
-- `Supabase Access Token (JWT)`: 로그인 후 얻은 사용자 access token
-- `User ID`: Supabase `auth.users.id`
-- `Birth Profile ID`: `birth_profiles.id`
+- `Supabase Email`, `Supabase Password`: 테스트 계정
 - `Birth Date`, `Birth Time`, `Timezone`, `Location`, `Gender`
 
 ## 4. 테스트 순서
 
-1. `Calculate Chart`
-2. `Generate Report`
-3. `Daily Fortune`
+1. `A) Email Login`
+2. `B) Sync Session` (token/user id 자동 반영)
+3. `C) Create Birth Profile` (`birth_profile_id` 자동 생성)
+4. `1) Calculate Chart`
+5. `2) Generate Report`
+6. `3) Daily Fortune`
 
 각 결과는 화면 하단 JSON으로 표시됩니다.
 
