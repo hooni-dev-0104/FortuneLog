@@ -3,6 +3,7 @@ package com.fortunelog.engine.application;
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
+import com.fortunelog.engine.domain.LunarDateConverter;
 import com.fortunelog.engine.domain.SajuCalculator;
 import com.fortunelog.engine.domain.model.ChartResult;
 import com.fortunelog.engine.domain.model.DailyFortuneResult;
@@ -23,6 +24,7 @@ public class EngineService {
     private static final DateTimeFormatter BIRTH_TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm");
 
     private final SajuCalculator sajuCalculator = new SajuCalculator();
+    private final LunarDateConverter lunarDateConverter = new LunarDateConverter();
     private final SupabasePersistenceService persistenceService;
 
     public EngineService(SupabasePersistenceService persistenceService) {
@@ -30,7 +32,7 @@ public class EngineService {
     }
 
     public ChartResult calculateChart(CalculateChartRequest request) {
-        LocalDate birthDate = LocalDate.parse(request.birthDate());
+        LocalDate birthDate = resolveSolarBirthDate(request);
         LocalTime birthTime = request.unknownBirthTime()
                 ? LocalTime.NOON
                 : LocalTime.parse(request.birthTime(), BIRTH_TIME_FORMATTER);
@@ -51,6 +53,22 @@ public class EngineService {
         );
 
         return new ChartResult(chartId, "v0.1.0", chart.chart(), chart.fiveElements());
+    }
+
+    private LocalDate resolveSolarBirthDate(CalculateChartRequest request) {
+        LocalDate inputDate = LocalDate.parse(request.birthDate());
+        if ("solar".equalsIgnoreCase(request.calendarType())) {
+            return inputDate;
+        }
+        if ("lunar".equalsIgnoreCase(request.calendarType())) {
+            return lunarDateConverter.toSolarDate(
+                    inputDate.getYear(),
+                    inputDate.getMonthValue(),
+                    inputDate.getDayOfMonth(),
+                    request.leapMonth()
+            );
+        }
+        throw new IllegalArgumentException("unsupported calendar type: " + request.calendarType());
     }
 
     public ReportResult generateReport(GenerateReportRequest request) {
