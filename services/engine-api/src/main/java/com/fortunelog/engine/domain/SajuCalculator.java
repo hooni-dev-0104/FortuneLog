@@ -2,7 +2,6 @@ package com.fortunelog.engine.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,8 +37,7 @@ public class SajuCalculator {
     private static final LocalDate REFERENCE_GAPJA_DAY = LocalDate.of(1984, 2, 2);
 
     public SajuChart calculate(
-            LocalDate birthDate,
-            LocalTime birthTime,
+            LocalDateTime birthDateTime,
             boolean unknownBirthTime,
             String calendarType
     ) {
@@ -47,11 +45,11 @@ public class SajuCalculator {
             throw new IllegalArgumentException("only solar calendar is supported in v1");
         }
 
-        Pillar year = calculateYearPillar(birthDate);
-        int monthOrder = monthOrderBySolarTerm(birthDate);
+        Pillar year = calculateYearPillar(birthDateTime);
+        int monthOrder = monthOrderBySolarTerm(birthDateTime);
         Pillar month = calculateMonthPillar(year.stemIndex(), monthOrder);
-        Pillar day = calculateDayPillar(birthDate);
-        Pillar hour = unknownBirthTime ? null : calculateHourPillar(day.stemIndex(), birthTime);
+        Pillar day = calculateDayPillar(birthDateTime.toLocalDate());
+        Pillar hour = unknownBirthTime ? null : calculateHourPillar(day.stemIndex(), birthDateTime.getHour());
 
         Map<String, String> chart = new LinkedHashMap<>();
         chart.put("year", formatPillar(year));
@@ -64,9 +62,9 @@ public class SajuCalculator {
         return new SajuChart(chart, fiveElements);
     }
 
-    private Pillar calculateYearPillar(LocalDate birthDate) {
-        LocalDateTime ipchun = LocalDateTime.of(birthDate.getYear(), 2, 4, 0, 0);
-        int year = birthDate.atStartOfDay().isBefore(ipchun) ? birthDate.getYear() - 1 : birthDate.getYear();
+    private Pillar calculateYearPillar(LocalDateTime birthDateTime) {
+        LocalDateTime ipchun = termDateTime(birthDateTime.getYear(), 2, 4, 10);
+        int year = birthDateTime.isBefore(ipchun) ? birthDateTime.getYear() - 1 : birthDateTime.getYear();
 
         int baseYear = 1984; // 갑자년
         int offset = Math.floorMod(year - baseYear, 60);
@@ -94,8 +92,8 @@ public class SajuCalculator {
         return new Pillar(cycleIndex % 10, cycleIndex % 12);
     }
 
-    private Pillar calculateHourPillar(int dayStemIndex, LocalTime birthTime) {
-        int hourBranchIndex = Math.floorMod((birthTime.getHour() + 1) / 2, 12);
+    private Pillar calculateHourPillar(int dayStemIndex, int birthHour) {
+        int hourBranchIndex = Math.floorMod((birthHour + 1) / 2, 12);
         int hourStemStartAtJa = switch (dayStemIndex) {
             case 0, 5 -> 0; // 갑/기일 자시 시작 갑
             case 1, 6 -> 2; // 을/경일 자시 시작 병
@@ -109,34 +107,38 @@ public class SajuCalculator {
         return new Pillar(hourStemIndex, hourBranchIndex);
     }
 
-    private int monthOrderBySolarTerm(LocalDate date) {
-        int year = date.getYear();
+    private int monthOrderBySolarTerm(LocalDateTime dateTime) {
+        int year = dateTime.getYear();
 
-        LocalDate ipchun = LocalDate.of(year, 2, 4);
-        LocalDate gyeongchip = LocalDate.of(year, 3, 6);
-        LocalDate cheongmyeong = LocalDate.of(year, 4, 5);
-        LocalDate ibha = LocalDate.of(year, 5, 6);
-        LocalDate mangjong = LocalDate.of(year, 6, 6);
-        LocalDate soseo = LocalDate.of(year, 7, 7);
-        LocalDate ibchu = LocalDate.of(year, 8, 8);
-        LocalDate baengno = LocalDate.of(year, 9, 8);
-        LocalDate hanro = LocalDate.of(year, 10, 8);
-        LocalDate ibdong = LocalDate.of(year, 11, 7);
-        LocalDate daeseol = LocalDate.of(year, 12, 7);
-        LocalDate sohan = LocalDate.of(year, 1, 6);
+        LocalDateTime ipchun = termDateTime(year, 2, 4, 10);
+        LocalDateTime gyeongchip = termDateTime(year, 3, 6, 5);
+        LocalDateTime cheongmyeong = termDateTime(year, 4, 5, 11);
+        LocalDateTime ibha = termDateTime(year, 5, 6, 4);
+        LocalDateTime mangjong = termDateTime(year, 6, 6, 6);
+        LocalDateTime soseo = termDateTime(year, 7, 7, 17);
+        LocalDateTime ibchu = termDateTime(year, 8, 8, 3);
+        LocalDateTime baengno = termDateTime(year, 9, 8, 5);
+        LocalDateTime hanro = termDateTime(year, 10, 8, 17);
+        LocalDateTime ibdong = termDateTime(year, 11, 7, 18);
+        LocalDateTime daeseol = termDateTime(year, 12, 7, 11);
+        LocalDateTime sohan = termDateTime(year, 1, 6, 6);
 
-        if (!date.isBefore(ipchun) && date.isBefore(gyeongchip)) return 1;   // 인
-        if (!date.isBefore(gyeongchip) && date.isBefore(cheongmyeong)) return 2; // 묘
-        if (!date.isBefore(cheongmyeong) && date.isBefore(ibha)) return 3; // 진
-        if (!date.isBefore(ibha) && date.isBefore(mangjong)) return 4; // 사
-        if (!date.isBefore(mangjong) && date.isBefore(soseo)) return 5; // 오
-        if (!date.isBefore(soseo) && date.isBefore(ibchu)) return 6; // 미
-        if (!date.isBefore(ibchu) && date.isBefore(baengno)) return 7; // 신
-        if (!date.isBefore(baengno) && date.isBefore(hanro)) return 8; // 유
-        if (!date.isBefore(hanro) && date.isBefore(ibdong)) return 9; // 술
-        if (!date.isBefore(ibdong) && date.isBefore(daeseol)) return 10; // 해
-        if (!date.isBefore(daeseol) || date.isBefore(sohan)) return 11; // 자
+        if (!dateTime.isBefore(ipchun) && dateTime.isBefore(gyeongchip)) return 1;   // 인
+        if (!dateTime.isBefore(gyeongchip) && dateTime.isBefore(cheongmyeong)) return 2; // 묘
+        if (!dateTime.isBefore(cheongmyeong) && dateTime.isBefore(ibha)) return 3; // 진
+        if (!dateTime.isBefore(ibha) && dateTime.isBefore(mangjong)) return 4; // 사
+        if (!dateTime.isBefore(mangjong) && dateTime.isBefore(soseo)) return 5; // 오
+        if (!dateTime.isBefore(soseo) && dateTime.isBefore(ibchu)) return 6; // 미
+        if (!dateTime.isBefore(ibchu) && dateTime.isBefore(baengno)) return 7; // 신
+        if (!dateTime.isBefore(baengno) && dateTime.isBefore(hanro)) return 8; // 유
+        if (!dateTime.isBefore(hanro) && dateTime.isBefore(ibdong)) return 9; // 술
+        if (!dateTime.isBefore(ibdong) && dateTime.isBefore(daeseol)) return 10; // 해
+        if (!dateTime.isBefore(daeseol) || dateTime.isBefore(sohan)) return 11; // 자
         return 12; // 축 (1/6 ~ 2/3)
+    }
+
+    private LocalDateTime termDateTime(int year, int month, int day, int hour) {
+        return LocalDateTime.of(year, month, day, hour, 0);
     }
 
     private Map<String, Integer> aggregateFiveElements(Pillar year, Pillar month, Pillar day, Pillar hour) {

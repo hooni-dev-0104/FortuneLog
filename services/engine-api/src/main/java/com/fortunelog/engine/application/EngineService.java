@@ -10,6 +10,7 @@ import com.fortunelog.engine.domain.model.ReportResult;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -27,10 +28,10 @@ public class EngineService {
         LocalTime birthTime = request.unknownBirthTime()
                 ? LocalTime.NOON
                 : LocalTime.parse(request.birthTime(), BIRTH_TIME_FORMATTER);
+        LocalDateTime birthDateTime = LocalDateTime.of(birthDate, birthTime);
 
         SajuCalculator.SajuChart chart = sajuCalculator.calculate(
-                birthDate,
-                birthTime,
+                birthDateTime,
                 request.unknownBirthTime(),
                 request.calendarType()
         );
