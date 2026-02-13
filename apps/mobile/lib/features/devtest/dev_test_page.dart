@@ -205,6 +205,36 @@ class _DevTestPageState extends State<DevTestPage> {
     });
   }
 
+  Future<void> _fetchReports() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      final userId = _userIdController.text.trim();
+      if (userId.isEmpty) {
+        throw const EngineApiException(code: 'USER_ID_REQUIRED', message: 'sync session first');
+      }
+
+      final rows = await supabase
+          .from('reports')
+          .select('id, report_type, created_at, chart_id, visible')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(20);
+
+      _setResult({
+        'action': 'fetchReports',
+        'count': (rows as List).length,
+        'reports': rows,
+      });
+    });
+  }
+
   String _resolveChartId() {
     if (_chartId.isNotEmpty) {
       return _chartId;
@@ -332,6 +362,10 @@ class _DevTestPageState extends State<DevTestPage> {
               FilledButton(
                 onPressed: _loading ? null : _generateDailyFortune,
                 child: const Text('3) Daily Fortune'),
+              ),
+              FilledButton(
+                onPressed: _loading ? null : _fetchReports,
+                child: const Text('4) Fetch Reports'),
               ),
             ],
           ),

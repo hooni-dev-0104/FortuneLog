@@ -33,6 +33,7 @@ flutter run \
 4. `1) Calculate Chart`
 5. `2) Generate Report`
 6. `3) Daily Fortune`
+7. `4) Fetch Reports` (Supabase 저장 확인)
 
 각 결과는 화면 하단 JSON으로 표시됩니다.
 
