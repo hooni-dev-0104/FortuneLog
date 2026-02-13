@@ -8,6 +8,7 @@ import '../../core/network/http_engine_api_client.dart';
 
 class DevTestPage extends StatefulWidget {
   const DevTestPage({super.key});
+  static const routeName = '/dev-test';
 
   @override
   State<DevTestPage> createState() => _DevTestPageState();
