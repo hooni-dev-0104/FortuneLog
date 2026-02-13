@@ -19,9 +19,28 @@ class LunarDateConverterTest {
     }
 
     @Test
+    void shouldConvertMultipleKnownLunarNewYearDates() {
+        assertEquals(LocalDate.of(2023, 1, 22), converter.toSolarDate(2023, 1, 1, false));
+        assertEquals(LocalDate.of(2025, 1, 29), converter.toSolarDate(2025, 1, 1, false));
+    }
+
+    @Test
+    void shouldConvertKnownLeapMonthDate() {
+        // 2020 leap 4 month first day -> 2020-05-23
+        assertEquals(LocalDate.of(2020, 5, 23), converter.toSolarDate(2020, 4, 1, true));
+    }
+
+    @Test
     void shouldRejectInvalidLeapMonthInput() {
         assertThrows(IllegalArgumentException.class, () ->
                 converter.toSolarDate(2024, 1, 10, true)
+        );
+    }
+
+    @Test
+    void shouldRejectUnsupportedYear() {
+        assertThrows(IllegalArgumentException.class, () ->
+                converter.toSolarDate(1899, 1, 1, false)
         );
     }
 }
