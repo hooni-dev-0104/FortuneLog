@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: engine-api
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SUPABASE_JWKS_URL}
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: INFO
