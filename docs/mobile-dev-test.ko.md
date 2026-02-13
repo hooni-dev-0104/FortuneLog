@@ -30,15 +30,17 @@ flutter run \
 1. `A) Email Login`
 2. `B) Sync Session` (token/user id 자동 반영)
 3. `C) Create Birth Profile` (`birth_profile_id` 자동 생성)
-4. `1) Calculate Chart`
-5. `2) Generate Report`
-6. `3) Daily Fortune`
-7. `4) Fetch Reports` (Supabase 저장 확인)
-8. `5) Fetch Orders`
-9. `6) Fetch Subscriptions`
+4. `D) Fetch Birth Profiles` (기존 프로필 목록 조회/선택)
+5. `1) Calculate Chart`
+6. `2) Generate Report`
+7. `3) Daily Fortune`
+8. `4) Fetch Reports` (Supabase 저장 확인)
+9. `5) Fetch Orders`
+10. `6) Fetch Subscriptions`
 
 각 결과는 화면 하단 JSON으로 표시됩니다.
 
 ## 참고
 
 - `lunar` 입력도 지원되며 윤달 값 검증 실패 시 에러 메시지가 상세히 표시됩니다.
+- 엔진 응답 및 에러에 `requestId`가 포함되며 상단 상태 영역에서 확인 가능합니다.

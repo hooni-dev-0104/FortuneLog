@@ -82,12 +82,14 @@ class GenerateDailyFortuneRequestDto {
 }
 
 class ChartResponseDto {
+  final String? requestId;
   final String chartId;
   final String engineVersion;
   final Map<String, String> chart;
   final Map<String, int> fiveElements;
 
   const ChartResponseDto({
+    required this.requestId,
     required this.chartId,
     required this.engineVersion,
     required this.chart,
@@ -96,6 +98,7 @@ class ChartResponseDto {
 
   factory ChartResponseDto.fromJson(Map<String, dynamic> json) {
     return ChartResponseDto(
+      requestId: json['requestId'] as String?,
       chartId: json['chartId'] as String,
       engineVersion: json['engineVersion'] as String,
       chart: (json['chart'] as Map<String, dynamic>).map(
@@ -109,11 +112,13 @@ class ChartResponseDto {
 }
 
 class ReportResponseDto {
+  final String? requestId;
   final String chartId;
   final String reportType;
   final Map<String, dynamic> content;
 
   const ReportResponseDto({
+    required this.requestId,
     required this.chartId,
     required this.reportType,
     required this.content,
@@ -121,6 +126,7 @@ class ReportResponseDto {
 
   factory ReportResponseDto.fromJson(Map<String, dynamic> json) {
     return ReportResponseDto(
+      requestId: json['requestId'] as String?,
       chartId: json['chartId'] as String,
       reportType: json['reportType'] as String,
       content: json['content'] as Map<String, dynamic>,
@@ -129,6 +135,7 @@ class ReportResponseDto {
 }
 
 class DailyFortuneResponseDto {
+  final String? requestId;
   final String userId;
   final String date;
   final int score;
@@ -136,6 +143,7 @@ class DailyFortuneResponseDto {
   final List<String> actions;
 
   const DailyFortuneResponseDto({
+    required this.requestId,
     required this.userId,
     required this.date,
     required this.score,
@@ -145,6 +153,7 @@ class DailyFortuneResponseDto {
 
   factory DailyFortuneResponseDto.fromJson(Map<String, dynamic> json) {
     return DailyFortuneResponseDto(
+      requestId: json['requestId'] as String?,
       userId: json['userId'] as String,
       date: json['date'] as String,
       score: json['score'] as int,

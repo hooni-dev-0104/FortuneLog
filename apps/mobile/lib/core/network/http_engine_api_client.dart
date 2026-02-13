@@ -68,6 +68,7 @@ class HttpEngineApiClient implements EngineApiClient {
       code: decoded['code'] as String? ?? 'ENGINE_API_ERROR',
       message: decoded['message'] as String? ?? 'request failed',
       statusCode: response.statusCode,
+      requestId: decoded['requestId'] as String?,
     );
   }
 
@@ -96,18 +97,21 @@ class EngineApiException implements Exception {
   final String code;
   final String message;
   final int? statusCode;
+  final String? requestId;
 
   const EngineApiException({
     required this.code,
     required this.message,
     this.statusCode,
+    this.requestId,
   });
 
   @override
   String toString() {
+    final requestIdText = requestId == null ? '' : ', requestId: $requestId';
     if (statusCode == null) {
-      return 'EngineApiException(code: $code, message: $message)';
+      return 'EngineApiException(code: $code, message: $message$requestIdText)';
     }
-    return 'EngineApiException(code: $code, status: $statusCode, message: $message)';
+    return 'EngineApiException(code: $code, status: $statusCode, message: $message$requestIdText)';
   }
 }
