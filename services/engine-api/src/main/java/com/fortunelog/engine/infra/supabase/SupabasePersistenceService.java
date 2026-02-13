@@ -90,6 +90,30 @@ public class SupabasePersistenceService {
         return insertReturningId("reports", payload);
     }
 
+    public String upsertNonDailyReport(
+            String userId,
+            String chartId,
+            String reportType,
+            Map<String, ?> content,
+            boolean isPaidContent,
+            boolean visible
+    ) {
+        Map<String, Object> payload = Map.of(
+                "user_id", userId,
+                "chart_id", chartId,
+                "report_type", reportType,
+                "content_json", content,
+                "is_paid_content", isPaidContent,
+                "visible", visible
+        );
+
+        return upsertReturningId(
+                "reports",
+                payload,
+                List.of("user_id", "chart_id", "report_type")
+        );
+    }
+
     private String insertReturningId(String table, Map<String, ?> payload) {
         return writeReturningId(table, payload, false, List.of());
     }

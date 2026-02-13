@@ -61,7 +61,7 @@ public class EngineService {
                 "actions", List.of("오늘 1개 우선순위만 완료", "오후 30분 회복 시간 확보")
         );
 
-        persistenceService.insertReport(
+        persistenceService.upsertNonDailyReport(
                 request.userId(),
                 request.chartId(),
                 request.reportType(),
