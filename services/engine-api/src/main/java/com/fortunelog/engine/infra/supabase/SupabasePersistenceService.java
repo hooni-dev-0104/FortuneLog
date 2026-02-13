@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -62,7 +63,11 @@ public class SupabasePersistenceService {
                 "engine_version", engineVersion
         );
 
-        return insertReturningId("saju_charts", payload);
+        return upsertReturningId(
+                "saju_charts",
+                payload,
+                List.of("user_id", "birth_profile_id", "engine_version")
+        );
     }
 
     public String insertReport(
@@ -86,10 +91,22 @@ public class SupabasePersistenceService {
     }
 
     private String insertReturningId(String table, Map<String, ?> payload) {
+        return writeReturningId(table, payload, false, List.of());
+    }
+
+    private String upsertReturningId(String table, Map<String, ?> payload, List<String> onConflictColumns) {
+        return writeReturningId(table, payload, true, onConflictColumns);
+    }
+
+    private String writeReturningId(
+            String table,
+            Map<String, ?> payload,
+            boolean upsert,
+            List<String> onConflictColumns
+    ) {
         ensureConfigured();
-        String encodedSelect = URLEncoder.encode("id", StandardCharsets.UTF_8);
-        String path = "/rest/v1/" + table + "?select=" + encodedSelect;
-        String responseBody = sendPost(path, List.of(payload));
+        String path = buildWritePath(table, upsert, onConflictColumns);
+        String responseBody = sendPost(path, List.of(payload), upsert);
 
         try {
             JsonNode node = objectMapper.readTree(responseBody);
@@ -102,7 +119,16 @@ public class SupabasePersistenceService {
         }
     }
 
-    private String sendPost(String path, Object body) {
+    private String buildWritePath(String table, boolean upsert, List<String> onConflictColumns) {
+        List<String> query = new ArrayList<>();
+        query.add("select=" + URLEncoder.encode("id", StandardCharsets.UTF_8));
+        if (upsert && !onConflictColumns.isEmpty()) {
+            query.add("on_conflict=" + URLEncoder.encode(String.join(",", onConflictColumns), StandardCharsets.UTF_8));
+        }
+        return "/rest/v1/" + table + "?" + String.join("&", query);
+    }
+
+    private String sendPost(String path, Object body, boolean upsert) {
         String bodyJson;
         try {
             bodyJson = objectMapper.writeValueAsString(body);
@@ -116,7 +142,7 @@ public class SupabasePersistenceService {
                 .header("apikey", serviceRoleKey)
                 .header("Authorization", "Bearer " + serviceRoleKey)
                 .header("Content-Type", "application/json")
-                .header("Prefer", "return=representation")
+                .header("Prefer", preferHeader(upsert))
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
 
@@ -147,6 +173,13 @@ public class SupabasePersistenceService {
         }
 
         throw new IllegalStateException("supabase insert failed after retries");
+    }
+
+    private String preferHeader(boolean upsert) {
+        if (upsert) {
+            return "return=representation,resolution=merge-duplicates";
+        }
+        return "return=representation";
     }
 
     private boolean isRetryableStatus(int statusCode) {
