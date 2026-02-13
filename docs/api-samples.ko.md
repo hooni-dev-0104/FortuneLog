@@ -21,6 +21,7 @@ Request:
 ```json
 {
   "userId": "8f3f3d27-4ac9-4ab1-a4f2-5d4c3aa93b1a",
+  "birthProfileId": "d9f9c85b-40d4-4f03-a0cb-1e8476ad95f8",
   "birthDate": "1994-11-21",
   "birthTime": "14:30",
   "birthTimezone": "Asia/Seoul",
@@ -35,6 +36,7 @@ Request:
 Response 200:
 ```json
 {
+  "chartId": "0b3d45a2-fc2b-4abf-9926-615ea3fcd912",
   "engineVersion": "v0.1.0",
   "chart": {
     "year": "갑자",
@@ -87,6 +89,7 @@ Request:
 ```json
 {
   "userId": "8f3f3d27-4ac9-4ab1-a4f2-5d4c3aa93b1a",
+  "chartId": "0b3d45a2-fc2b-4abf-9926-615ea3fcd912",
   "date": "2026-02-13"
 }
 ```
