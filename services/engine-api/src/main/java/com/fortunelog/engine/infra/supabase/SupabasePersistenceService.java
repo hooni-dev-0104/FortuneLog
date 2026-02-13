@@ -9,10 +9,12 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -24,16 +26,25 @@ public class SupabasePersistenceService {
 
     private final String supabaseUrl;
     private final String serviceRoleKey;
+    private final int maxRetries;
+    private final long backoffMs;
+    private final Duration requestTimeout;
 
     public SupabasePersistenceService(
             ObjectMapper objectMapper,
             @Value("${app.supabase.url:${SUPABASE_URL:}}") String supabaseUrl,
-            @Value("${app.supabase.service-role-key:${SUPABASE_SERVICE_ROLE_KEY:}}") String serviceRoleKey
+            @Value("${app.supabase.service-role-key:${SUPABASE_SERVICE_ROLE_KEY:}}") String serviceRoleKey,
+            @Value("${app.supabase.max-retries:2}") int maxRetries,
+            @Value("${app.supabase.retry-backoff-ms:300}") long backoffMs,
+            @Value("${app.supabase.request-timeout-ms:5000}") long requestTimeoutMs
     ) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
         this.supabaseUrl = trimTrailingSlash(supabaseUrl);
         this.serviceRoleKey = serviceRoleKey;
+        this.maxRetries = Math.max(maxRetries, 0);
+        this.backoffMs = Math.max(backoffMs, 0L);
+        this.requestTimeout = Duration.ofMillis(Math.max(requestTimeoutMs, 1000L));
     }
 
     public String insertSajuChart(
@@ -101,6 +112,7 @@ public class SupabasePersistenceService {
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(supabaseUrl + path))
+                .timeout(requestTimeout)
                 .header("apikey", serviceRoleKey)
                 .header("Authorization", "Bearer " + serviceRoleKey)
                 .header("Content-Type", "application/json")
@@ -108,17 +120,50 @@ public class SupabasePersistenceService {
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
 
-        try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException("supabase insert failed: " + response.statusCode() + " " + response.body());
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    return response.body();
+                }
+
+                if (!isRetryableStatus(response.statusCode()) || attempt == maxRetries) {
+                    throw new IllegalStateException("supabase insert failed: " + response.statusCode() + " " + response.body());
+                }
+            } catch (HttpConnectTimeoutException e) {
+                if (attempt == maxRetries) {
+                    throw new IllegalStateException("supabase request timeout", e);
+                }
+            } catch (IOException e) {
+                if (attempt == maxRetries) {
+                    throw new IllegalStateException("failed to call Supabase", e);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("supabase call interrupted", e);
             }
-            return response.body();
-        } catch (IOException e) {
-            throw new IllegalStateException("failed to call Supabase", e);
+
+            sleepBackoff(attempt);
+        }
+
+        throw new IllegalStateException("supabase insert failed after retries");
+    }
+
+    private boolean isRetryableStatus(int statusCode) {
+        return statusCode == 408 || statusCode == 429 || statusCode >= 500;
+    }
+
+    private void sleepBackoff(int attempt) {
+        if (backoffMs == 0L) {
+            return;
+        }
+
+        long delay = backoffMs * (attempt + 1);
+        try {
+            Thread.sleep(delay);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("supabase call interrupted", e);
+            throw new IllegalStateException("supabase retry backoff interrupted", e);
         }
     }
 
