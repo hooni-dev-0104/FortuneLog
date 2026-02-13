@@ -34,9 +34,11 @@ flutter run \
 5. `2) Generate Report`
 6. `3) Daily Fortune`
 7. `4) Fetch Reports` (Supabase 저장 확인)
+8. `5) Fetch Orders`
+9. `6) Fetch Subscriptions`
 
 각 결과는 화면 하단 JSON으로 표시됩니다.
 
 ## 참고
 
-- 현재 `lunar`는 미지원이며 `solar` 기준 테스트가 정상 동작합니다.
+- `lunar` 입력도 지원되며 윤달 값 검증 실패 시 에러 메시지가 상세히 표시됩니다.

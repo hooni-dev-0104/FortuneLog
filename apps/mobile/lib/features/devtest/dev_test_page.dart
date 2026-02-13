@@ -274,6 +274,66 @@ class _DevTestPageState extends State<DevTestPage> {
     });
   }
 
+  Future<void> _fetchOrders() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      final userId = _userIdController.text.trim();
+      if (userId.isEmpty) {
+        throw const EngineApiException(code: 'USER_ID_REQUIRED', message: 'sync session first');
+      }
+
+      final rows = await supabase
+          .from('orders')
+          .select('id, status, created_at, product_id, provider')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(20);
+
+      _setResult({
+        'action': 'fetchOrders',
+        'count': (rows as List).length,
+        'orders': rows,
+      });
+    });
+  }
+
+  Future<void> _fetchSubscriptions() async {
+    await _withLoading(() async {
+      final supabase = _supabase;
+      if (supabase == null) {
+        throw const EngineApiException(
+          code: 'SUPABASE_NOT_INITIALIZED',
+          message: 'pass SUPABASE_URL and SUPABASE_ANON_KEY via dart-define',
+        );
+      }
+
+      final userId = _userIdController.text.trim();
+      if (userId.isEmpty) {
+        throw const EngineApiException(code: 'USER_ID_REQUIRED', message: 'sync session first');
+      }
+
+      final rows = await supabase
+          .from('subscriptions')
+          .select('id, plan_code, status, started_at, expires_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(20);
+
+      _setResult({
+        'action': 'fetchSubscriptions',
+        'count': (rows as List).length,
+        'subscriptions': rows,
+      });
+    });
+  }
+
   String _resolveChartId() {
     if (_chartId.isNotEmpty) {
       return _chartId;
@@ -439,6 +499,14 @@ class _DevTestPageState extends State<DevTestPage> {
               FilledButton(
                 onPressed: _loading ? null : _fetchReports,
                 child: const Text('4) Fetch Reports'),
+              ),
+              FilledButton(
+                onPressed: _loading ? null : _fetchOrders,
+                child: const Text('5) Fetch Orders'),
+              ),
+              FilledButton(
+                onPressed: _loading ? null : _fetchSubscriptions,
+                child: const Text('6) Fetch Subscriptions'),
               ),
             ],
           ),
