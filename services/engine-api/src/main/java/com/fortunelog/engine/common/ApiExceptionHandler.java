@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.UUID;
@@ -15,9 +16,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleValidationError(MethodArgumentNotValidException ex) {
+    public Map<String, Object> handleValidationError(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
+    ) {
         return Map.of(
-                "requestId", UUID.randomUUID().toString(),
+                "requestId", requestId(request),
                 "code", "VALIDATION_ERROR",
                 "message", "request validation failed"
         );
@@ -25,11 +29,22 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({IllegalArgumentException.class, DateTimeParseException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleBadRequest(Exception ex) {
+    public Map<String, Object> handleBadRequest(
+            Exception ex,
+            HttpServletRequest request
+    ) {
         return Map.of(
-                "requestId", UUID.randomUUID().toString(),
+                "requestId", requestId(request),
                 "code", "BIRTH_INFO_INVALID",
                 "message", ex.getMessage()
         );
+    }
+
+    private String requestId(HttpServletRequest request) {
+        Object value = request.getAttribute(RequestIdFilter.REQUEST_ID_KEY);
+        if (value == null) {
+            return UUID.randomUUID().toString();
+        }
+        return value.toString();
     }
 }

@@ -4,9 +4,6 @@ import com.fortunelog.engine.application.EngineService;
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
-import com.fortunelog.engine.domain.model.ChartResult;
-import com.fortunelog.engine.domain.model.DailyFortuneResult;
-import com.fortunelog.engine.domain.model.ReportResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/engine/v1")
@@ -28,24 +29,62 @@ public class EngineController {
 
     @PostMapping("/charts:calculate")
     @ResponseStatus(HttpStatus.OK)
-    public ChartResult calculateChart(@Valid @RequestBody CalculateChartRequest request) {
-        return engineService.calculateChart(request);
+    public Map<String, Object> calculateChart(
+            @Valid @RequestBody CalculateChartRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        var result = engineService.calculateChart(request);
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "chartId", result.chartId(),
+                "engineVersion", result.engineVersion(),
+                "chart", result.chart(),
+                "fiveElements", result.fiveElements()
+        );
     }
 
     @PostMapping("/reports:generate")
     @ResponseStatus(HttpStatus.OK)
-    public ReportResult generateReport(@Valid @RequestBody GenerateReportRequest request) {
-        return engineService.generateReport(request);
+    public Map<String, Object> generateReport(
+            @Valid @RequestBody GenerateReportRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        var result = engineService.generateReport(request);
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "chartId", result.chartId(),
+                "reportType", result.reportType(),
+                "content", result.content()
+        );
     }
 
     @PostMapping("/fortunes:daily")
     @ResponseStatus(HttpStatus.OK)
-    public DailyFortuneResult generateDailyFortune(@Valid @RequestBody GenerateDailyFortuneRequest request) {
-        return engineService.generateDailyFortune(request);
+    public Map<String, Object> generateDailyFortune(
+            @Valid @RequestBody GenerateDailyFortuneRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        var result = engineService.generateDailyFortune(request);
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "userId", result.userId(),
+                "date", result.date().toString(),
+                "score", result.score(),
+                "category", result.category(),
+                "actions", result.actions()
+        );
     }
 
     @GetMapping("/health")
-    public String health() {
-        return "ok";
+    public Map<String, String> health(HttpServletRequest httpRequest) {
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "status", "ok"
+        );
+    }
+
+    private String requestId(HttpServletRequest request) {
+        Object value = request.getAttribute("requestId");
+        return value == null ? "" : value.toString();
     }
 }
