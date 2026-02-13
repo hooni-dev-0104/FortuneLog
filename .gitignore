@@ -67,6 +67,7 @@ ios/Pods/
 # Java / Kotlin
 *.class
 *.jar
+!services/engine-api/gradle/wrapper/gradle-wrapper.jar
 *.war
 *.ear
 .gradle/
