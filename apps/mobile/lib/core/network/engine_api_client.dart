@@ -8,6 +8,7 @@ abstract interface class EngineApiClient {
 
 class CalculateChartRequestDto {
   final String userId;
+  final String birthProfileId;
   final String birthDate;
   final String birthTime;
   final String birthTimezone;
@@ -19,6 +20,7 @@ class CalculateChartRequestDto {
 
   const CalculateChartRequestDto({
     required this.userId,
+    required this.birthProfileId,
     required this.birthDate,
     required this.birthTime,
     required this.birthTimezone,
@@ -31,6 +33,7 @@ class CalculateChartRequestDto {
 
   Map<String, dynamic> toJson() => {
     'userId': userId,
+    'birthProfileId': birthProfileId,
     'birthDate': birthDate,
     'birthTime': birthTime,
     'birthTimezone': birthTimezone,
@@ -62,25 +65,30 @@ class GenerateReportRequestDto {
 
 class GenerateDailyFortuneRequestDto {
   final String userId;
+  final String chartId;
   final String date;
 
   const GenerateDailyFortuneRequestDto({
     required this.userId,
+    required this.chartId,
     required this.date,
   });
 
   Map<String, dynamic> toJson() => {
     'userId': userId,
+    'chartId': chartId,
     'date': date,
   };
 }
 
 class ChartResponseDto {
+  final String chartId;
   final String engineVersion;
   final Map<String, String> chart;
   final Map<String, int> fiveElements;
 
   const ChartResponseDto({
+    required this.chartId,
     required this.engineVersion,
     required this.chart,
     required this.fiveElements,
@@ -88,6 +96,7 @@ class ChartResponseDto {
 
   factory ChartResponseDto.fromJson(Map<String, dynamic> json) {
     return ChartResponseDto(
+      chartId: json['chartId'] as String,
       engineVersion: json['engineVersion'] as String,
       chart: (json['chart'] as Map<String, dynamic>).map(
         (key, value) => MapEntry(key, value as String),
