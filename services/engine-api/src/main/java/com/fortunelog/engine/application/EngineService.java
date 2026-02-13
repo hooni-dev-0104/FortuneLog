@@ -58,15 +58,22 @@ public class EngineService {
     private LocalDate resolveSolarBirthDate(CalculateChartRequest request) {
         LocalDate inputDate = LocalDate.parse(request.birthDate());
         if ("solar".equalsIgnoreCase(request.calendarType())) {
+            if (request.leapMonth()) {
+                throw new IllegalArgumentException("leapMonth can be true only when calendarType is lunar");
+            }
             return inputDate;
         }
         if ("lunar".equalsIgnoreCase(request.calendarType())) {
-            return lunarDateConverter.toSolarDate(
-                    inputDate.getYear(),
-                    inputDate.getMonthValue(),
-                    inputDate.getDayOfMonth(),
-                    request.leapMonth()
-            );
+            try {
+                return lunarDateConverter.toSolarDate(
+                        inputDate.getYear(),
+                        inputDate.getMonthValue(),
+                        inputDate.getDayOfMonth(),
+                        request.leapMonth()
+                );
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("invalid lunar birthDate/leapMonth: " + e.getMessage(), e);
+            }
         }
         throw new IllegalArgumentException("unsupported calendar type: " + request.calendarType());
     }

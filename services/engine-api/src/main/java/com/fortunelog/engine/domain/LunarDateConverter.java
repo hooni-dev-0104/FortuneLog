@@ -34,23 +34,27 @@ public class LunarDateConverter {
 
     public LocalDate toSolarDate(int year, int month, int day, boolean isLeapMonth) {
         if (year < START_YEAR || year > END_YEAR) {
-            throw new IllegalArgumentException("lunar year out of supported range: " + year);
+            throw new IllegalArgumentException("year must be between " + START_YEAR + " and " + END_YEAR + ": " + year);
         }
         if (month < 1 || month > 12) {
-            throw new IllegalArgumentException("invalid lunar month: " + month);
+            throw new IllegalArgumentException("month must be between 1 and 12: " + month);
         }
         if (day < 1 || day > 30) {
-            throw new IllegalArgumentException("invalid lunar day: " + day);
+            throw new IllegalArgumentException("day must be between 1 and 30: " + day);
         }
 
         int leap = leapMonth(year);
         if (isLeapMonth && leap != month) {
-            throw new IllegalArgumentException("invalid leap month for year/month combination");
+            throw new IllegalArgumentException(
+                    "year " + year + " does not have leap month " + month + " (actual leap month: " + leap + ")"
+            );
         }
 
         int maxDay = isLeapMonth ? leapDays(year) : monthDays(year, month);
         if (day > maxDay) {
-            throw new IllegalArgumentException("invalid lunar day for month: " + day);
+            throw new IllegalArgumentException(
+                    "day " + day + " is out of range for year " + year + ", month " + month + ", leap=" + isLeapMonth
+            );
         }
 
         long offsetDays = 0;
