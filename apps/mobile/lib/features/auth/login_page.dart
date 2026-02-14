@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:simple_icons/simple_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
@@ -169,16 +170,16 @@ class _LoginPageState extends State<LoginPage> {
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
                 backgroundColor: const Color(0xFFFEE500),
-                icon: Icons.chat_bubble,
-                iconColor: const Color(0xFF2B2B2B),
+                icon: SimpleIcons.kakaotalk,
+                iconColor: const Color(0xFF181600),
                 semanticsLabel: '카카오 로그인',
               ),
               const SizedBox(width: 14),
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
                 backgroundColor: Colors.white,
-                icon: Icons.g_mobiledata,
-                iconColor: const Color(0xFF202124),
+                icon: SimpleIcons.google,
+                iconColor: const Color(0xFF4285F4),
                 semanticsLabel: '구글 로그인',
                 borderColor: const Color(0xFFDADCE0),
               ),
@@ -240,7 +241,7 @@ class _SocialIconButton extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: borderColor ?? Colors.transparent),
           ),
-          child: Icon(icon, color: iconColor, size: 30),
+          child: Icon(icon, color: iconColor, size: 22),
         ),
       ),
     );
