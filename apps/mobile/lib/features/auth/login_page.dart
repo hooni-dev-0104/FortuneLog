@@ -189,9 +189,13 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      final kakaoScopes =
+          provider == OAuthProvider.kakao ? 'profile_nickname profile_image' : null;
+
       await _supabase().auth.signInWithOAuth(
             provider,
             redirectTo: _redirectToForMobile(),
+            scopes: kakaoScopes,
           );
     } on AuthException catch (e) {
       if (!mounted) return;
