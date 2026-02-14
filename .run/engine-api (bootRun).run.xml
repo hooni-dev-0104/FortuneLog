@@ -1,6 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="engine-api (bootRun)" type="GradleRunConfiguration" factoryName="Gradle">
     <ExternalSystemSettings>
+      <!-- Required by some IntelliJ builds; otherwise ProjectSystemId may be null. -->
+      <option name="externalSystemIdString" value="GRADLE" />
       <option name="externalProjectPath" value="$PROJECT_DIR$/services/engine-api" />
       <option name="taskNames">
         <list>
@@ -11,4 +13,3 @@
     <method v="2" />
   </configuration>
 </component>
-
