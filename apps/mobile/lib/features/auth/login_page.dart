@@ -162,26 +162,29 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 10),
-          PageSection(
-            title: '소셜 로그인',
-            subtitle: '간편 로그인 후 바로 앱으로 돌아옵니다.',
-            child: Column(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
-                  icon: const Icon(Icons.g_mobiledata),
-                  label: const Text('Google로 계속하기'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  label: const Text('Kakao로 계속하기'),
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _SocialIconButton(
+                onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
+                backgroundColor: const Color(0xFFFEE500),
+                icon: Icons.chat_bubble,
+                iconColor: const Color(0xFF2B2B2B),
+                semanticsLabel: '카카오 로그인',
+              ),
+              const SizedBox(width: 14),
+              _SocialIconButton(
+                onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
+                backgroundColor: Colors.white,
+                icon: Icons.g_mobiledata,
+                iconColor: const Color(0xFF202124),
+                semanticsLabel: '구글 로그인',
+                borderColor: const Color(0xFFDADCE0),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               TextButton(onPressed: () {}, child: const Text('회원가입')),
@@ -198,6 +201,46 @@ class _LoginPageState extends State<LoginPage> {
           child: _loading
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('이메일 로그인'),
+        ),
+      ),
+    );
+  }
+}
+
+class _SocialIconButton extends StatelessWidget {
+  const _SocialIconButton({
+    required this.onPressed,
+    required this.backgroundColor,
+    required this.icon,
+    required this.iconColor,
+    required this.semanticsLabel,
+    this.borderColor,
+  });
+
+  final VoidCallback? onPressed;
+  final Color backgroundColor;
+  final IconData icon;
+  final Color iconColor;
+  final String semanticsLabel;
+  final Color? borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: borderColor ?? Colors.transparent),
+          ),
+          child: Icon(icon, color: iconColor, size: 30),
         ),
       ),
     );
