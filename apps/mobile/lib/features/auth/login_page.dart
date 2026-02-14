@@ -85,15 +85,26 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      final redirectTo = const String.fromEnvironment('AUTH_REDIRECT_TO');
+      if (!kIsWeb && redirectTo.isEmpty) {
+        throw const FormatException('AUTH_REDIRECT_TO is empty');
+      }
+
       await _supabase().auth.signInWithOAuth(
             provider,
-            redirectTo: kIsWeb ? null : const String.fromEnvironment('AUTH_REDIRECT_TO'),
+            redirectTo: kIsWeb ? null : redirectTo,
           );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _error = e.message;
+      });
+    } on FormatException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. 실행 스크립트의 dart-define 값을 확인해주세요.';
       });
     } catch (_) {
       if (!mounted) return;

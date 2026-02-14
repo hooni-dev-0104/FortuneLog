@@ -13,11 +13,18 @@ cd /Users/hooni/FortuneLog/services/engine-api
 
 ```bash
 cd /Users/hooni/FortuneLog/apps/mobile
-flutter pub get
-flutter run \
-  --dart-define=SUPABASE_URL=https://gcddzpfzjcstypegmmnj.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=<YOUR_ANON_KEY>
+cp .env.example .env
+# .env 파일에 SUPABASE_URL / SUPABASE_ANON_KEY / AUTH_REDIRECT_TO 입력
+./scripts/run_ios_dev.sh
 ```
+
+`AUTH_REDIRECT_TO` 기본값:
+
+```text
+io.supabase.flutter://login-callback/
+```
+
+Supabase Dashboard > Authentication > URL Configuration 의 Additional Redirect URLs에도 동일 값을 추가해야 합니다.
 
 ## 3. 앱에서 입력할 값
 
