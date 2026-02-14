@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="120" x2="900" y2="920" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F7B64"/>
+      <stop offset="1" stop-color="#11524E"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="322" y1="250" x2="700" y2="680" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD77A"/>
+      <stop offset="1" stop-color="#E6A93C"/>
+    </linearGradient>
+    <filter id="soft" x="180" y="160" width="664" height="704" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="14"/>
+      <feGaussianBlur stdDeviation="20"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.11 0 0 0 0 0.10 0 0 0 0.32 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <g filter="url(#soft)">
+    <path d="M512 220C379.489 220 272 327.489 272 460C272 560.833 334.264 647.125 422.4 682.68V781.2C422.4 804.286 441.114 823 464.2 823H559.8C582.886 823 601.6 804.286 601.6 781.2V682.68C689.736 647.125 752 560.833 752 460C752 327.489 644.511 220 512 220Z" fill="#F8FAF9"/>
+
+    <circle cx="512" cy="460" r="154" fill="url(#gold)"/>
+
+    <path d="M449 521H575" stroke="#123C39" stroke-width="36" stroke-linecap="round"/>
+    <path d="M449 430L512 360L575 430" stroke="#123C39" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="461" y="690" width="102" height="92" rx="16" fill="#0F7B64"/>
+    <rect x="414" y="742" width="196" height="44" rx="16" fill="#0B5A4C"/>
+  </g>
+</svg>
