@@ -38,13 +38,8 @@ public class SajuCalculator {
 
     public SajuChart calculate(
             LocalDateTime birthDateTime,
-            boolean unknownBirthTime,
-            String calendarType
+            boolean unknownBirthTime
     ) {
-        if (!"solar".equalsIgnoreCase(calendarType)) {
-            throw new IllegalArgumentException("only solar calendar is supported in v1");
-        }
-
         Pillar year = calculateYearPillar(birthDateTime);
         int monthOrder = monthOrderBySolarTerm(birthDateTime);
         Pillar month = calculateMonthPillar(year.stemIndex(), monthOrder);

@@ -1,20 +1,46 @@
 package com.fortunelog.engine.infra.config;
 
+import com.fortunelog.engine.common.RequestIdFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Map;
+import java.util.UUID;
 
 @Configuration
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public RequestIdFilter requestIdFilter() {
+        return new RequestIdFilter();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectMapper objectMapper,
+            RequestIdFilter requestIdFilter
+    ) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(requestIdFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) ->
+                                writeAuthError(objectMapper, request, response, 401, "UNAUTHORIZED", "authentication required")
+                        )
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                writeAuthError(objectMapper, request, response, 403, "FORBIDDEN", "access denied")
+                        )
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/engine/v1/health").permitAll()
                         .anyRequest().authenticated()
@@ -22,5 +48,39 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
         return http.build();
+    }
+
+    private void writeAuthError(
+            ObjectMapper objectMapper,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            int status,
+            String code,
+            String message
+    ) {
+        try {
+            response.setStatus(status);
+            response.setContentType("application/json");
+
+            String requestId = requestId(request);
+            response.setHeader("X-Request-Id", requestId);
+
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "requestId", requestId,
+                    "code", code,
+                    "message", message
+            ));
+            response.getWriter().write(body);
+        } catch (Exception ignored) {
+            // If writing JSON fails, fall back to the default behavior (empty body is fine).
+        }
+    }
+
+    private String requestId(HttpServletRequest request) {
+        Object value = request.getAttribute(RequestIdFilter.REQUEST_ID_KEY);
+        if (value == null) {
+            return UUID.randomUUID().toString();
+        }
+        return value.toString();
     }
 }

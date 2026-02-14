@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/ui/app_widgets.dart';
-import '../home/home_page.dart';
+import '../app/app_gate.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -59,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
           // 로그인 완료 시점에 자동으로 닫아 UX를 자연스럽게 만든다.
           // (Android는 closeInAppWebView를 지원하지 않을 수 있으므로 호출 실패는 무시)
           closeInAppWebView().catchError((_) {});
-          Navigator.pushReplacementNamed(context, HomePage.routeName);
+          Navigator.pushReplacementNamed(context, AppGate.routeName);
         }
       });
     } on StateError catch (e) {

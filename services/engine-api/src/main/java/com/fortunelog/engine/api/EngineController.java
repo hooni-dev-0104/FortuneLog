@@ -6,6 +6,8 @@ import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,9 +33,10 @@ public class EngineController {
     @ResponseStatus(HttpStatus.OK)
     public Map<String, Object> calculateChart(
             @Valid @RequestBody CalculateChartRequest request,
+            @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest
     ) {
-        var result = engineService.calculateChart(request);
+        var result = engineService.calculateChart(jwt.getSubject(), request);
         return Map.of(
                 "requestId", requestId(httpRequest),
                 "chartId", result.chartId(),
@@ -47,9 +50,10 @@ public class EngineController {
     @ResponseStatus(HttpStatus.OK)
     public Map<String, Object> generateReport(
             @Valid @RequestBody GenerateReportRequest request,
+            @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest
     ) {
-        var result = engineService.generateReport(request);
+        var result = engineService.generateReport(jwt.getSubject(), request);
         return Map.of(
                 "requestId", requestId(httpRequest),
                 "chartId", result.chartId(),
@@ -62,9 +66,10 @@ public class EngineController {
     @ResponseStatus(HttpStatus.OK)
     public Map<String, Object> generateDailyFortune(
             @Valid @RequestBody GenerateDailyFortuneRequest request,
+            @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest
     ) {
-        var result = engineService.generateDailyFortune(request);
+        var result = engineService.generateDailyFortune(jwt.getSubject(), request);
         return Map.of(
                 "requestId", requestId(httpRequest),
                 "userId", result.userId(),

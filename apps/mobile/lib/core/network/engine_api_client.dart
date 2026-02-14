@@ -7,7 +7,6 @@ abstract interface class EngineApiClient {
 }
 
 class CalculateChartRequestDto {
-  final String userId;
   final String birthProfileId;
   final String birthDate;
   final String birthTime;
@@ -19,7 +18,6 @@ class CalculateChartRequestDto {
   final bool unknownBirthTime;
 
   const CalculateChartRequestDto({
-    required this.userId,
     required this.birthProfileId,
     required this.birthDate,
     required this.birthTime,
@@ -32,7 +30,6 @@ class CalculateChartRequestDto {
   });
 
   Map<String, dynamic> toJson() => {
-    'userId': userId,
     'birthProfileId': birthProfileId,
     'birthDate': birthDate,
     'birthTime': birthTime,
@@ -46,36 +43,30 @@ class CalculateChartRequestDto {
 }
 
 class GenerateReportRequestDto {
-  final String userId;
   final String chartId;
   final String reportType;
 
   const GenerateReportRequestDto({
-    required this.userId,
     required this.chartId,
     required this.reportType,
   });
 
   Map<String, dynamic> toJson() => {
-    'userId': userId,
     'chartId': chartId,
     'reportType': reportType,
   };
 }
 
 class GenerateDailyFortuneRequestDto {
-  final String userId;
   final String chartId;
   final String date;
 
   const GenerateDailyFortuneRequestDto({
-    required this.userId,
     required this.chartId,
     required this.date,
   });
 
   Map<String, dynamic> toJson() => {
-    'userId': userId,
     'chartId': chartId,
     'date': date,
   };

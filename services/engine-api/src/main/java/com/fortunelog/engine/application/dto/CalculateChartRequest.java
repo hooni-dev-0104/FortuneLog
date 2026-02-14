@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record CalculateChartRequest(
-        @NotBlank String userId,
         @NotBlank String birthProfileId,
         @NotBlank String birthDate,
         @NotBlank String birthTime,

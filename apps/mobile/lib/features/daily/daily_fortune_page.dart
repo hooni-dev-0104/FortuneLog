@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
+import '../../core/network/engine_api_client_factory.dart';
+import '../../core/network/engine_api_client.dart';
+import '../../core/network/http_engine_api_client.dart';
 
 class DailyFortunePage extends StatefulWidget {
   const DailyFortunePage({super.key});
@@ -11,24 +15,153 @@ class DailyFortunePage extends StatefulWidget {
 
 class _DailyFortunePageState extends State<DailyFortunePage> {
   bool _loading = false;
-  bool _hasData = true;
   String? _error;
-  DateTime _updatedAt = DateTime.now();
+  String? _requestId;
+
+  Map<String, dynamic>? _content;
+
+  SupabaseClient _supabase() => Supabase.instance.client;
+
+  EngineApiClient _engineClient() {
+    final baseUrl = const String.fromEnvironment('ENGINE_BASE_URL');
+    if (baseUrl.isEmpty) {
+      throw const FormatException('ENGINE_BASE_URL is empty');
+    }
+    return EngineApiClientFactory.create(baseUrl: baseUrl);
+  }
+
+  String _todayDateString() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+  }
 
   Future<void> _refresh() async {
     setState(() {
       _loading = true;
       _error = null;
+      _requestId = null;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
+    try {
+      final session = _supabase().auth.currentSession;
+      if (session == null) {
+        throw StateError('로그인이 필요합니다.');
+      }
 
+      final userId = session.user.id;
+      final today = _todayDateString();
+
+      final rows = await _supabase()
+          .from('reports')
+          .select('id, content_json, target_date, created_at')
+          .eq('user_id', userId)
+          .eq('report_type', 'daily')
+          .eq('target_date', today)
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if ((rows as List).isEmpty) {
+        setState(() {
+          _loading = false;
+          _content = null;
+        });
+        return;
+      }
+
+      final row = rows.first as Map<String, dynamic>;
+      setState(() {
+        _loading = false;
+        _content = row['content_json'] as Map<String, dynamic>;
+      });
+    } on PostgrestException catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } on StateError catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } catch (_) {
+      setState(() {
+        _loading = false;
+        _error = '오늘 운세를 불러오지 못했습니다.';
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<String> _fetchLatestChartId() async {
+    final session = _supabase().auth.currentSession;
+    if (session == null) {
+      throw StateError('로그인이 필요합니다.');
+    }
+
+    final userId = session.user.id;
+    final rows = await _supabase()
+        .from('saju_charts')
+        .select('id, created_at')
+        .eq('user_id', userId)
+        .order('created_at', ascending: false)
+        .limit(1);
+
+    if ((rows as List).isEmpty) {
+      throw StateError('사주 차트가 없습니다. 먼저 출생정보 입력 후 계산을 완료해주세요.');
+    }
+
+    final row = rows.first as Map<String, dynamic>;
+    return row['id'] as String;
+  }
+
+  Future<void> _generateToday() async {
     setState(() {
-      _loading = false;
-      _hasData = true;
-      _updatedAt = DateTime.now();
+      _loading = true;
+      _error = null;
+      _requestId = null;
     });
+
+    try {
+      final chartId = await _fetchLatestChartId();
+      final today = _todayDateString();
+
+      final response = await _engineClient().generateDailyFortune(
+        GenerateDailyFortuneRequestDto(
+          chartId: chartId,
+          date: today,
+        ),
+      );
+      _requestId = response.requestId;
+      await _refresh();
+    } on EngineApiException catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.message;
+        _requestId = e.requestId;
+      });
+    } on FormatException {
+      setState(() {
+        _loading = false;
+        _error = 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.';
+      });
+    } on StateError catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } catch (_) {
+      setState(() {
+        _loading = false;
+        _error = '오늘 운세 생성에 실패했습니다.';
+      });
+    }
   }
 
   @override
@@ -41,58 +174,37 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
         if (_error != null) ...[
-          StatusNotice.error(message: _error!, requestId: 'daily-req-001'),
+          StatusNotice.error(message: _error!, requestId: _requestId ?? 'daily'),
           const SizedBox(height: 10),
         ],
-        if (!_hasData)
+        if (_content == null)
           EmptyState(
             title: '오늘 운세가 아직 없습니다',
             description: '오늘 기준 데이터가 없어 지금 바로 생성이 필요합니다.',
             actionText: '오늘 운세 생성',
-            onAction: _refresh,
+            onAction: _generateToday,
           )
         else ...[
           PageSection(
-            title: '오늘 점수 74점',
-            subtitle: '기준일: 2026-02-14 (Asia/Seoul)',
+            title: '오늘 점수 ${_content!['score'] ?? '-'}점',
+            subtitle: '기준일: ${_content!['date'] ?? _todayDateString()} (Asia/Seoul)',
             trailing: FilledButton.tonal(onPressed: _refresh, child: const Text('새로고침')),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('총평: 중요한 결정은 오후로 미루고, 오전에는 실행 중심으로 정리하세요.'),
-                const SizedBox(height: 8),
-                Text(
-                  '마지막 갱신: ${_updatedAt.year}-${_updatedAt.month.toString().padLeft(2, '0')}-${_updatedAt.day.toString().padLeft(2, '0')} ${_updatedAt.hour.toString().padLeft(2, '0')}:${_updatedAt.minute.toString().padLeft(2, '0')}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text('총평: ${(_content!['summary'] ?? '오늘 액션을 확인해보세요.').toString()}'),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          const PageSection(
-            title: '카테고리 점수',
-            child: Column(
-              children: [
-                _CategoryScore(name: '연애', score: 68, summary: '감정 반응보다 사실 확인이 유리합니다.'),
-                _CategoryScore(name: '일', score: 81, summary: '집중 구간을 오전에 배치하면 성과가 올라갑니다.'),
-                _CategoryScore(name: '재물', score: 72, summary: '소액 반복 지출 점검이 효과적입니다.'),
-                _CategoryScore(name: '건강', score: 69, summary: '수면 회복을 우선 순위로 두세요.'),
-              ],
-            ),
+          PageSection(
+            title: '카테고리',
+            child: _CategoryList(category: _content!['category'] as Map<String, dynamic>?),
           ),
           const SizedBox(height: 10),
-          const PageSection(
-            title: '오늘 액션 3개',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('1. 핵심 의사결정은 오후 2시 이후로 미루기'),
-                SizedBox(height: 6),
-                Text('2. 오늘 지출 상한선을 오전에 설정하기'),
-                SizedBox(height: 6),
-                Text('3. 저녁 20분 산책으로 긴장도 낮추기'),
-              ],
-            ),
+          PageSection(
+            title: '오늘 액션',
+            child: _ActionList(actions: _content!['actions'] as List<dynamic>?),
           ),
         ],
       ],
@@ -100,36 +212,53 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
   }
 }
 
-class _CategoryScore extends StatelessWidget {
-  const _CategoryScore({required this.name, required this.score, required this.summary});
+class _CategoryList extends StatelessWidget {
+  const _CategoryList({required this.category});
 
-  final String name;
-  final int score;
-  final String summary;
+  final Map<String, dynamic>? category;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(name, style: Theme.of(context).textTheme.titleMedium),
-              const Spacer(),
-              Text('$score점', style: Theme.of(context).textTheme.titleMedium),
-            ],
+    final c = category;
+    if (c == null || c.isEmpty) {
+      return const Text('카테고리 정보가 없습니다.');
+    }
+
+    final entries = c.entries.toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: entries
+          .map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text('${e.key}: ${e.value}'),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _ActionList extends StatelessWidget {
+  const _ActionList({required this.actions});
+
+  final List<dynamic>? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final list = actions;
+    if (list == null || list.isEmpty) {
+      return const Text('액션 정보가 없습니다.');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < list.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('${i + 1}. ${list[i]}'),
           ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(value: score / 100),
-          ),
-          const SizedBox(height: 6),
-          Text(summary, style: Theme.of(context).textTheme.bodySmall),
-        ],
-      ),
+      ],
     );
   }
 }

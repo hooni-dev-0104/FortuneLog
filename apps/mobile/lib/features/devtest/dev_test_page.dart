@@ -146,7 +146,6 @@ class _DevTestPageState extends State<DevTestPage> {
     await _withLoading(() async {
       final response = await _client.calculateChart(
         CalculateChartRequestDto(
-          userId: _requireUserId(),
           birthProfileId: _birthProfileIdController.text.trim(),
           birthDate: _birthDateController.text.trim(),
           birthTime: _birthTimeController.text.trim(),
@@ -177,7 +176,6 @@ class _DevTestPageState extends State<DevTestPage> {
     await _withLoading(() async {
       final response = await _client.generateReport(
         GenerateReportRequestDto(
-          userId: _requireUserId(),
           chartId: _requireChartId(),
           reportType: _reportType,
         ),
@@ -198,7 +196,6 @@ class _DevTestPageState extends State<DevTestPage> {
     await _withLoading(() async {
       final response = await _client.generateDailyFortune(
         GenerateDailyFortuneRequestDto(
-          userId: _requireUserId(),
           chartId: _requireChartId(),
           date: _dateController.text.trim(),
         ),

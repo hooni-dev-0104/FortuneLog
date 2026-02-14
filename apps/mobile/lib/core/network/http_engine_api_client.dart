@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'engine_api_client.dart';
+import 'request_id.dart';
 
 abstract interface class AccessTokenProvider {
   Future<String?> getAccessToken();
@@ -48,17 +49,20 @@ class HttpEngineApiClient implements EngineApiClient {
       );
     }
 
+    final requestId = generateRequestId();
     final uri = Uri.parse('$baseUrl$path');
     final response = await _httpClient.post(
       uri,
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
+        'X-Request-Id': requestId,
       },
       body: jsonEncode(body),
     );
 
     final decoded = _decodeBody(response.body);
+    final responseRequestId = (decoded['requestId'] as String?) ?? response.headers['x-request-id'] ?? requestId;
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;
@@ -68,7 +72,7 @@ class HttpEngineApiClient implements EngineApiClient {
       code: decoded['code'] as String? ?? 'ENGINE_API_ERROR',
       message: decoded['message'] as String? ?? 'request failed',
       statusCode: response.statusCode,
-      requestId: decoded['requestId'] as String?,
+      requestId: responseRequestId,
     );
   }
 

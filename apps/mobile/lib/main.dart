@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/ui/app_theme.dart';
 
+import 'features/app/app_gate.dart';
 import 'features/auth/login_page.dart';
 import 'features/birth/birth_input_page.dart';
 import 'features/devtest/dev_test_page.dart';
@@ -30,8 +31,9 @@ class FortuneLogApp extends StatelessWidget {
     return MaterialApp(
       title: 'FortuneLog',
       theme: AppTheme.light(),
-      initialRoute: OnboardingPage.routeName,
+      initialRoute: AppGate.routeName,
       routes: {
+        AppGate.routeName: (_) => const AppGate(),
         OnboardingPage.routeName: (_) => const OnboardingPage(),
         LoginPage.routeName: (_) => const LoginPage(),
         BirthInputPage.routeName: (_) => const BirthInputPage(),

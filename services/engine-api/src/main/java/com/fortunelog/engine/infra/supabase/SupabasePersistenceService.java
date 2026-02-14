@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +89,31 @@ public class SupabasePersistenceService {
         );
 
         return insertReturningId("reports", payload);
+    }
+
+    public String upsertDailyFortuneReport(
+            String userId,
+            String chartId,
+            LocalDate targetDate,
+            Map<String, ?> content,
+            boolean isPaidContent,
+            boolean visible
+    ) {
+        Map<String, Object> payload = Map.of(
+                "user_id", userId,
+                "chart_id", chartId,
+                "report_type", "daily",
+                "target_date", targetDate.toString(),
+                "content_json", content,
+                "is_paid_content", isPaidContent,
+                "visible", visible
+        );
+
+        return upsertReturningId(
+                "reports",
+                payload,
+                List.of("user_id", "report_type", "target_date")
+        );
     }
 
     public String upsertNonDailyReport(

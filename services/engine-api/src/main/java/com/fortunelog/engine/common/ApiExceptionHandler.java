@@ -10,9 +10,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -37,6 +41,20 @@ public class ApiExceptionHandler {
                 "requestId", requestId(request),
                 "code", "BIRTH_INFO_INVALID",
                 "message", ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Map<String, Object> handleUnexpected(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        log.error("unexpected error", ex);
+        return Map.of(
+                "requestId", requestId(request),
+                "code", "INTERNAL_ERROR",
+                "message", "unexpected server error"
         );
     }
 

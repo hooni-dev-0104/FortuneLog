@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
+import '../../core/network/engine_api_client_factory.dart';
+import '../../core/network/engine_api_client.dart';
+import '../../core/network/http_engine_api_client.dart';
 import '../home/home_page.dart';
 
 class BirthInputPage extends StatefulWidget {
@@ -23,10 +27,20 @@ class _BirthInputPageState extends State<BirthInputPage> {
   bool _isLeapMonth = false;
   String _gender = 'female';
   bool _saving = false;
+  String? _error;
+  String? _lastRequestId;
 
   List<String> _summaryErrors = const [];
 
-  void _validateAndSubmit() async {
+  EngineApiClient _engineClient() {
+    final baseUrl = const String.fromEnvironment('ENGINE_BASE_URL');
+    if (baseUrl.isEmpty) {
+      throw const FormatException('ENGINE_BASE_URL is empty');
+    }
+    return EngineApiClientFactory.create(baseUrl: baseUrl);
+  }
+
+  Future<void> _validateAndSubmit() async {
     final errors = <String>[];
 
     if (!_formKey.currentState!.validate()) {
@@ -45,11 +59,74 @@ class _BirthInputPageState extends State<BirthInputPage> {
     setState(() {
       _summaryErrors = const [];
       _saving = true;
+      _error = null;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    try {
+      final supabase = Supabase.instance.client;
+      final session = supabase.auth.currentSession;
+      if (session == null) {
+        throw StateError('로그인이 필요합니다.');
+      }
+
+      final userId = session.user.id;
+      final timePart = _unknownBirthTime ? '12:00:00' : '${_timeController.text.trim()}:00';
+      final birthDatetime = '${_dateController.text.trim()}T$timePart';
+
+      // For now, timezone is fixed to Asia/Seoul in the production UX. (DevTest lets you override it.)
+      const birthTimezone = 'Asia/Seoul';
+
+      final row = await supabase
+          .from('birth_profiles')
+          .insert({
+            'user_id': userId,
+            'birth_datetime_local': birthDatetime,
+            'birth_timezone': birthTimezone,
+            'birth_location': _locationController.text.trim(),
+            'calendar_type': _isLunar ? 'lunar' : 'solar',
+            'is_leap_month': _isLeapMonth,
+            'gender': _gender,
+            'unknown_birth_time': _unknownBirthTime,
+          })
+          .select('id')
+          .single();
+
+      final birthProfileId = row['id'] as String;
+
+      final client = _engineClient();
+      final chartResponse = await client.calculateChart(
+        CalculateChartRequestDto(
+          birthProfileId: birthProfileId,
+          birthDate: _dateController.text.trim(),
+          birthTime: _timeController.text.trim(),
+          birthTimezone: birthTimezone,
+          birthLocation: _locationController.text.trim(),
+          calendarType: _isLunar ? 'lunar' : 'solar',
+          leapMonth: _isLeapMonth,
+          gender: _gender,
+          unknownBirthTime: _unknownBirthTime,
+        ),
+      );
+      _lastRequestId = chartResponse.requestId;
+    } on StateError catch (e) {
+      _error = e.message;
+    } on PostgrestException catch (e) {
+      _error = e.message;
+    } on EngineApiException catch (e) {
+      _error = e.message;
+      _lastRequestId = e.requestId;
+    } on FormatException {
+      _error = 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.';
+    } catch (_) {
+      _error = '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    }
+
     if (!mounted) return;
     setState(() => _saving = false);
+
+    if (_error != null) {
+      return;
+    }
 
     Navigator.pushReplacementNamed(context, HomePage.routeName);
   }
@@ -65,6 +142,10 @@ class _BirthInputPageState extends State<BirthInputPage> {
           const SizedBox(height: 12),
           if (_summaryErrors.isNotEmpty) ...[
             StatusNotice.error(message: _summaryErrors.join('\n'), requestId: 'dev-birth-validate'),
+            const SizedBox(height: 12),
+          ],
+          if (_error != null) ...[
+            StatusNotice.error(message: _error!, requestId: _lastRequestId ?? 'birth-submit'),
             const SizedBox(height: 12),
           ],
           Form(
@@ -178,7 +259,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 6, 20, 16),
         child: FilledButton(
-          onPressed: _saving ? null : _validateAndSubmit,
+          onPressed: _saving ? null : () => _validateAndSubmit(),
           child: _saving
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('저장하고 결과 보기'),

@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -31,21 +33,24 @@ public class EngineService {
         this.persistenceService = persistenceService;
     }
 
-    public ChartResult calculateChart(CalculateChartRequest request) {
+    public ChartResult calculateChart(String userId, CalculateChartRequest request) {
         LocalDate birthDate = resolveSolarBirthDate(request);
         LocalTime birthTime = request.unknownBirthTime()
                 ? LocalTime.NOON
                 : LocalTime.parse(request.birthTime(), BIRTH_TIME_FORMATTER);
-        LocalDateTime birthDateTime = LocalDateTime.of(birthDate, birthTime);
+
+        // Treat input date/time as local time in the provided timezone, then compare solar term boundaries in KST.
+        ZoneId inputZone = ZoneId.of(request.birthTimezone());
+        ZonedDateTime inputZdt = LocalDateTime.of(birthDate, birthTime).atZone(inputZone);
+        ZonedDateTime kstZdt = inputZdt.withZoneSameInstant(ZoneId.of("Asia/Seoul"));
 
         SajuCalculator.SajuChart chart = sajuCalculator.calculate(
-                birthDateTime,
-                request.unknownBirthTime(),
-                request.calendarType()
+                kstZdt.toLocalDateTime(),
+                request.unknownBirthTime()
         );
 
         String chartId = persistenceService.insertSajuChart(
-                request.userId(),
+                userId,
                 request.birthProfileId(),
                 chart.chart(),
                 chart.fiveElements(),
@@ -78,7 +83,7 @@ public class EngineService {
         throw new IllegalArgumentException("unsupported calendar type: " + request.calendarType());
     }
 
-    public ReportResult generateReport(GenerateReportRequest request) {
+    public ReportResult generateReport(String userId, GenerateReportRequest request) {
         Map<String, Object> content = Map.of(
                 "summary", "실행력은 강하지만 과부하 관리가 핵심입니다.",
                 "strengths", List.of("빠른 판단", "높은 집중력"),
@@ -87,7 +92,7 @@ public class EngineService {
         );
 
         persistenceService.upsertNonDailyReport(
-                request.userId(),
+                userId,
                 request.chartId(),
                 request.reportType(),
                 content,
@@ -98,7 +103,7 @@ public class EngineService {
         return new ReportResult(request.chartId(), request.reportType(), content);
     }
 
-    public DailyFortuneResult generateDailyFortune(GenerateDailyFortuneRequest request) {
+    public DailyFortuneResult generateDailyFortune(String userId, GenerateDailyFortuneRequest request) {
         Map<String, String> category = Map.of(
                 "love", "대화의 온도를 낮추면 관계가 안정됩니다.",
                 "work", "집중 시간대를 오전에 배치하세요.",
@@ -111,10 +116,10 @@ public class EngineService {
                 "저녁 20분 산책"
         );
 
-        persistenceService.insertReport(
-                request.userId(),
+        persistenceService.upsertDailyFortuneReport(
+                userId,
                 request.chartId(),
-                "daily",
+                LocalDate.parse(request.date()),
                 Map.of(
                         "date", request.date(),
                         "score", 74,
@@ -126,7 +131,7 @@ public class EngineService {
         );
 
         return new DailyFortuneResult(
-                request.userId(),
+                userId,
                 LocalDate.parse(request.date()),
                 74,
                 category,
