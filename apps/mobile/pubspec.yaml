@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
+  flutter_svg: ^2.0.10
   supabase_flutter: ^2.6.0
   # Used directly for closeInAppWebView() to dismiss iOS in-app OAuth screen.
   url_launcher: ^6.3.2
@@ -21,3 +22,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/auth/kakao.png
+    - assets/auth/google.svg
