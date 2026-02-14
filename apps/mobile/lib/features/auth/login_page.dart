@@ -282,12 +282,10 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
-                icon: Image.asset(
-                  'assets/auth/kakao.png',
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
+                icon: SvgPicture.asset(
+                  'assets/auth/kakao.svg',
+                  width: 40,
+                  height: 40,
                 ),
                 semanticsLabel: '카카오 로그인',
                 decorated: false,
@@ -297,9 +295,8 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
                 icon: SvgPicture.asset(
                   'assets/auth/google.svg',
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.contain,
+                  width: 40,
+                  height: 40,
                 ),
                 semanticsLabel: '구글 로그인',
                 decorated: false,
