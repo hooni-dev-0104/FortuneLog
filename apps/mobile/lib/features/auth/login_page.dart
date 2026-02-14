@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_icons/simple_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../home/home_page.dart';
@@ -55,6 +56,10 @@ class _LoginPageState extends State<LoginPage> {
             _loading = false;
             _error = null;
           });
+          // iOS 인앱 OAuth(SafariViewController)가 리다이렉트 이후 흰 화면으로 남는 경우가 있어,
+          // 로그인 완료 시점에 자동으로 닫아 UX를 자연스럽게 만든다.
+          // (Android는 closeInAppWebView를 지원하지 않을 수 있으므로 호출 실패는 무시)
+          closeInAppWebView().catchError((_) {});
           Navigator.pushReplacementNamed(context, HomePage.routeName);
         }
       });
@@ -196,12 +201,8 @@ class _LoginPageState extends State<LoginPage> {
             provider,
             redirectTo: _redirectToForMobile(),
             scopes: kakaoScopes,
-            // iOS에서 platformDefault(인앱 SafariViewController)로 열면,
-            // 리다이렉트 이후 흰 화면이 남고 사용자가 "완료"를 눌러야 닫히는 UX가 발생할 수 있음.
-            // 외부 Safari로 열면 커스텀 스킴 리다이렉트 시 자동으로 앱으로 복귀한다.
-            authScreenLaunchMode: (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS)
-                ? LaunchMode.externalApplication
-                : LaunchMode.platformDefault,
+            // 인앱으로 열고, signedIn 시점에 closeInAppWebView()로 자동 닫힘 처리한다.
+            authScreenLaunchMode: LaunchMode.inAppBrowserView,
           );
     } on AuthException catch (e) {
       if (!mounted) return;
