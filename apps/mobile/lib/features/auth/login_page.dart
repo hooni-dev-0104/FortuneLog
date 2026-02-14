@@ -6,7 +6,7 @@ import 'package:simple_icons/simple_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
-import '../birth/birth_input_page.dart';
+import '../home/home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -26,21 +26,41 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   String? _error;
 
-  SupabaseClient _supabase() => Supabase.instance.client;
+  SupabaseClient _supabase() {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      throw StateError('SUPABASE_URL / SUPABASE_ANON_KEY dart-define가 필요합니다.');
+    }
+  }
+
+  String? _redirectToForMobile() {
+    if (kIsWeb) return null;
+    final redirectTo = const String.fromEnvironment('AUTH_REDIRECT_TO');
+    if (redirectTo.isEmpty) {
+      throw const FormatException('AUTH_REDIRECT_TO is empty');
+    }
+    return redirectTo;
+  }
 
   @override
   void initState() {
     super.initState();
-    _authSubscription = _supabase().auth.onAuthStateChange.listen((event) {
-      if (!mounted) return;
-      if (event.event == AuthChangeEvent.signedIn) {
-        setState(() {
-          _loading = false;
-          _error = null;
-        });
-        Navigator.pushReplacementNamed(context, BirthInputPage.routeName);
-      }
-    });
+
+    try {
+      _authSubscription = _supabase().auth.onAuthStateChange.listen((event) {
+        if (!mounted) return;
+        if (event.event == AuthChangeEvent.signedIn) {
+          setState(() {
+            _loading = false;
+            _error = null;
+          });
+          Navigator.pushReplacementNamed(context, HomePage.routeName);
+        }
+      });
+    } on StateError catch (e) {
+      _error = e.message;
+    }
   }
 
   @override
@@ -49,6 +69,11 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _submitEmailLogin() async {
@@ -63,8 +88,13 @@ class _LoginPageState extends State<LoginPage> {
           );
       if (!mounted) return;
       setState(() => _loading = false);
-      Navigator.pushReplacementNamed(context, BirthInputPage.routeName);
     } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } on StateError catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -79,6 +109,79 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _submitSignUp() async {
+    setState(() => _error = null);
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+    try {
+      await _supabase().auth.signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            emailRedirectTo: _redirectToForMobile(),
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showSnack('회원가입 요청 완료. 이메일 인증 후 로그인해주세요.');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } on FormatException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+      });
+    } on StateError catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    }
+  }
+
+  Future<void> _sendPasswordReset() async {
+    setState(() => _error = null);
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = '비밀번호 재설정을 위해 올바른 이메일을 입력해주세요.');
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await _supabase().auth.resetPasswordForEmail(
+            email,
+            redirectTo: _redirectToForMobile(),
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showSnack('비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해주세요.');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } on FormatException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+      });
+    } on StateError catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    }
+  }
+
   Future<void> _startSocialLogin(OAuthProvider provider) async {
     setState(() {
       _loading = true;
@@ -86,14 +189,9 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final redirectTo = const String.fromEnvironment('AUTH_REDIRECT_TO');
-      if (!kIsWeb && redirectTo.isEmpty) {
-        throw const FormatException('AUTH_REDIRECT_TO is empty');
-      }
-
       await _supabase().auth.signInWithOAuth(
             provider,
-            redirectTo: kIsWeb ? null : redirectTo,
+            redirectTo: _redirectToForMobile(),
           );
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -105,7 +203,13 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. 실행 스크립트의 dart-define 값을 확인해주세요.';
+        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+      });
+    } on StateError catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
       });
     } catch (_) {
       if (!mounted) return;
@@ -162,7 +266,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -188,9 +291,9 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              TextButton(onPressed: () {}, child: const Text('회원가입')),
+              TextButton(onPressed: _loading ? null : _submitSignUp, child: const Text('회원가입')),
               const SizedBox(width: 6),
-              TextButton(onPressed: () {}, child: const Text('비밀번호 찾기')),
+              TextButton(onPressed: _loading ? null : _sendPasswordReset, child: const Text('비밀번호 찾기')),
             ],
           ),
         ],

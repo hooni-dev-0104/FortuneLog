@@ -1,34 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
+import '../auth/login_page.dart';
 
-class MyPage extends StatelessWidget {
+class MyPage extends StatefulWidget {
   const MyPage({super.key});
 
   @override
+  State<MyPage> createState() => _MyPageState();
+}
+
+class _MyPageState extends State<MyPage> {
+  bool _loggingOut = false;
+
+  String _currentEmail() {
+    try {
+      return Supabase.instance.client.auth.currentUser?.email ?? '로그인 없음';
+    } catch (_) {
+      return 'Supabase 미연결';
+    }
+  }
+
+  Future<void> _logout() async {
+    setState(() => _loggingOut = true);
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, LoginPage.routeName, (route) => false);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그아웃에 실패했습니다. 다시 시도해주세요.')));
+    } finally {
+      if (mounted) setState(() => _loggingOut = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final email = _currentEmail();
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      children: const [
+      children: [
         PageSection(
           title: '계정 정보',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('kodekk0713@gmail.com'),
-              SizedBox(height: 6),
-              Text('로그인 계정 관리, 로그아웃'),
+              Text(email),
+              const SizedBox(height: 10),
+              FilledButton.tonal(
+                onPressed: _loggingOut ? null : _logout,
+                child: _loggingOut
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('로그아웃'),
+              ),
             ],
           ),
         ),
-        SizedBox(height: 10),
-        PageSection(
+        const SizedBox(height: 10),
+        const PageSection(
           title: '출생정보 관리',
           subtitle: '기존 프로필 재사용 또는 수정',
           child: _MenuRow(title: '출생 프로필 2개', subtitle: '최근 수정: 2026-02-13'),
         ),
-        SizedBox(height: 10),
-        PageSection(
+        const SizedBox(height: 10),
+        const PageSection(
           title: '주문 / 결제',
           child: Column(
             children: [
@@ -38,8 +76,8 @@ class MyPage extends StatelessWidget {
             ],
           ),
         ),
-        SizedBox(height: 10),
-        PageSection(
+        const SizedBox(height: 10),
+        const PageSection(
           title: '구독 관리',
           child: Column(
             children: [
@@ -49,8 +87,8 @@ class MyPage extends StatelessWidget {
             ],
           ),
         ),
-        SizedBox(height: 10),
-        PageSection(
+        const SizedBox(height: 10),
+        const PageSection(
           title: '정책 문서',
           child: Column(
             children: [
