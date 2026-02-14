@@ -196,6 +196,12 @@ class _LoginPageState extends State<LoginPage> {
             provider,
             redirectTo: _redirectToForMobile(),
             scopes: kakaoScopes,
+            // iOS에서 platformDefault(인앱 SafariViewController)로 열면,
+            // 리다이렉트 이후 흰 화면이 남고 사용자가 "완료"를 눌러야 닫히는 UX가 발생할 수 있음.
+            // 외부 Safari로 열면 커스텀 스킴 리다이렉트 시 자동으로 앱으로 복귀한다.
+            authScreenLaunchMode: (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS)
+                ? LaunchMode.externalApplication
+                : LaunchMode.platformDefault,
           );
     } on AuthException catch (e) {
       if (!mounted) return;

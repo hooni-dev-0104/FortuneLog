@@ -39,7 +39,14 @@ class PageSection extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null) trailing!,
+                if (trailing != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    // Row는 non-flex child에게 가로 제약을 풀어주는데(=maxWidth Infinity),
+                    // Material 버튼류는 무한 너비 제약에서 assert가 날 수 있다.
+                    // trailing은 대부분 "자기 크기"로 그리면 되므로 IntrinsicWidth로 폭을 고정한다.
+                    child: IntrinsicWidth(child: trailing!),
+                  ),
               ],
             ),
             const SizedBox(height: 14),
