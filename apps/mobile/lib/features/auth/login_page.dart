@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:simple_icons/simple_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -284,18 +284,16 @@ class _LoginPageState extends State<LoginPage> {
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
                 backgroundColor: const Color(0xFFFEE500),
-                icon: SimpleIcons.kakaotalk,
-                iconColor: const Color(0xFF181600),
+                icon: const _KakaoTalkMark(size: 26, color: Color(0xFF181600)),
                 semanticsLabel: '카카오 로그인',
               ),
               const SizedBox(width: 14),
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
                 backgroundColor: Colors.white,
-                icon: SimpleIcons.google,
-                iconColor: const Color(0xFF4285F4),
+                icon: const _GoogleGMark(size: 26),
                 semanticsLabel: '구글 로그인',
-                borderColor: const Color(0xFFDADCE0),
+                borderColor: const Color(0xFFE6E8EB),
               ),
             ],
           ),
@@ -327,37 +325,189 @@ class _SocialIconButton extends StatelessWidget {
     required this.onPressed,
     required this.backgroundColor,
     required this.icon,
-    required this.iconColor,
     required this.semanticsLabel,
     this.borderColor,
   });
 
   final VoidCallback? onPressed;
   final Color backgroundColor;
-  final IconData icon;
-  final Color iconColor;
+  final Widget icon;
   final String semanticsLabel;
   final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null;
     return Semantics(
       button: true,
       label: semanticsLabel,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: borderColor ?? Colors.transparent),
+      child: Opacity(
+        opacity: enabled ? 1 : 0.6,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderColor ?? Colors.transparent),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x1A0B0F14),
+                    blurRadius: 14,
+                    offset: Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: Color(0x0A0B0F14),
+                    blurRadius: 3,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Center(child: icon),
+            ),
           ),
-          child: Icon(icon, color: iconColor, size: 22),
         ),
       ),
     );
   }
+}
+
+class _KakaoTalkMark extends StatelessWidget {
+  const _KakaoTalkMark({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _KakaoTalkMarkPainter(color)),
+    );
+  }
+}
+
+class _KakaoTalkMarkPainter extends CustomPainter {
+  const _KakaoTalkMarkPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    final s = math.min(size.width, size.height);
+    final cx = size.width / 2;
+    final cy = size.height * 0.44;
+    final r = s * 0.37;
+
+    final bubble = Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+
+    // Tail: small rounded wedge at bottom.
+    final tail = Path()
+      ..moveTo(cx - s * 0.10, cy + r * 0.55)
+      ..quadraticBezierTo(cx - s * 0.06, cy + r * 0.98, cx + s * 0.02, cy + r * 0.78)
+      ..quadraticBezierTo(cx + s * 0.10, cy + r * 0.62, cx + s * 0.12, cy + r * 0.45)
+      ..close();
+
+    canvas.drawPath(bubble, paint);
+    canvas.drawPath(tail, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _KakaoTalkMarkPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class _GoogleGMark extends StatelessWidget {
+  const _GoogleGMark({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: const CustomPaint(painter: _GoogleGMarkPainter()),
+    );
+  }
+}
+
+class _GoogleGMarkPainter extends CustomPainter {
+  const _GoogleGMarkPainter();
+
+  static const _blue = Color(0xFF4285F4);
+  static const _red = Color(0xFFDB4437);
+  static const _yellow = Color(0xFFF4B400);
+  static const _green = Color(0xFF0F9D58);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width, size.height);
+    final stroke = s * 0.18;
+    final rect = Rect.fromLTWH(
+      (size.width - s) / 2 + stroke / 2,
+      (size.height - s) / 2 + stroke / 2,
+      s - stroke,
+      s - stroke,
+    );
+
+    final arcPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+
+    // We draw in a layer so we can "erase" the opening on the right.
+    canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
+
+    // Segment arcs (approximation of the official Google "G" mark).
+    // Angles are in radians; 0 rad points to the right.
+    void arc(Color c, double startDeg, double sweepDeg) {
+      arcPaint.color = c;
+      canvas.drawArc(rect, _deg(startDeg), _deg(sweepDeg), false, arcPaint);
+    }
+
+    arc(_red, 315, 90); // top-right
+    arc(_yellow, 45, 90); // top-left
+    arc(_green, 135, 90); // bottom-left
+    arc(_blue, 225, 90); // bottom-right
+
+    // Erase top-right and bottom-right parts to create the "G" opening.
+    final clear = Paint()..blendMode = BlendMode.clear;
+    final openX = (size.width - s) / 2 + s * 0.63;
+    final openW = s * 0.40;
+    canvas.drawRect(Rect.fromLTWH(openX, (size.height - s) / 2 + s * 0.02, openW, s * 0.38), clear);
+    canvas.drawRect(Rect.fromLTWH(openX, (size.height - s) / 2 + s * 0.64, openW, s * 0.34), clear);
+
+    // Blue horizontal bar.
+    final barPaint = Paint()
+      ..color = _blue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+    final barY = size.height / 2;
+    canvas.drawLine(
+      Offset((size.width - s) / 2 + s * 0.50, barY),
+      Offset((size.width - s) / 2 + s * 0.92, barY),
+      barPaint,
+    );
+
+    canvas.restore();
+  }
+
+  static double _deg(double degrees) => degrees * math.pi / 180.0;
+
+  @override
+  bool shouldRepaint(covariant _GoogleGMarkPainter oldDelegate) => false;
 }
