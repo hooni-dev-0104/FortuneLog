@@ -282,26 +282,27 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
-                backgroundColor: const Color(0xFFFEE500),
                 icon: Image.asset(
                   'assets/auth/kakao.png',
-                  width: 26,
-                  height: 26,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                 ),
                 semanticsLabel: '카카오 로그인',
+                decorated: false,
               ),
               const SizedBox(width: 14),
               _SocialIconButton(
                 onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
-                backgroundColor: Colors.white,
                 icon: SvgPicture.asset(
                   'assets/auth/google.svg',
-                  width: 28,
-                  height: 28,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.contain,
                 ),
                 semanticsLabel: '구글 로그인',
-                borderColor: const Color(0xFFE6E8EB),
+                decorated: false,
               ),
             ],
           ),
@@ -331,17 +332,15 @@ class _LoginPageState extends State<LoginPage> {
 class _SocialIconButton extends StatelessWidget {
   const _SocialIconButton({
     required this.onPressed,
-    required this.backgroundColor,
     required this.icon,
     required this.semanticsLabel,
-    this.borderColor,
+    this.decorated = true,
   });
 
   final VoidCallback? onPressed;
-  final Color backgroundColor;
   final Widget icon;
   final String semanticsLabel;
-  final Color? borderColor;
+  final bool decorated;
 
   @override
   Widget build(BuildContext context) {
@@ -359,24 +358,29 @@ class _SocialIconButton extends StatelessWidget {
             child: Ink(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
-                color: backgroundColor,
+              decoration: decorated
+                  ? BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE6E8EB)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x1A0B0F14),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                        BoxShadow(
+                          color: Color(0x0A0B0F14),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    )
+                  : null,
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: borderColor ?? Colors.transparent),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A0B0F14),
-                    blurRadius: 14,
-                    offset: Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: Color(0x0A0B0F14),
-                    blurRadius: 3,
-                    offset: Offset(0, 1),
-                  ),
-                ],
+                child: Center(child: icon),
               ),
-              child: Center(child: icon),
             ),
           ),
         ),
