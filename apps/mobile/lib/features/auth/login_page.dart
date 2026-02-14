@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../birth/birth_input_page.dart';
@@ -17,19 +21,87 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  StreamSubscription<AuthState>? _authSubscription;
   bool _loading = false;
   String? _error;
 
-  Future<void> _submit() async {
+  SupabaseClient _supabase() => Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = _supabase().auth.onAuthStateChange.listen((event) {
+      if (!mounted) return;
+      if (event.event == AuthChangeEvent.signedIn) {
+        setState(() {
+          _loading = false;
+          _error = null;
+        });
+        Navigator.pushReplacementNamed(context, BirthInputPage.routeName);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitEmailLogin() async {
     setState(() => _error = null);
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
+    try {
+      await _supabase().auth.signInWithPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      Navigator.pushReplacementNamed(context, BirthInputPage.routeName);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      });
+    }
+  }
 
-    setState(() => _loading = false);
-    Navigator.pushReplacementNamed(context, BirthInputPage.routeName);
+  Future<void> _startSocialLogin(OAuthProvider provider) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await _supabase().auth.signInWithOAuth(
+            provider,
+            redirectTo: kIsWeb ? null : const String.fromEnvironment('AUTH_REDIRECT_TO'),
+          );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '소셜 로그인 시작에 실패했습니다.';
+      });
+    }
   }
 
   @override
@@ -41,10 +113,10 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           Text('다시 만나서 반가워요', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text('이메일 계정으로 로그인하고 리포트를 이어서 확인하세요.', style: Theme.of(context).textTheme.bodyMedium),
+          Text('이메일 또는 소셜 계정으로 로그인하고 리포트를 이어서 확인하세요.', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 16),
           if (_error != null) ...[
-            StatusNotice.error(message: _error!, requestId: 'dev-login-001'),
+            StatusNotice.error(message: _error!, requestId: 'auth-login-001'),
             const SizedBox(height: 12),
           ],
           PageSection(
@@ -79,6 +151,26 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 10),
+          PageSection(
+            title: '소셜 로그인',
+            subtitle: '간편 로그인 후 바로 앱으로 돌아옵니다.',
+            child: Column(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
+                  icon: const Icon(Icons.g_mobiledata),
+                  label: const Text('Google로 계속하기'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Kakao로 계속하기'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               TextButton(onPressed: () {}, child: const Text('회원가입')),
@@ -91,10 +183,10 @@ class _LoginPageState extends State<LoginPage> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         child: FilledButton(
-          onPressed: _loading ? null : _submit,
+          onPressed: _loading ? null : _submitEmailLogin,
           child: _loading
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('로그인'),
+              : const Text('이메일 로그인'),
         ),
       ),
     );
