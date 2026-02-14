@@ -24,5 +24,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/auth/kakao.png
-    - assets/auth/kakao.svg
     - assets/auth/google.svg
