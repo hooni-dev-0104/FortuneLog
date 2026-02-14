@@ -183,19 +183,31 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
           const SizedBox(height: 10),
         ],
         if (_content == null)
-          _missingChart
-              ? EmptyState(
-                  title: '사주 차트가 없습니다',
-                  description: '먼저 출생정보를 입력하고 사주 계산을 완료해주세요.',
-                  actionText: '출생정보 입력',
-                  onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
-                )
-              : EmptyState(
-                  title: '오늘 운세가 아직 없습니다',
-                  description: '오늘 기준 데이터가 없어 지금 바로 생성이 필요합니다.',
-                  actionText: '오늘 운세 생성',
-                  onAction: _generateToday,
-                )
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _missingChart
+                  ? EmptyState(
+                      title: '사주 차트가 없습니다',
+                      description: '먼저 출생정보를 입력하고 사주 계산을 완료해주세요.',
+                      actionText: '출생정보 입력',
+                      onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                    )
+                  : EmptyState(
+                      title: '오늘 운세가 아직 없습니다',
+                      description: '오늘 기준 데이터가 없어 지금 바로 생성이 필요합니다.',
+                      actionText: '오늘 운세 생성',
+                      onAction: _generateToday,
+                    ),
+              const SizedBox(height: 10),
+              // Even when the failure reason isn't the "missing chart" message,
+              // provide an escape hatch to the required input screen.
+              OutlinedButton(
+                onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                child: const Text('출생정보 입력'),
+              ),
+            ],
+          )
         else ...[
           PageSection(
             title: '오늘 점수 ${_content!['score'] ?? '-'}점',
