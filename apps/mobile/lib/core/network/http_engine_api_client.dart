@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 import 'engine_api_client.dart';
 import 'request_id.dart';
@@ -51,15 +53,28 @@ class HttpEngineApiClient implements EngineApiClient {
 
     final requestId = generateRequestId();
     final uri = Uri.parse('$baseUrl$path');
-    final response = await _httpClient.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-        'X-Request-Id': requestId,
-      },
-      body: jsonEncode(body),
-    );
+
+    http.Response response;
+    try {
+      response = await _httpClient.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'X-Request-Id': requestId,
+        },
+        body: jsonEncode(body),
+      );
+    } on SocketException catch (e) {
+      throw EngineApiException(
+        code: 'NETWORK_ERROR',
+        message: 'engine unreachable: $uri ($e)',
+        requestId: requestId,
+      );
+    }
+
+    // Helpful for local dev; shows up in `flutter logs`.
+    debugPrint('[engine-api] POST $uri -> ${response.statusCode} (reqId=$requestId)');
 
     final decoded = _decodeBody(response.body);
     final responseRequestId = (decoded['requestId'] as String?) ?? response.headers['x-request-id'] ?? requestId;
@@ -68,9 +83,15 @@ class HttpEngineApiClient implements EngineApiClient {
       return decoded;
     }
 
+    final code = decoded['code'] as String? ?? 'ENGINE_API_ERROR';
+    final msg = decoded['message'] as String?;
+    final message = (msg == null || msg.trim().isEmpty)
+        ? 'request failed (HTTP ${response.statusCode})'
+        : msg;
+
     throw EngineApiException(
-      code: decoded['code'] as String? ?? 'ENGINE_API_ERROR',
-      message: decoded['message'] as String? ?? 'request failed',
+      code: code,
+      message: message,
       statusCode: response.statusCode,
       requestId: responseRequestId,
     );

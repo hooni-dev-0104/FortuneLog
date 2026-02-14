@@ -2,8 +2,11 @@ package com.fortunelog.engine.infra.config;
 
 import com.fortunelog.engine.common.RequestIdFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +21,8 @@ import java.util.UUID;
 @Configuration
 public class SecurityConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
     @Bean
     public RequestIdFilter requestIdFilter() {
         return new RequestIdFilter();
@@ -27,16 +32,24 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObjectMapper objectMapper,
-            RequestIdFilter requestIdFilter
+            RequestIdFilter requestIdFilter,
+            Environment env
     ) throws Exception {
+        boolean insecureJwt = Boolean.parseBoolean(env.getProperty("ENGINE_INSECURE_JWT", "false"));
+        if (insecureJwt) {
+            log.warn("ENGINE_INSECURE_JWT=true: JWT signature verification is DISABLED (local dev only).");
+        }
+
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(requestIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) ->
-                                writeAuthError(objectMapper, request, response, 401, "UNAUTHORIZED", "authentication required")
-                        )
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            String requestId = requestId(request);
+                            log.warn("auth failed (requestId={}): {}", requestId, authException.toString());
+                            writeAuthError(objectMapper, request, response, 401, "UNAUTHORIZED", "authentication required");
+                        })
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeAuthError(objectMapper, request, response, 403, "FORBIDDEN", "access denied")
                         )
@@ -45,7 +58,13 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/engine/v1/health").permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+                .oauth2ResourceServer(oauth2 -> {
+                    if (insecureJwt) {
+                        oauth2.jwt(jwt -> jwt.decoder(new InsecureJwtDecoder()));
+                    } else {
+                        oauth2.jwt(Customizer.withDefaults());
+                    }
+                });
 
         return http.build();
     }
@@ -60,6 +79,7 @@ public class SecurityConfig {
     ) {
         try {
             response.setStatus(status);
+            response.setCharacterEncoding("UTF-8");
             response.setContentType("application/json");
 
             String requestId = requestId(request);

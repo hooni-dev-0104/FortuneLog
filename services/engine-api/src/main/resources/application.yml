@@ -5,7 +5,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${SUPABASE_JWKS_URL}
+          # Allow running from IntelliJ even when SUPABASE_JWKS_URL isn't explicitly set.
+          # Falls back to the standard Supabase JWKS endpoint derived from SUPABASE_URL.
+          jwk-set-uri: ${SUPABASE_JWKS_URL:${SUPABASE_URL}/auth/v1/.well-known/jwks.json}
 
 server:
   port: ${PORT:8080}

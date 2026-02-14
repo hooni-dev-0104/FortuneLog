@@ -5,6 +5,7 @@ import '../../core/ui/app_widgets.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/http_engine_api_client.dart';
+import '../birth/birth_input_page.dart';
 
 class DailyFortunePage extends StatefulWidget {
   const DailyFortunePage({super.key});
@@ -17,6 +18,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
   bool _loading = false;
   String? _error;
   String? _requestId;
+  bool _missingChart = false;
 
   Map<String, dynamic>? _content;
 
@@ -42,6 +44,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       _loading = true;
       _error = null;
       _requestId = null;
+      _missingChart = false;
     });
 
     try {
@@ -126,6 +129,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       _loading = true;
       _error = null;
       _requestId = null;
+      _missingChart = false;
     });
 
     try {
@@ -155,6 +159,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       setState(() {
         _loading = false;
         _error = e.message;
+        _missingChart = e.message.contains('사주 차트가 없습니다');
       });
     } catch (_) {
       setState(() {
@@ -178,12 +183,19 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
           const SizedBox(height: 10),
         ],
         if (_content == null)
-          EmptyState(
-            title: '오늘 운세가 아직 없습니다',
-            description: '오늘 기준 데이터가 없어 지금 바로 생성이 필요합니다.',
-            actionText: '오늘 운세 생성',
-            onAction: _generateToday,
-          )
+          _missingChart
+              ? EmptyState(
+                  title: '사주 차트가 없습니다',
+                  description: '먼저 출생정보를 입력하고 사주 계산을 완료해주세요.',
+                  actionText: '출생정보 입력',
+                  onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                )
+              : EmptyState(
+                  title: '오늘 운세가 아직 없습니다',
+                  description: '오늘 기준 데이터가 없어 지금 바로 생성이 필요합니다.',
+                  actionText: '오늘 운세 생성',
+                  onAction: _generateToday,
+                )
         else ...[
           PageSection(
             title: '오늘 점수 ${_content!['score'] ?? '-'}점',

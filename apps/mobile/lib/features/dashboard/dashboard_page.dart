@@ -5,6 +5,7 @@ import '../../core/ui/app_widgets.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
+import '../birth/birth_input_page.dart';
 import '../report/report_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -198,8 +199,13 @@ class _DashboardPageState extends State<DashboardPage> {
           EmptyState(
             title: '아직 사주 결과가 없습니다',
             description: '출생정보로 사주 계산을 완료하면 대시보드에 표시됩니다.',
-            actionText: '사주 계산하기',
-            onAction: _recalculateFromLatestBirthProfile,
+            actionText: '출생정보 입력',
+            onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: _recalculateFromLatestBirthProfile,
+            child: const Text('사주 계산하기'),
           ),
           const SizedBox(height: 10),
         ] else ...[
