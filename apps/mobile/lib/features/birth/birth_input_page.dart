@@ -10,6 +10,7 @@ import '../../core/network/location_search_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/http_engine_api_client.dart';
+import '../../core/network/engine_error_mapper.dart';
 import '../../core/saju/saju_chart_persistence.dart';
 import '../home/home_page.dart';
 
@@ -292,13 +293,15 @@ class _BirthInputPageState extends State<BirthInputPage> {
       }
 
       final client = _engineClient();
+      final birthLocationForEngine =
+          _locationController.text.trim().isEmpty ? '미입력' : _locationController.text.trim();
       final chartResponse = await client.calculateChart(
         CalculateChartRequestDto(
           birthProfileId: birthProfileId,
           birthDate: _dateController.text.trim(),
           birthTime: _unknownBirthTime ? '12:00' : _timeController.text.trim(),
           birthTimezone: birthTimezone,
-          birthLocation: _locationController.text.trim(),
+          birthLocation: birthLocationForEngine,
           calendarType: _isLunar ? 'lunar' : 'solar',
           leapMonth: _isLeapMonth,
           gender: _gender,
@@ -320,7 +323,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
     } on PostgrestException catch (e) {
       _error = e.message;
     } on EngineApiException catch (e) {
-      _error = e.message;
+      _error = EngineErrorMapper.userMessage(e);
       _lastRequestId = e.requestId;
     } on FormatException {
       _error = kDebugMode

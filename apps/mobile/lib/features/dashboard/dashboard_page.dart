@@ -8,6 +8,7 @@ import '../../core/saju/saju_chart_persistence.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
+import '../../core/network/engine_error_mapper.dart';
 import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
 import '../report/report_page.dart';
@@ -152,6 +153,7 @@ class _DashboardPageState extends State<DashboardPage> {
       // birth_datetime_local is stored as "YYYY-MM-DDTHH:mm:ss" (timestamp, no timezone).
       final datePart = birthDatetime.split('T').first;
       final timePart = birthDatetime.split('T').last.substring(0, 5);
+      final birthLocationForEngine = birthLocation.trim().isEmpty ? '미입력' : birthLocation.trim();
 
       final response = await _engineClient().calculateChart(
         CalculateChartRequestDto(
@@ -159,7 +161,7 @@ class _DashboardPageState extends State<DashboardPage> {
           birthDate: datePart,
           birthTime: timePart,
           birthTimezone: birthTimezone,
-          birthLocation: birthLocation,
+          birthLocation: birthLocationForEngine,
           calendarType: calendarType,
           leapMonth: isLeapMonth,
           gender: gender,
@@ -181,7 +183,7 @@ class _DashboardPageState extends State<DashboardPage> {
     } on EngineApiException catch (e) {
       setState(() {
         _loading = false;
-        _error = e.message;
+        _error = EngineErrorMapper.userMessage(e);
         _requestId = e.requestId;
       });
     } on PostgrestException catch (e) {

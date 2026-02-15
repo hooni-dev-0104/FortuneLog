@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
+import '../../core/network/engine_error_mapper.dart';
 import '../../core/ui/app_widgets.dart';
 import '../../core/ui/korean_cities.dart';
 import '../../core/saju/saju_chart_persistence.dart';
@@ -211,13 +212,15 @@ class _SignupPageState extends State<SignupPage> {
       final birthProfileId = row['id'] as String;
 
       // 3) Calculate chart and persist.
+      final birthLocationForEngine =
+          _locationController.text.trim().isEmpty ? '미입력' : _locationController.text.trim();
       final chartResponse = await _engineClient().calculateChart(
         CalculateChartRequestDto(
           birthProfileId: birthProfileId,
           birthDate: _dateController.text.trim(),
           birthTime: _unknownBirthTime ? '12:00' : _timeController.text.trim(),
           birthTimezone: birthTimezone,
-          birthLocation: _locationController.text.trim(),
+          birthLocation: birthLocationForEngine,
           calendarType: _isLunar ? 'lunar' : 'solar',
           leapMonth: _isLeapMonth,
           gender: _gender,
@@ -256,7 +259,7 @@ class _SignupPageState extends State<SignupPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.message;
+        _error = EngineErrorMapper.userMessage(e);
       });
     } on FormatException {
       if (!mounted) return;
