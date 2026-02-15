@@ -211,6 +211,8 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
         if (_error != null && !_missingChart) ...[
           StatusNotice.error(message: _error!, requestId: _requestId ?? 'daily'),
           const SizedBox(height: 10),
+          FilledButton.tonal(onPressed: _refresh, child: const Text('재시도')),
+          const SizedBox(height: 10),
         ],
         if (_content == null)
           Column(

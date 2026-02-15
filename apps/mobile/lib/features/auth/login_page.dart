@@ -256,7 +256,7 @@ class _LoginPageState extends State<LoginPage> {
           ],
           PageSection(
             title: '계정 인증',
-            subtitle: '입력 완료 후 로그인 버튼이 활성화됩니다.',
+            subtitle: '이메일과 비밀번호를 입력한 뒤 로그인해주세요.',
             child: Form(
               key: _formKey,
               child: Column(

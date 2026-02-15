@@ -70,6 +70,8 @@ class StatusNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = isError ? AppTheme.danger : AppTheme.warning;
+    final icon = isError ? Icons.error_outline : Icons.warning_amber_rounded;
+    final label = isError ? '오류' : '주의';
 
     return Container(
       width: double.infinity,
@@ -82,10 +84,18 @@ class StatusNotice extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: tone),
+              const SizedBox(width: 6),
+              Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: tone)),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tone)),
           if (requestId != null && requestId!.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('requestId: $requestId', style: Theme.of(context).textTheme.bodySmall),
+            Text('요청 ID: $requestId', style: Theme.of(context).textTheme.bodySmall),
           ],
         ],
       ),
