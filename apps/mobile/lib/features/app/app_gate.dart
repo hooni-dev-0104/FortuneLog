@@ -133,7 +133,7 @@ class _GateLoading extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFE9F4F1), Color(0xFFF6F8F7)],
+            colors: [Color(0xFF0F7B64), Color(0xFF11524E)],
           ),
         ),
         child: SafeArea(
@@ -145,16 +145,26 @@ class _GateLoading extends StatelessWidget {
                 children: [
                   Image.asset(
                     'assets/branding/fortunelog-logo.png',
-                    width: 72,
-                    height: 72,
+                    width: 84,
+                    height: 84,
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 12),
-                  Text('FortuneLog', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'FortuneLog',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                  ),
                   const SizedBox(height: 10),
-                  const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  ),
                   const SizedBox(height: 12),
-                  Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                  ),
                 ],
               ),
             ),
