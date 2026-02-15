@@ -321,18 +321,53 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _keepSignedIn,
-                    onChanged: _loading
-                        ? null
-                        : (v) {
-                            setState(() => _keepSignedIn = v ?? true);
-                          },
-                    title: const Text('로그인 유지하기'),
-                    subtitle: const Text('앱을 다시 열어도 자동으로 로그인 상태를 유지합니다.'),
-                    controlAffinity: ListTileControlAffinity.leading,
+                  const SizedBox(height: 10),
+                  Builder(
+                    builder: (context) {
+                      final titleStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          );
+                      final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 12,
+                            color: const Color(0xFF5B6B65),
+                          );
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: _loading ? null : () => setState(() => _keepSignedIn = !_keepSignedIn),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Checkbox(
+                                  value: _keepSignedIn,
+                                  onChanged: _loading
+                                      ? null
+                                      : (v) {
+                                          setState(() => _keepSignedIn = v ?? true);
+                                        },
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('로그인 유지하기', style: titleStyle),
+                                    const SizedBox(height: 2),
+                                    Text('앱을 다시 열어도 로그인 상태를 유지합니다.', style: subtitleStyle),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
