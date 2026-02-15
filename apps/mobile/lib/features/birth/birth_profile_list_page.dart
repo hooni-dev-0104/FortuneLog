@@ -32,9 +32,10 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
     final rows = await supabase
         .from('birth_profiles')
         .select(
-          'id,birth_datetime_local,birth_timezone,birth_location,calendar_type,is_leap_month,gender,unknown_birth_time,updated_at,created_at',
+          'id,birth_datetime_local,birth_timezone,birth_location,calendar_type,is_leap_month,gender,unknown_birth_time,created_at',
         )
-        .order('updated_at', ascending: false);
+        // Some environments don't have updated_at yet. created_at exists by default.
+        .order('created_at', ascending: false);
 
     return (rows as List).cast<Map<String, dynamic>>();
   }
@@ -92,7 +93,15 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
           }
 
           if (snapshot.hasError) {
-            final msg = snapshot.error is StateError ? (snapshot.error as StateError).message : '목록 조회에 실패했습니다.';
+            String msg;
+            final err = snapshot.error;
+            if (err is StateError) {
+              msg = err.message;
+            } else if (err is PostgrestException) {
+              msg = err.message;
+            } else {
+              msg = '목록 조회에 실패했습니다.';
+            }
             return ListView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               children: [
@@ -143,7 +152,7 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '수정: ${(p['updated_at'] as String?) ?? (p['created_at'] as String?) ?? '-'}',
+                                        '생성: ${(p['created_at'] as String?) ?? '-'}',
                                         style: Theme.of(context).textTheme.bodySmall,
                                       ),
                                     ],

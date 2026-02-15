@@ -24,16 +24,16 @@ class _MyPageState extends State<MyPage> {
 
     final rows = await supabase
         .from('birth_profiles')
-        .select('id,updated_at,created_at')
-        .order('updated_at', ascending: false);
+        .select('id,created_at')
+        .order('created_at', ascending: false);
 
     final list = (rows as List).cast<Map<String, dynamic>>();
     if (list.isEmpty) {
       return {'title': '출생 프로필 0개', 'subtitle': '아직 생성된 프로필이 없습니다.'};
     }
 
-    final latest = (list.first['updated_at'] as String?) ?? (list.first['created_at'] as String?) ?? '-';
-    return {'title': '출생 프로필 ${list.length}개', 'subtitle': '최근 수정: $latest'};
+    final latest = (list.first['created_at'] as String?) ?? '-';
+    return {'title': '출생 프로필 ${list.length}개', 'subtitle': '최근 생성: $latest'};
   }
 
   String _currentEmail() {
