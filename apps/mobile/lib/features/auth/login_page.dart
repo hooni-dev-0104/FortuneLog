@@ -237,6 +237,15 @@ class _LoginPageState extends State<LoginPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Center(
+            child: Image.asset(
+              'assets/branding/fortunelog-logo.png',
+              width: 64,
+              height: 64,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 12),
           Text('다시 만나서 반가워요', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text('이메일 또는 소셜 계정으로 로그인하고 리포트를 이어서 확인하세요.', style: Theme.of(context).textTheme.bodyMedium),

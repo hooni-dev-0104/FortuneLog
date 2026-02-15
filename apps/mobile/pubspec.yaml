@@ -28,3 +28,5 @@ flutter:
   assets:
     - assets/auth/kakao.png
     - assets/auth/google.svg
+    - assets/branding/fortunelog-logo.png
+    - assets/branding/fortunelog-logo.svg

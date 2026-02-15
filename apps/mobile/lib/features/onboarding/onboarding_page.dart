@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
@@ -11,11 +12,10 @@ class OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final values = [
-      ('사주 기반 맞춤 해석', '출생정보를 기준으로 성향과 흐름을 이해하기 쉽게 요약합니다.'),
-      ('오늘 액션 제안', '연애·일·재물·건강별로 오늘 바로 실행할 행동을 제공합니다.'),
-      ('신뢰 가능한 상태 안내', '로딩, 빈화면, 오류를 한 패턴으로 보여줘 헷갈리지 않습니다.'),
-      ('문의 가능한 오류 추적', '문제 발생 시 requestId를 함께 표시해 빠르게 대응할 수 있습니다.'),
+    final bullets = const [
+      ('사주 기반 요약', '출생정보를 기준으로 흐름을 간결하게 정리합니다.'),
+      ('오늘 운세 액션', '연애·일·재물·건강별로 오늘 할 일 3가지를 제공합니다.'),
+      ('명확한 상태 UX', '로딩/빈화면/오류를 한 패턴으로 안내합니다.'),
     ];
 
     return Scaffold(
@@ -31,22 +31,53 @@ class OnboardingPage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             children: [
-              Text('FortuneLog', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Text('당신의 오늘을 더 명확하게', style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 10),
+              Center(
+                child: Image.asset(
+                  'assets/branding/fortunelog-logo.png',
+                  width: 86,
+                  height: 86,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text('FortuneLog', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+              const SizedBox(height: 6),
+              Text('당신의 오늘을 더 명확하게', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
               Text(
                 '결과는 참고용 해석이며 중요한 의사결정은 전문가 상담을 권장합니다.',
                 style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 18),
-              ...values.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: PageSection(
-                    title: item.$1,
-                    child: Text(item.$2, style: Theme.of(context).textTheme.bodyMedium),
-                  ),
+              const SizedBox(height: 16),
+              PageSection(
+                title: '핵심 기능',
+                child: Column(
+                  children: [
+                    for (final b in bullets) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 3),
+                            child: Icon(Icons.check_circle_outline, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(b.$1, style: Theme.of(context).textTheme.titleMedium),
+                                const SizedBox(height: 4),
+                                Text(b.$2, style: Theme.of(context).textTheme.bodyMedium),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (b != bullets.last) const SizedBox(height: 12),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -55,10 +86,11 @@ class OnboardingPage extends StatelessWidget {
                 child: const Text('시작하기'),
               ),
               const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () => Navigator.pushNamed(context, DevTestPage.routeName),
-                child: const Text('개발 테스트 화면'),
-              ),
+              if (!kReleaseMode)
+                OutlinedButton(
+                  onPressed: () => Navigator.pushNamed(context, DevTestPage.routeName),
+                  child: const Text('개발 테스트 화면'),
+                ),
             ],
           ),
         ),
