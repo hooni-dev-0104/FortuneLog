@@ -249,26 +249,50 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
             ],
           )
         else ...[
-          PageSection(
-            title: '오늘 점수 ${_content!['score'] ?? '-'}점',
-            subtitle: '기준일: ${_content!['date'] ?? _todayDateString()} (Asia/Seoul)',
-            trailing: FilledButton.tonal(onPressed: _refresh, child: const Text('새로고침')),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('총평: ${(_content!['summary'] ?? '오늘 액션을 확인해보세요.').toString()}'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          PageSection(
-            title: '카테고리',
-            child: _CategoryList(category: _content),
-          ),
-          const SizedBox(height: 10),
-          PageSection(
-            title: '오늘 액션',
-            child: _ActionList(actions: _content!['actions'] as List<dynamic>?),
+          Builder(
+            builder: (context) {
+              final summary = _content!['summary']?.toString().trim();
+              final showSummary = summary != null && summary.isNotEmpty;
+              final hasCategories = _CategoryList.hasCategory(_content);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageSection(
+                    title: '오늘 점수 ${_content!['score'] ?? '-'}점',
+                    subtitle: '기준일: ${_content!['date'] ?? _todayDateString()} (Asia/Seoul)',
+                    trailing: FilledButton.tonal(onPressed: _refresh, child: const Text('새로고침')),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (showSummary) Text('총평: $summary'),
+                        if (!showSummary) const Text('오늘 액션을 확인해보세요.'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (hasCategories) ...[
+                    PageSection(
+                      title: '카테고리',
+                      child: _CategoryList(category: _content),
+                    ),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    PageSection(
+                      title: '카테고리',
+                      subtitle: '상세 카테고리가 없는 리포트입니다.',
+                      trailing: FilledButton.tonal(onPressed: _generateToday, child: const Text('다시 생성')),
+                      child: const Text('다시 생성하면 카테고리별 상세 운세를 볼 수 있어요.'),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  PageSection(
+                    title: '오늘 액션',
+                    child: _ActionList(actions: _content!['actions'] as List<dynamic>?),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ],
@@ -281,6 +305,44 @@ class _CategoryList extends StatelessWidget {
 
   final Map<String, dynamic>? category;
 
+  static bool hasCategory(Map<String, dynamic>? c) {
+    if (c == null || c.isEmpty) return false;
+    final details = _extractDetails(c);
+    if (details != null && details.isNotEmpty) return true;
+    final legacy = _extractLegacy(c);
+    if (legacy != null && legacy.isNotEmpty) return true;
+    return false;
+  }
+
+  static Map<String, dynamic>? _extractDetails(Map<String, dynamic> c) {
+    final details = c['categoryDetails'] ?? c['category_details'];
+    if (details is Map<String, dynamic>) return details;
+    if (details is Map) return details.cast<String, dynamic>();
+    return null;
+  }
+
+  static Map<String, dynamic>? _extractLegacy(Map<String, dynamic> c) {
+    final legacy = c['category'] ?? c['categories'];
+    if (legacy is Map<String, dynamic>) return legacy;
+    if (legacy is Map) return legacy.cast<String, dynamic>();
+    return null;
+  }
+
+  static String _labelForLegacyKey(String k) {
+    switch (k) {
+      case 'money':
+        return '금전';
+      case 'love':
+        return '연애/결혼';
+      case 'work':
+        return '직업';
+      case 'health':
+        return '건강';
+      default:
+        return k;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = category;
@@ -289,7 +351,7 @@ class _CategoryList extends StatelessWidget {
     }
 
     // New format: categoryDetails.money|love|work|health with score/summary/good/cautions/actions.
-    final details = c['categoryDetails'] as Map<String, dynamic>?;
+    final details = _extractDetails(c);
     if (details != null && details.isNotEmpty) {
       return Column(
         children: [
@@ -305,15 +367,36 @@ class _CategoryList extends StatelessWidget {
     }
 
     // Backward compatible format: category.money|love|work|health as short strings.
-    final entries = c.entries.where((e) => e.value is String).toList();
+    final legacy = _extractLegacy(c);
+    if (legacy == null || legacy.isEmpty) {
+      return const Text('카테고리 정보가 없습니다.');
+    }
+
+    final preferred = const ['money', 'love', 'work', 'health'];
+    final orderedKeys = <String>[
+      for (final k in preferred)
+        if (legacy[k] != null) k,
+      for (final k in legacy.keys)
+        if (!preferred.contains(k)) k,
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: entries
-          .map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text('${e.key}: ${e.value}'),
-              ))
-          .toList(),
+      children: [
+        for (final k in orderedKeys)
+          if (legacy[k] != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_labelForLegacyKey(k), style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(legacy[k].toString(), style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+      ],
     );
   }
 }
