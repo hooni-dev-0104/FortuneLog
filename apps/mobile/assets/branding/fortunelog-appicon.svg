@@ -1,9 +1,5 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="140" y1="120" x2="900" y2="920" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0F7B64"/>
-      <stop offset="1" stop-color="#11524E"/>
-    </linearGradient>
     <linearGradient id="gold" x1="322" y1="250" x2="700" y2="680" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFD77A"/>
       <stop offset="1" stop-color="#E6A93C"/>
@@ -21,7 +17,8 @@
   </defs>
 
   <!-- App icon MUST be opaque: full-bleed square background (no rounded corners). -->
-  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- Use a solid brand green to match the iOS LaunchScreen background and avoid visible icon-to-launch seams. -->
+  <rect width="1024" height="1024" fill="#0F7B64"/>
 
   <g filter="url(#soft)">
     <path d="M512 220C379.489 220 272 327.489 272 460C272 560.833 334.264 647.125 422.4 682.68V781.2C422.4 804.286 441.114 823 464.2 823H559.8C582.886 823 601.6 804.286 601.6 781.2V682.68C689.736 647.125 752 560.833 752 460C752 327.489 644.511 220 512 220Z" fill="#F8FAF9"/>
@@ -32,4 +29,3 @@
     <rect x="414" y="742" width="196" height="44" rx="16" fill="#0B5A4C"/>
   </g>
 </svg>
-
