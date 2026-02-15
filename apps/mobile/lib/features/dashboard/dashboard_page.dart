@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
+import '../../core/saju/saju_stars.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
 import '../birth/birth_input_page.dart';
 import '../report/report_page.dart';
+import '../saju/saju_guide_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, required this.onTapDaily});
@@ -206,6 +208,8 @@ class _DashboardPageState extends State<DashboardPage> {
             description: '출생정보로 사주 계산을 완료하면 대시보드에 표시됩니다.',
             actionText: '출생정보 입력',
             onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+            icon: Icons.auto_graph_outlined,
+            tone: BadgeTone.neutral,
           ),
           const SizedBox(height: 10),
           OutlinedButton(
@@ -242,6 +246,8 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 10),
+          _NoblemanSection(chart: _chart!),
+          const SizedBox(height: 10),
           PageSection(
             title: '오행 분포',
             subtitle: '시각 요소와 수치를 함께 제공합니다.',
@@ -273,6 +279,124 @@ class _DashboardPageState extends State<DashboardPage> {
             child: const Text('새로고침'),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _NoblemanSection extends StatelessWidget {
+  const _NoblemanSection({required this.chart});
+
+  final Map<String, String> chart;
+
+  @override
+  Widget build(BuildContext context) {
+    final day = chart['day'] ?? '';
+    final dayStem = SajuStars.stemOf(day);
+    if (dayStem == null) {
+      return const PageSection(
+        title: '귀인',
+        subtitle: '참고용',
+        child: Text('귀인 정보를 계산할 수 없습니다.'),
+      );
+    }
+
+    final pillars = <String>[
+      chart['year'] ?? '',
+      chart['month'] ?? '',
+      chart['day'] ?? '',
+      chart['hour'] ?? '',
+    ];
+    final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
+
+    final cheonEulTargets = SajuStars.cheonEulTargets(dayStem);
+    final hasCheonEul = cheonEulTargets.any((t) => SajuStars.hasAnyBranch(branches, t));
+
+    final munChangTarget = SajuStars.munChangTarget(dayStem);
+    final hasMunChang = munChangTarget != null && SajuStars.hasAnyBranch(branches, munChangTarget);
+
+    return PageSection(
+      title: '귀인',
+      subtitle: '참고용',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StarRow(
+            name: '천을귀인',
+            present: hasCheonEul,
+            hint: cheonEulTargets.isEmpty ? '-' : cheonEulTargets.join(', '),
+            description: '도움/지원의 기운으로 자주 설명됩니다.',
+          ),
+          const SizedBox(height: 10),
+          _StarRow(
+            name: '문창귀인',
+            present: hasMunChang,
+            hint: munChangTarget ?? '-',
+            description: '공부/문서/표현력의 기운으로 자주 설명됩니다.',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '귀인은 사주 해석의 한 요소이며, 상황에 따라 의미가 달라질 수 있습니다.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                SajuGuidePage.routeName,
+                arguments: chart,
+              ),
+              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              label: const Text('용어/설명 보기'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StarRow extends StatelessWidget {
+  const _StarRow({
+    required this.name,
+    required this.present,
+    required this.hint,
+    required this.description,
+  });
+
+  final String name;
+  final bool present;
+  final String hint;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(name, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(width: 8),
+                  StatusBadge(
+                    label: present ? '있음' : '없음',
+                    tone: present ? BadgeTone.success : BadgeTone.neutral,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(description, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        StatusBadge(label: hint, tone: BadgeTone.neutral),
       ],
     );
   }

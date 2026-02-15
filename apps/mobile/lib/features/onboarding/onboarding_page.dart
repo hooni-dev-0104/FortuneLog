@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
+import '../saju/saju_guide_page.dart';
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
@@ -78,18 +79,27 @@ class OnboardingPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              const PageSection(
+              PageSection(
                 title: '사주팔자(4주) 한눈에',
                 subtitle: '연/월/일/시 4기둥이 의미하는 것',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('사주팔자는 4개의 기둥(연주·월주·일주·시주)으로 구성됩니다.'),
-                    SizedBox(height: 12),
-                    _FourPillarsMeaningTable(),
-                    SizedBox(height: 12),
-                    Text(
+                    const Text('사주팔자는 4개의 기둥(연주·월주·일주·시주)으로 구성됩니다.'),
+                    const SizedBox(height: 12),
+                    const _FourPillarsMeaningTable(),
+                    const SizedBox(height: 12),
+                    const Text(
                       '각 기둥은 천간+지지(2글자)로 표시되며, 조합을 바탕으로 해석이 만들어집니다.',
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.pushNamed(context, SajuGuidePage.routeName),
+                        icon: const Icon(Icons.menu_book_outlined, size: 18),
+                        label: const Text('용어/설명 보기'),
+                      ),
                     ),
                   ],
                 ),

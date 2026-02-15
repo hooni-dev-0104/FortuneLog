@@ -13,6 +13,7 @@ import 'features/devtest/dev_test_page.dart';
 import 'features/home/home_page.dart';
 import 'features/onboarding/onboarding_page.dart';
 import 'features/report/report_page.dart';
+import 'features/saju/saju_guide_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,6 +78,10 @@ class _FortuneLogAppState extends State<FortuneLogApp> {
         BirthProfileListPage.routeName: (_) => const BirthProfileListPage(),
         HomePage.routeName: (_) => const HomePage(),
         ReportPage.routeName: (_) => const ReportPage(),
+        SajuGuidePage.routeName: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          return SajuGuidePage(chart: args is Map<String, String> ? args : null);
+        },
         DevTestPage.routeName: (_) => const DevTestPage(),
       },
     );

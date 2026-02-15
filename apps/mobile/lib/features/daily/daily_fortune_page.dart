@@ -342,7 +342,7 @@ class _CategoryCard extends StatelessWidget {
           Icon(icon, size: 18),
           const SizedBox(width: 8),
           StatusBadge(
-            label: score is int ? '${score}점' : '-',
+            label: score is int ? '$score점' : '-',
             tone: BadgeTone.neutral,
           ),
         ],
