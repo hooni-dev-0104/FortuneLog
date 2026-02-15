@@ -4,6 +4,45 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env"
 
+boot_ios_simulator_if_needed() {
+  local device_name="$1"
+
+  # Only handle iOS simulators when the user passed a human-friendly name.
+  # If they pass an explicit UDID or "ios", Flutter can resolve it.
+  if [[ "${device_name}" == "ios" ]]; then
+    return 0
+  fi
+  if [[ "${device_name}" =~ ^[0-9A-Fa-f-]{36}$ ]]; then
+    # Looks like a UDID.
+    xcrun simctl boot "${device_name}" >/dev/null 2>&1 || true
+    xcrun simctl bootstatus "${device_name}" -b >/dev/null 2>&1 || true
+    return 0
+  fi
+  if [[ "${device_name}" != iPhone* && "${device_name}" != iPad* ]]; then
+    return 0
+  fi
+
+  # Resolve the name to a UDID from available devices.
+  local udid
+  udid="$(
+    xcrun simctl list devices available 2>/dev/null \
+      | grep -F "    ${device_name} (" \
+      | head -n 1 \
+      | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/'
+  )"
+
+  if [[ -z "${udid}" ]]; then
+    echo "[warn] Could not find an available iOS simulator named '${device_name}'."
+    echo "[info] Available devices:"
+    xcrun simctl list devices available | sed -n '1,120p'
+    return 0
+  fi
+
+  # Boot is idempotent.
+  xcrun simctl boot "${udid}" >/dev/null 2>&1 || true
+  xcrun simctl bootstatus "${udid}" -b >/dev/null 2>&1 || true
+}
+
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "[error] ${ENV_FILE} not found."
   echo "Copy .env.example to .env and fill SUPABASE_URL/SUPABASE_ANON_KEY/AUTH_REDIRECT_TO first."
@@ -65,8 +104,13 @@ fi
 
 cd "${ROOT_DIR}"
 flutter pub get
+
+DEVICE="${1:-ios}"
+boot_ios_simulator_if_needed "${DEVICE}"
+
 flutter run \
-  -d "${1:-ios}" \
+  -d "${DEVICE}" \
+  --device-timeout 120 \
   --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
   --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}" \
   --dart-define=AUTH_REDIRECT_TO="${AUTH_REDIRECT_TO}" \
