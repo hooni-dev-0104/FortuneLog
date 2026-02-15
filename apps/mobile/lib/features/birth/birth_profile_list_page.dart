@@ -162,15 +162,7 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              children: [
-                const PageSection(
-                  title: '불러오는 중',
-                  child: SizedBox(height: 72, child: Center(child: CircularProgressIndicator())),
-                ),
-              ],
-            );
+            return const PageLoading(title: '불러오는 중', message: '출생정보 목록을 불러오고 있어요.');
           }
 
           if (snapshot.hasError) {

@@ -185,7 +185,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const PageLoading(title: '불러오는 중', message: '대시보드를 준비하고 있어요.');
     }
 
     return ListView(
@@ -193,6 +193,8 @@ class _DashboardPageState extends State<DashboardPage> {
       children: [
         if (_error != null) ...[
           StatusNotice.error(message: _error!, requestId: _requestId ?? 'dashboard'),
+          const SizedBox(height: 10),
+          FilledButton.tonal(onPressed: _refresh, child: const Text('재시도')),
           const SizedBox(height: 10),
         ],
         if (_chart == null || _fiveElements == null) ...[

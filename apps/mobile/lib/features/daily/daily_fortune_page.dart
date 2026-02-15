@@ -201,7 +201,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const PageLoading(title: '불러오는 중', message: '오늘 운세를 준비하고 있어요.');
     }
 
     return ListView(
