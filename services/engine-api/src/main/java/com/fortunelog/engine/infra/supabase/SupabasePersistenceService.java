@@ -109,11 +109,21 @@ public class SupabasePersistenceService {
                 "visible", visible
         );
 
-        return upsertReturningId(
-                "reports",
-                payload,
-                List.of("user_id", "report_type", "target_date")
-        );
+        try {
+            return upsertReturningId(
+                    "reports",
+                    payload,
+                    List.of("user_id", "report_type", "target_date")
+            );
+        } catch (IllegalStateException e) {
+            // Backward compatible with schemas that don't have reports.target_date yet.
+            // In that case we can't upsert by date; fall back to inserting a daily report row.
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (msg.contains("target_date") && msg.contains("does not exist")) {
+                return insertReport(userId, chartId, "daily", content, isPaidContent, visible);
+            }
+            throw e;
+        }
     }
 
     public String upsertNonDailyReport(

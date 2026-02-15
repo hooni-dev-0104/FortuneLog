@@ -56,14 +56,31 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       final userId = session.user.id;
       final today = _todayDateString();
 
-      final rows = await _supabase()
-          .from('reports')
-          .select('id, content_json, target_date, created_at')
-          .eq('user_id', userId)
-          .eq('report_type', 'daily')
-          .eq('target_date', today)
-          .order('created_at', ascending: false)
-          .limit(1);
+      List<dynamic> rows;
+      try {
+        // Preferred schema: reports.target_date exists.
+        rows = await _supabase()
+            .from('reports')
+            .select('id, content_json, target_date, created_at')
+            .eq('user_id', userId)
+            .eq('report_type', 'daily')
+            .eq('target_date', today)
+            .order('created_at', ascending: false)
+            .limit(1);
+      } on PostgrestException catch (e) {
+        // Backward-compatible schema: reports.target_date doesn't exist yet.
+        // Fall back to "latest daily report" and validate the embedded content date.
+        final msg = e.message.toLowerCase();
+        if (!msg.contains('target_date') || !msg.contains('does not exist')) rethrow;
+
+        rows = await _supabase()
+            .from('reports')
+            .select('id, content_json, created_at')
+            .eq('user_id', userId)
+            .eq('report_type', 'daily')
+            .order('created_at', ascending: false)
+            .limit(1);
+      }
 
       if ((rows as List).isEmpty) {
         setState(() {
@@ -74,9 +91,21 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       }
 
       final row = rows.first as Map<String, dynamic>;
+      final content = row['content_json'] as Map<String, dynamic>;
+
+      // If we used the fallback query (no target_date), ensure this record is for "today".
+      final contentDate = content['date']?.toString();
+      if (contentDate != null && contentDate.isNotEmpty && contentDate != today) {
+        setState(() {
+          _loading = false;
+          _content = null;
+        });
+        return;
+      }
+
       setState(() {
         _loading = false;
-        _content = row['content_json'] as Map<String, dynamic>;
+        _content = content;
       });
     } on PostgrestException catch (e) {
       setState(() {
