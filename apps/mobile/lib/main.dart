@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/ui/app_theme.dart';
 
@@ -32,6 +33,17 @@ class FortuneLogApp extends StatelessWidget {
     return MaterialApp(
       title: 'FortuneLog',
       theme: AppTheme.light(),
+      // Force Korean for date/time pickers and Material strings.
+      locale: const Locale('ko', 'KR'),
+      supportedLocales: const [
+        Locale('ko', 'KR'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       initialRoute: AppGate.routeName,
       routes: {
         AppGate.routeName: (_) => const AppGate(),
