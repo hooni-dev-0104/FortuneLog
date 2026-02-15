@@ -152,13 +152,34 @@ class _SignupPageState extends State<SignupPage> {
         },
       );
 
-      final session = auth.session ?? supabase.auth.currentSession;
+      // Prefer immediate session. If not available, try signing in right away.
+      // Some Supabase configurations return null session on signUp.
+      var session = auth.session ?? supabase.auth.currentSession;
+      if (session == null) {
+        try {
+          final signedIn = await supabase.auth.signInWithPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+          session = signedIn.session ?? supabase.auth.currentSession;
+        } on AuthException catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _loading = false;
+            // Common case: "Email not confirmed" when confirmations are enabled in Supabase.
+            _error = e.message.toLowerCase().contains('confirm')
+                ? '회원가입은 완료됐지만, 현재 설정상 이메일 인증 후에만 로그인할 수 있습니다.'
+                : '회원가입은 완료됐지만, 바로 로그인할 수 없습니다. 로그인 화면에서 다시 로그인해주세요.';
+          });
+          return;
+        }
+      }
+
       if (session == null) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = '회원가입은 완료됐지만, 현재 설정상 바로 로그인할 수 없습니다.\n'
-              '다시 로그인 화면으로 돌아가서 로그인을 진행해주세요.';
+          _error = '회원가입은 완료됐지만, 바로 로그인할 수 없습니다. 로그인 화면에서 다시 로그인해주세요.';
         });
         return;
       }
@@ -439,4 +460,3 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 }
-
