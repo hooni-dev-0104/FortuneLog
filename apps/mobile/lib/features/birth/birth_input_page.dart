@@ -28,7 +28,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final initial = _parseDate(_dateController.text.trim()) ?? DateTime(1994, 11, 21);
+    final initial = _parseDate(_dateController.text.trim()) ?? DateTime(now.year - 30, now.month, now.day);
 
     final picked = await showDatePicker(
       context: context,
@@ -45,7 +45,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   Future<void> _pickBirthTime() async {
     if (_unknownBirthTime) return;
-    final initial = _parseTime(_timeController.text.trim()) ?? const TimeOfDay(hour: 14, minute: 30);
+    final initial = _parseTime(_timeController.text.trim()) ?? const TimeOfDay(hour: 12, minute: 0);
     final picked = await showTimePicker(
       context: context,
       initialTime: initial,
@@ -92,18 +92,25 @@ class _BirthInputPageState extends State<BirthInputPage> {
     final p = widget.initialProfile;
     _editingBirthProfileId = p?['id'] as String?;
 
-    final dt = (p?['birth_datetime_local'] as String?) ?? '1994-11-21T14:30:00';
-    final date = dt.contains('T') ? dt.split('T').first : '1994-11-21';
-    final time = dt.contains('T') ? dt.split('T').last.substring(0, 5) : '14:30';
-
     _unknownBirthTime = (p?['unknown_birth_time'] as bool?) ?? false;
     _isLunar = ((p?['calendar_type'] as String?) ?? 'solar') == 'lunar';
     _isLeapMonth = (p?['is_leap_month'] as bool?) ?? false;
     _gender = (p?['gender'] as String?) ?? 'female';
 
+    if (p == null) {
+      _dateController = TextEditingController(text: '');
+      _timeController = TextEditingController(text: '');
+      _locationController = TextEditingController(text: '');
+      return;
+    }
+
+    final dt = (p['birth_datetime_local'] as String?) ?? '';
+    final date = dt.contains('T') ? dt.split('T').first : '';
+    final time = dt.contains('T') ? dt.split('T').last.substring(0, 5) : '';
+
     _dateController = TextEditingController(text: date);
     _timeController = TextEditingController(text: time);
-    _locationController = TextEditingController(text: (p?['birth_location'] as String?) ?? 'Seoul, KR');
+    _locationController = TextEditingController(text: (p['birth_location'] as String?) ?? '');
   }
 
   @override
@@ -230,7 +237,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
         CalculateChartRequestDto(
           birthProfileId: birthProfileId,
           birthDate: _dateController.text.trim(),
-          birthTime: _timeController.text.trim(),
+          birthTime: _unknownBirthTime ? '12:00' : _timeController.text.trim(),
           birthTimezone: birthTimezone,
           birthLocation: _locationController.text.trim(),
           calendarType: _isLunar ? 'lunar' : 'solar',
@@ -271,7 +278,10 @@ class _BirthInputPageState extends State<BirthInputPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         children: [
-          Text('사주 계산에 사용할 정보를 입력해주세요.', style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            '사주 계산에 사용할 정보를 입력해주세요.\n입력값은 운세/리포트 생성에만 사용됩니다.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 12),
           if (_summaryErrors.isNotEmpty) ...[
             StatusNotice.error(message: _summaryErrors.join('\n'), requestId: 'dev-birth-validate'),

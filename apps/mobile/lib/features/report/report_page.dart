@@ -56,15 +56,14 @@ class _ReportPageState extends State<ReportPage> with SingleTickerProviderStateM
       ),
       body: _loading
           ? const _ReportSkeleton()
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+          : Column(
               children: [
-                if (_error != null) ...[
-                  StatusNotice.error(message: _error!, requestId: 'report-req-001'),
-                  const SizedBox(height: 10),
-                ],
-                SizedBox(
-                  height: 510,
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+                    child: StatusNotice.error(message: _error!, requestId: 'report-req-001'),
+                  ),
+                Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     children: const [
@@ -131,7 +130,7 @@ class _ReportTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
       children: [
         PageSection(
           title: '요약',

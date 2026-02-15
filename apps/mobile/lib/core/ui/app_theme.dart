@@ -21,7 +21,6 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: surface,
-      fontFamily: 'Pretendard',
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, height: 1.2, color: textStrong),
         headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, height: 1.25, color: textStrong),
