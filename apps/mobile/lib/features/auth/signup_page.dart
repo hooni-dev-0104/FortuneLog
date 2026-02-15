@@ -8,6 +8,8 @@ import '../../core/network/http_engine_api_client.dart';
 import '../../core/ui/app_widgets.dart';
 import '../../core/ui/korean_cities.dart';
 import '../app/app_gate.dart';
+import 'auth_error_mapper.dart';
+import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -37,6 +39,7 @@ class _SignupPageState extends State<SignupPage> {
 
   bool _loading = false;
   String? _error;
+  bool _alreadyRegistered = false;
   List<String> _summaryErrors = const [];
 
   SupabaseClient _supabase() {
@@ -120,6 +123,7 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> _submit() async {
     setState(() {
       _error = null;
+      _alreadyRegistered = false;
       _summaryErrors = const [];
     });
 
@@ -225,9 +229,12 @@ class _SignupPageState extends State<SignupPage> {
       Navigator.pushNamedAndRemoveUntil(context, AppGate.routeName, (route) => false);
     } on AuthException catch (e) {
       if (!mounted) return;
+      final msg = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.signup);
+      final already = AuthErrorMapper.isUserAlreadyRegisteredMessage(e.message);
       setState(() {
         _loading = false;
-        _error = e.message;
+        _alreadyRegistered = already;
+        _error = msg;
       });
     } on PostgrestException catch (e) {
       if (!mounted) return;
@@ -281,6 +288,24 @@ class _SignupPageState extends State<SignupPage> {
           ],
           if (_error != null) ...[
             StatusNotice.error(message: _error!, requestId: 'signup-submit'),
+            if (_alreadyRegistered) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _loading
+                      ? null
+                      : () {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            LoginPage.routeName,
+                            arguments: _emailController.text.trim(),
+                          );
+                        },
+                  child: const Text('로그인으로 이동'),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
           ],
           Form(

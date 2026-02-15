@@ -8,11 +8,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/ui/app_widgets.dart';
 import '../app/app_gate.dart';
 import 'signup_page.dart';
+import 'auth_error_mapper.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, this.initialEmail});
 
   static const routeName = '/login';
+
+  final String? initialEmail;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -57,6 +60,11 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    final initialEmail = widget.initialEmail?.trim();
+    if (initialEmail != null && initialEmail.isNotEmpty && !_emailController.text.contains('@')) {
+      _emailController.text = initialEmail;
+    }
 
     try {
       _authSubscription = _supabase().auth.onAuthStateChange.listen((event) {
@@ -132,7 +140,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.message;
+        _error = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.login);
       });
     } on StateError catch (e) {
       if (!mounted) return;
@@ -170,7 +178,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.message;
+        _error = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.passwordReset);
       });
     } on FormatException {
       if (!mounted) return;
@@ -223,7 +231,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
-        _error = e.message;
+        _error = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.socialLogin);
       });
     } on FormatException {
       if (!mounted) return;

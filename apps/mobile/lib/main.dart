@@ -74,7 +74,10 @@ class _FortuneLogAppState extends State<FortuneLogApp> {
       routes: {
         AppGate.routeName: (_) => const AppGate(),
         OnboardingPage.routeName: (_) => const OnboardingPage(),
-        LoginPage.routeName: (_) => const LoginPage(),
+        LoginPage.routeName: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          return LoginPage(initialEmail: args is String ? args : null);
+        },
         SignupPage.routeName: (_) => const SignupPage(),
         BirthInputPage.routeName: (_) => const BirthInputPage(),
         BirthProfileListPage.routeName: (_) => const BirthProfileListPage(),
