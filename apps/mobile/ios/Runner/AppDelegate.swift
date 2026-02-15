@@ -25,7 +25,19 @@ import UIKit
       logo.translatesAutoresizingMaskIntoConstraints = false
       logo.contentMode = .scaleAspectFit
 
-      overlay.addSubview(logo)
+      let wordmark = UILabel()
+      wordmark.translatesAutoresizingMaskIntoConstraints = false
+      wordmark.text = "FortuneLog"
+      wordmark.textColor = UIColor.white
+      wordmark.font = UIFont.systemFont(ofSize: 24, weight: .semibold)
+
+      let stack = UIStackView(arrangedSubviews: [logo, wordmark])
+      stack.translatesAutoresizingMaskIntoConstraints = false
+      stack.axis = .vertical
+      stack.alignment = .center
+      stack.spacing = 14
+
+      overlay.addSubview(stack)
       w.addSubview(overlay)
 
       NSLayoutConstraint.activate([
@@ -34,8 +46,9 @@ import UIKit
         overlay.topAnchor.constraint(equalTo: w.topAnchor),
         overlay.bottomAnchor.constraint(equalTo: w.bottomAnchor),
 
-        logo.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
-        logo.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
+        stack.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+        stack.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
+
         logo.widthAnchor.constraint(equalToConstant: 120),
         logo.heightAnchor.constraint(equalToConstant: 120),
       ])
