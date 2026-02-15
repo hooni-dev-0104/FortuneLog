@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
+import '../../core/ui/korean_cities.dart';
+import '../../core/network/location_search_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/http_engine_api_client.dart';
@@ -23,6 +27,12 @@ class _BirthInputPageState extends State<BirthInputPage> {
   late final TextEditingController _dateController;
   late final TextEditingController _timeController;
   late final TextEditingController _locationController;
+  late final FocusNode _locationFocusNode;
+  late final LocationSearchClient _locationSearchClient;
+  Timer? _locationDebounce;
+  String _lastLocationQuery = '';
+  bool _locationSearching = false;
+  List<LocationSuggestion> _locationSuggestions = const [];
 
   String? _editingBirthProfileId;
 
@@ -91,6 +101,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
     super.initState();
     final p = widget.initialProfile;
     _editingBirthProfileId = p?['id'] as String?;
+    _locationSearchClient = LocationSearchClient();
 
     _unknownBirthTime = (p?['unknown_birth_time'] as bool?) ?? false;
     _isLunar = ((p?['calendar_type'] as String?) ?? 'solar') == 'lunar';
@@ -101,6 +112,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
       _dateController = TextEditingController(text: '');
       _timeController = TextEditingController(text: '');
       _locationController = TextEditingController(text: '');
+      _locationFocusNode = FocusNode();
       return;
     }
 
@@ -111,6 +123,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
     _dateController = TextEditingController(text: date);
     _timeController = TextEditingController(text: time);
     _locationController = TextEditingController(text: (p['birth_location'] as String?) ?? '');
+    _locationFocusNode = FocusNode();
   }
 
   @override
@@ -118,7 +131,51 @@ class _BirthInputPageState extends State<BirthInputPage> {
     _dateController.dispose();
     _timeController.dispose();
     _locationController.dispose();
+    _locationFocusNode.dispose();
+    _locationDebounce?.cancel();
+    _locationSearchClient.dispose();
     super.dispose();
+  }
+
+  void _onLocationChanged(String value) {
+    final q = value.trim();
+    if (q == _lastLocationQuery) return;
+    _lastLocationQuery = q;
+
+    _locationDebounce?.cancel();
+    if (q.isEmpty) {
+      setState(() {
+        _locationSearching = false;
+        _locationSuggestions = const [];
+      });
+      return;
+    }
+
+    // Show local suggestions immediately while we fetch a full search result set.
+    final local = koreanCitySuggestions
+        .where((c) => c.startsWith(q) || c.contains(q))
+        .take(8)
+        .map((c) => LocationSuggestion(label: c, value: c))
+        .toList(growable: false);
+    setState(() => _locationSuggestions = local);
+
+    _locationDebounce = Timer(const Duration(milliseconds: 250), () async {
+      setState(() => _locationSearching = true);
+      try {
+        final results = await _locationSearchClient.searchKoreaCities(q);
+        if (!mounted) return;
+        // If user typed more while we were fetching, ignore stale results.
+        if (_lastLocationQuery != q) return;
+        setState(() {
+          _locationSearching = false;
+          _locationSuggestions = results.isEmpty ? local : results;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        if (_lastLocationQuery != q) return;
+        setState(() => _locationSearching = false);
+      }
+    });
   }
 
   EngineApiClient _engineClient() {
@@ -375,12 +432,65 @@ class _BirthInputPageState extends State<BirthInputPage> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _locationController,
-                        decoration: const InputDecoration(labelText: '출생 지역', hintText: '예: 서울'),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return '출생 지역을 입력해주세요.';
-                          return null;
+                      RawAutocomplete<LocationSuggestion>(
+                        focusNode: _locationFocusNode,
+                        textEditingController: _locationController,
+                        optionsBuilder: (value) {
+                          final q = value.text.trim();
+                          if (q.isEmpty) return const Iterable<LocationSuggestion>.empty();
+                          return _locationSuggestions
+                              .where((s) => s.value.startsWith(q) || s.value.contains(q))
+                              .take(8);
+                        },
+                        displayStringForOption: (o) => o.value,
+                        onSelected: (selection) {
+                          _locationController.text = selection.value;
+                          setState(() {});
+                        },
+                        fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                          return TextFormField(
+                            controller: textEditingController,
+                            focusNode: focusNode,
+                            onChanged: _onLocationChanged,
+                            decoration: const InputDecoration(
+                              labelText: '출생 지역(도시)',
+                              hintText: '예: 서울',
+                              suffixIcon: Icon(Icons.location_on_outlined),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return '출생 지역을 입력해주세요.';
+                              return null;
+                            },
+                          );
+                        },
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 6,
+                              borderRadius: BorderRadius.circular(12),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 260, maxWidth: 420),
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (context, index) {
+                                    final o = options.elementAt(index);
+                                    return ListTile(
+                                      dense: true,
+                                      title: Text(o.label),
+                                      trailing: _locationSearching && index == 0
+                                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                          : null,
+                                      onTap: () => onSelected(o),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ],
