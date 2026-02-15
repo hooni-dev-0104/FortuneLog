@@ -159,3 +159,39 @@ class EmptyState extends StatelessWidget {
     );
   }
 }
+
+class PageLoading extends StatelessWidget {
+  const PageLoading({super.key, this.title = '불러오는 중', this.message});
+
+  final String title;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            if (message != null && message!.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                message!,
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

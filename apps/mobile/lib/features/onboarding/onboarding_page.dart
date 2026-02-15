@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
-import '../devtest/dev_test_page.dart';
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
@@ -85,12 +83,6 @@ class OnboardingPage extends StatelessWidget {
                 onPressed: () => Navigator.pushReplacementNamed(context, LoginPage.routeName),
                 child: const Text('시작하기'),
               ),
-              const SizedBox(height: 8),
-              if (!kReleaseMode)
-                OutlinedButton(
-                  onPressed: () => Navigator.pushNamed(context, DevTestPage.routeName),
-                  child: const Text('개발 테스트 화면'),
-                ),
             ],
           ),
         ),
