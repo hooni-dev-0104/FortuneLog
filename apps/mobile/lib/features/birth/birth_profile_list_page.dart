@@ -15,6 +15,7 @@ class BirthProfileListPage extends StatefulWidget {
 
 class _BirthProfileListPageState extends State<BirthProfileListPage> {
   late Future<List<Map<String, dynamic>>> _future;
+  bool _showAll = false;
 
   @override
   void initState() {
@@ -116,12 +117,15 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
           }
 
           final profiles = snapshot.data ?? const [];
+          final visibleProfiles = _showAll ? profiles : (profiles.isEmpty ? profiles : profiles.take(1).toList());
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             children: [
               PageSection(
                 title: '프로필',
-                subtitle: '탭하면 수정할 수 있습니다.',
+                subtitle: profiles.isEmpty
+                    ? '새로 만들면 대시보드/오늘 운세에서 바로 사용할 수 있습니다.'
+                    : (_showAll ? '전체 ${profiles.length}개' : '최신 1개 표시 (총 ${profiles.length}개)'),
                 child: Column(
                   children: [
                     if (profiles.isEmpty) ...[
@@ -129,10 +133,23 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                         title: '아직 출생 프로필이 없습니다',
                         description: '새 프로필을 만들어 사주 계산을 시작할 수 있습니다.',
                         actionText: '새로 만들기',
-                        onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName).then((_) => _refresh()),
+                        onAction: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BirthInputPage(forceCreate: true)),
+                        ).then((_) => _refresh()),
                       ),
                     ] else ...[
-                      for (final p in profiles) ...[
+                      if (profiles.length > 1) ...[
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => setState(() => _showAll = !_showAll),
+                            child: Text(_showAll ? '최신 1개만 보기' : '전체 보기'),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      for (final p in visibleProfiles) ...[
                         InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
@@ -170,7 +187,10 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                       ],
                       const SizedBox(height: 12),
                       FilledButton(
-                        onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName).then((_) => _refresh()),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BirthInputPage(forceCreate: true)),
+                        ).then((_) => _refresh()),
                         child: const Text('새 프로필 만들기'),
                       ),
                     ],

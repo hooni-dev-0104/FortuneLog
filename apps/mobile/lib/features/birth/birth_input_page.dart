@@ -8,11 +8,12 @@ import '../../core/network/http_engine_api_client.dart';
 import '../home/home_page.dart';
 
 class BirthInputPage extends StatefulWidget {
-  const BirthInputPage({super.key, this.initialProfile});
+  const BirthInputPage({super.key, this.initialProfile, this.forceCreate = false});
 
   static const routeName = '/birth-input';
 
   final Map<String, dynamic>? initialProfile;
+  final bool forceCreate;
 
   @override
   State<BirthInputPage> createState() => _BirthInputPageState();
@@ -90,7 +91,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
   void initState() {
     super.initState();
     final p = widget.initialProfile;
-    _editingBirthProfileId = p?['id'] as String?;
+    _editingBirthProfileId = widget.forceCreate ? null : (p?['id'] as String?);
 
     final dt = (p?['birth_datetime_local'] as String?) ?? '1994-11-21T14:30:00';
     final date = dt.contains('T') ? dt.split('T').first : '1994-11-21';
