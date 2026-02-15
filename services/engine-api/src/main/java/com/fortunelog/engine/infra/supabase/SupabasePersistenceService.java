@@ -119,7 +119,17 @@ public class SupabasePersistenceService {
             // Backward compatible with schemas that don't have reports.target_date yet.
             // In that case we can't upsert by date; fall back to inserting a daily report row.
             String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
-            if (msg.contains("target_date") && msg.contains("does not exist")) {
+            // PostgREST error variants we've seen:
+            // - "column reports.target_date does not exist"
+            // - "PGRST204 ... Could not find the 'target_date' column of 'reports' in the schema cache"
+            boolean missingTargetDate =
+                    msg.contains("target_date") && (
+                            msg.contains("does not exist")
+                                    || msg.contains("could not find")
+                                    || msg.contains("schema cache")
+                                    || msg.contains("pgrst204")
+                    );
+            if (missingTargetDate) {
                 return insertReport(userId, chartId, "daily", content, isPaidContent, visible);
             }
             throw e;
