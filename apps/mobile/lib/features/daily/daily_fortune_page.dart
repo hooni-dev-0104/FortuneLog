@@ -237,10 +237,11 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
               const SizedBox(height: 10),
               // Even when the failure reason isn't the "missing chart" message,
               // provide an escape hatch to the required input screen.
-              OutlinedButton(
-                onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName),
-                child: const Text('출생정보 입력'),
-              ),
+              if (!_missingChart)
+                OutlinedButton(
+                  onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                  child: const Text('출생정보 입력'),
+                ),
             ],
           )
         else ...[

@@ -83,22 +83,28 @@ class _MyPageState extends State<MyPage> {
           ),
         ),
         const SizedBox(height: 10),
-        PageSection(
-          title: '출생정보 관리',
-          subtitle: '기존 프로필 재사용 또는 수정',
-          child: FutureBuilder<Map<String, String>>(
-            future: _birthProfileSummary(),
-            builder: (context, snapshot) {
+          PageSection(
+            title: '출생정보 관리',
+            subtitle: '기존 프로필 재사용 또는 수정',
+            child: FutureBuilder<Map<String, String>>(
+              future: _birthProfileSummary(),
+              builder: (context, snapshot) {
+              final waiting = snapshot.connectionState != ConnectionState.done;
+              final hasError = snapshot.hasError;
+
               final title = snapshot.data?['title'] ?? '출생 프로필';
-              final subtitle = snapshot.data?['subtitle'] ?? '목록 불러오는 중...';
+              final subtitle = hasError
+                  ? '불러오지 못했습니다. 눌러서 다시 확인해주세요.'
+                  : (snapshot.data?['subtitle'] ?? (waiting ? '불러오는 중...' : '내 프로필을 확인하고 수정할 수 있습니다.'));
+
               return _MenuRow(
                 title: title,
                 subtitle: subtitle,
                 onTap: () => Navigator.pushNamed(context, BirthProfileListPage.routeName),
               );
-            },
+              },
+            ),
           ),
-        ),
         const SizedBox(height: 10),
         const PageSection(
           title: '주문 / 결제',
