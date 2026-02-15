@@ -28,12 +28,15 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
     if (session == null) {
       throw StateError('로그인이 필요합니다.');
     }
+    final userId = session.user.id;
 
     final rows = await supabase
         .from('birth_profiles')
         .select(
           'id,birth_datetime_local,birth_timezone,birth_location,calendar_type,is_leap_month,gender,unknown_birth_time,created_at',
         )
+        // Even if RLS is misconfigured, always filter client-side by current user.
+        .eq('user_id', userId)
         // Some environments don't have updated_at yet. created_at exists by default.
         .order('created_at', ascending: false);
 

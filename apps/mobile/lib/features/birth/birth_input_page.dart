@@ -174,6 +174,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
             .from('birth_profiles')
             .update(payload)
             .eq('id', _editingBirthProfileId!)
+            .eq('user_id', userId)
             .select('id')
             .single();
         birthProfileId = row['id'] as String;

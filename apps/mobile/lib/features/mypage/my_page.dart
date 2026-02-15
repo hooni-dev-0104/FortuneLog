@@ -21,10 +21,12 @@ class _MyPageState extends State<MyPage> {
     if (session == null) {
       return {'title': '로그인이 필요합니다', 'subtitle': '로그인 후 사용 가능합니다.'};
     }
+    final userId = session.user.id;
 
     final rows = await supabase
         .from('birth_profiles')
         .select('id,created_at')
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
 
     final list = (rows as List).cast<Map<String, dynamic>>();
