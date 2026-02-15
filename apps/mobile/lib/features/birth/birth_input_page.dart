@@ -10,6 +10,7 @@ import '../../core/network/location_search_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/http_engine_api_client.dart';
+import '../../core/saju/saju_chart_persistence.dart';
 import '../home/home_page.dart';
 
 class BirthInputPage extends StatefulWidget {
@@ -305,6 +306,15 @@ class _BirthInputPageState extends State<BirthInputPage> {
         ),
       );
       _lastRequestId = chartResponse.requestId;
+
+      // Ensure chart row exists in the same Supabase project the app is connected to.
+      // This prevents "birth profile exists but no chart" states when engine persistence is misconfigured.
+      await SajuChartPersistence.ensureSavedFromResponse(
+        supabase: supabase,
+        userId: userId,
+        birthProfileId: birthProfileId,
+        response: chartResponse,
+      );
     } on StateError catch (e) {
       _error = e.message;
     } on PostgrestException catch (e) {

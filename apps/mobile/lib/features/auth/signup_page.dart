@@ -7,6 +7,7 @@ import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
 import '../../core/ui/app_widgets.dart';
 import '../../core/ui/korean_cities.dart';
+import '../../core/saju/saju_chart_persistence.dart';
 import '../app/app_gate.dart';
 import 'auth_error_mapper.dart';
 import 'login_page.dart';
@@ -210,7 +211,7 @@ class _SignupPageState extends State<SignupPage> {
       final birthProfileId = row['id'] as String;
 
       // 3) Calculate chart and persist.
-      await _engineClient().calculateChart(
+      final chartResponse = await _engineClient().calculateChart(
         CalculateChartRequestDto(
           birthProfileId: birthProfileId,
           birthDate: _dateController.text.trim(),
@@ -222,6 +223,15 @@ class _SignupPageState extends State<SignupPage> {
           gender: _gender,
           unknownBirthTime: _unknownBirthTime,
         ),
+      );
+
+      // In some dev environments the engine might be configured against a different Supabase project.
+      // Ensure the chart exists in the same Supabase the app reads from so Dashboard is never empty after signup.
+      await SajuChartPersistence.ensureSavedFromResponse(
+        supabase: supabase,
+        userId: userId,
+        birthProfileId: birthProfileId,
+        response: chartResponse,
       );
 
       if (!mounted) return;

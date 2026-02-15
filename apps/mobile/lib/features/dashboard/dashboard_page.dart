@@ -4,10 +4,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../../core/saju/saju_stars.dart';
+import '../../core/saju/saju_chart_persistence.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
 import '../birth/birth_input_page.dart';
+import '../birth/birth_profile_list_page.dart';
 import '../report/report_page.dart';
 import '../saju/saju_guide_page.dart';
 
@@ -27,6 +29,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Map<String, String>? _chart;
   Map<String, int>? _fiveElements;
+  bool _hasBirthProfile = false;
 
   SupabaseClient _supabase() => Supabase.instance.client;
 
@@ -66,10 +69,19 @@ class _DashboardPageState extends State<DashboardPage> {
           .limit(1);
 
       if (rows.isEmpty) {
+        // Used for UX: if birth profile exists but chart doesn't, we should guide to "사주 계산하기"
+        // instead of "출생정보 입력".
+        final bp = await _supabase()
+            .from('birth_profiles')
+            .select('id')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false)
+            .limit(1);
         setState(() {
           _loading = false;
           _chart = null;
           _fiveElements = null;
+          _hasBirthProfile = (bp as List).isNotEmpty;
         });
         return;
       }
@@ -82,6 +94,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _loading = false;
         _chart = chartJson.map((k, v) => MapEntry(k, v as String));
         _fiveElements = fiveJson.map((k, v) => MapEntry(k, v as int));
+        _hasBirthProfile = true;
       });
     } on PostgrestException catch (e) {
       setState(() {
@@ -155,6 +168,15 @@ class _DashboardPageState extends State<DashboardPage> {
       );
 
       setState(() => _requestId = response.requestId);
+
+      // Ensure the chart exists in the same Supabase project the app reads from.
+      await SajuChartPersistence.ensureSavedFromResponse(
+        supabase: _supabase(),
+        userId: userId,
+        birthProfileId: birthProfileId,
+        response: response,
+      );
+
       await _refresh();
     } on EngineApiException catch (e) {
       setState(() {
@@ -205,17 +227,27 @@ class _DashboardPageState extends State<DashboardPage> {
         if (_chart == null || _fiveElements == null) ...[
           EmptyState(
             title: '아직 사주 결과가 없습니다',
-            description: '출생정보로 사주 계산을 완료하면 대시보드에 표시됩니다.',
-            actionText: '출생정보 입력',
-            onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+            description: _hasBirthProfile
+                ? '출생정보는 저장되어 있습니다. 사주 계산을 완료하면 대시보드에 표시됩니다.'
+                : '출생정보로 사주 계산을 완료하면 대시보드에 표시됩니다.',
+            actionText: _hasBirthProfile ? '사주 계산하기' : '출생정보 입력',
+            onAction: _hasBirthProfile
+                ? _recalculateFromLatestBirthProfile
+                : () => Navigator.pushNamed(context, BirthInputPage.routeName),
             icon: Icons.auto_graph_outlined,
-            tone: BadgeTone.neutral,
+            tone: _hasBirthProfile ? BadgeTone.warning : BadgeTone.neutral,
           ),
           const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: _recalculateFromLatestBirthProfile,
-            child: const Text('사주 계산하기'),
-          ),
+          if (_hasBirthProfile)
+            OutlinedButton(
+              onPressed: () => Navigator.pushNamed(context, BirthProfileListPage.routeName),
+              child: const Text('출생정보 확인/수정'),
+            )
+          else
+            OutlinedButton(
+              onPressed: _recalculateFromLatestBirthProfile,
+              child: const Text('사주 계산하기'),
+            ),
           const SizedBox(height: 10),
         ] else ...[
           const PageSection(
