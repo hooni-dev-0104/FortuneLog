@@ -77,6 +77,23 @@ class OnboardingPage extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 10),
+              const PageSection(
+                title: '사주팔자(4주) 한눈에',
+                subtitle: '연/월/일/시 4기둥이 의미하는 것',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('사주팔자는 4개의 기둥(연주·월주·일주·시주)으로 구성됩니다.'),
+                    SizedBox(height: 12),
+                    _FourPillarsMeaningTable(),
+                    SizedBox(height: 12),
+                    Text(
+                      '각 기둥은 천간+지지(2글자)로 표시되며, 조합을 바탕으로 해석이 만들어집니다.',
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
               FilledButton(
                 onPressed: () => Navigator.pushReplacementNamed(context, LoginPage.routeName),
@@ -84,6 +101,62 @@ class OnboardingPage extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FourPillarsMeaningTable extends StatelessWidget {
+  const _FourPillarsMeaningTable();
+
+  TableRow _row(BuildContext context, {required String left, required String right, bool header = false}) {
+    final leftStyle = header
+        ? Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)
+        : Theme.of(context).textTheme.bodySmall;
+    final rightStyle = header
+        ? Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)
+        : Theme.of(context).textTheme.bodySmall;
+
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          child: Text(left, style: leftStyle),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          child: Text(right, style: rightStyle),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFD8E0DC)),
+          color: Colors.white,
+        ),
+        child: Table(
+          columnWidths: const {
+            0: FixedColumnWidth(86),
+            1: FlexColumnWidth(),
+          },
+          border: const TableBorder(
+            horizontalInside: BorderSide(color: Color(0xFFD8E0DC)),
+            verticalInside: BorderSide(color: Color(0xFFD8E0DC)),
+          ),
+          children: [
+            _row(context, left: '구분', right: '의미', header: true),
+            _row(context, left: '연주', right: '가문·조상·사회적 배경'),
+            _row(context, left: '월주', right: '성장 환경·부모·직업 기질'),
+            _row(context, left: '일주', right: '나 자신·성격·배우자'),
+            _row(context, left: '시주', right: '말년운·자녀·잠재 능력'),
+          ],
         ),
       ),
     );
