@@ -12,9 +12,15 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -37,13 +43,26 @@ public class SecurityConfig {
     ) throws Exception {
         boolean insecureJwt = Boolean.parseBoolean(env.getProperty("ENGINE_INSECURE_JWT", "false"));
         boolean authDebug = Boolean.parseBoolean(env.getProperty("ENGINE_AUTH_DEBUG", "false"));
+        String jwtSecret = env.getProperty("SUPABASE_JWT_SECRET", "");
+        boolean hasJwtSecret = jwtSecret != null && !jwtSecret.isBlank();
+
         // Always log the resolved values so local runs can confirm whether env is being loaded.
-        log.info("engine security flags: ENGINE_INSECURE_JWT={}, ENGINE_AUTH_DEBUG={}", insecureJwt, authDebug);
+        log.info(
+                "engine security flags: ENGINE_INSECURE_JWT={}, ENGINE_AUTH_DEBUG={}, SUPABASE_JWT_SECRET={}",
+                insecureJwt,
+                authDebug,
+                hasJwtSecret ? "set" : "not set"
+        );
         if (insecureJwt) {
             log.warn("ENGINE_INSECURE_JWT=true: JWT signature verification is DISABLED (local dev only).");
         }
         if (authDebug) {
             log.warn("ENGINE_AUTH_DEBUG=true: auth failure responses will include exception details (local dev only).");
+        }
+        if (hasJwtSecret) {
+            log.info("Using SUPABASE_JWT_SECRET (HS256) for JWT verification.");
+        } else if (!insecureJwt) {
+            log.info("Using JWKS (spring.security.oauth2.resourceserver.jwt.jwk-set-uri) for JWT verification.");
         }
 
         http
@@ -79,6 +98,13 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> {
                     if (insecureJwt) {
                         oauth2.jwt(jwt -> jwt.decoder(new InsecureJwtDecoder()));
+                    } else if (hasJwtSecret) {
+                        // Supabase projects may use HS256 (shared secret) instead of asymmetric keys (JWKS).
+                        SecretKey key = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+                        JwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
+                                .macAlgorithm(MacAlgorithm.HS256)
+                                .build();
+                        oauth2.jwt(jwt -> jwt.decoder(decoder));
                     } else {
                         oauth2.jwt(Customizer.withDefaults());
                     }

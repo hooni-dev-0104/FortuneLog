@@ -1,6 +1,11 @@
 spring:
   application:
     name: engine-api
+  config:
+    # Load dotenv-style config for local dev regardless of how the app is started:
+    # - IntelliJ "Application" run config (often runs from repo root)
+    # - Gradle bootRun (often runs from service dir)
+    import: "optional:file:./.env[.properties],optional:file:./services/engine-api/.env[.properties]"
   security:
     oauth2:
       resourceserver:
