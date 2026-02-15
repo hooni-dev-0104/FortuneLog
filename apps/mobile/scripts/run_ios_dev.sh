@@ -53,6 +53,7 @@ set -a
 source "${ENV_FILE}"
 set +a
 
+# Validate required keys exist in the file (for dev ergonomics).
 : "${SUPABASE_URL:?SUPABASE_URL is required in .env}"
 : "${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required in .env}"
 : "${AUTH_REDIRECT_TO:?AUTH_REDIRECT_TO is required in .env}"
@@ -111,7 +112,5 @@ boot_ios_simulator_if_needed "${DEVICE}"
 flutter run \
   -d "${DEVICE}" \
   --device-timeout 120 \
-  --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
-  --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}" \
-  --dart-define=AUTH_REDIRECT_TO="${AUTH_REDIRECT_TO}" \
+  --dart-define-from-file="${ENV_FILE}" \
   --dart-define=ENGINE_BASE_URL="${ENGINE_BASE_URL}"
