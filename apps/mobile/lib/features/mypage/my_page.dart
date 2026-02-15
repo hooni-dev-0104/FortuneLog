@@ -34,8 +34,7 @@ class _MyPageState extends State<MyPage> {
       return {'title': '출생 프로필 0개', 'subtitle': '아직 생성된 프로필이 없습니다.'};
     }
 
-    final latest = (list.first['created_at'] as String?) ?? '-';
-    return {'title': '출생 프로필 ${list.length}개', 'subtitle': '최근 생성: $latest'};
+    return {'title': '출생 프로필 ${list.length}개', 'subtitle': '내 프로필을 확인하고 수정할 수 있습니다.'};
   }
 
   String _currentEmail() {

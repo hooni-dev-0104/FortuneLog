@@ -225,11 +225,6 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                                         _titleFor(p),
                                         style: Theme.of(context).textTheme.titleMedium,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '생성: ${(p['created_at'] as String?) ?? '-'}',
-                                        style: Theme.of(context).textTheme.bodySmall,
-                                      ),
                                     ],
                                   ),
                                 ),

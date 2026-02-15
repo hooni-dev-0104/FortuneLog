@@ -377,9 +377,9 @@ class _BirthInputPageState extends State<BirthInputPage> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _locationController,
-                        decoration: const InputDecoration(labelText: '출생지', hintText: '예: Seoul, KR'),
+                        decoration: const InputDecoration(labelText: '출생 지역', hintText: '예: 서울'),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return '출생지를 입력해주세요.';
+                          if (v == null || v.trim().isEmpty) return '출생 지역을 입력해주세요.';
                           return null;
                         },
                       ),
