@@ -37,6 +37,8 @@ public class SecurityConfig {
     ) throws Exception {
         boolean insecureJwt = Boolean.parseBoolean(env.getProperty("ENGINE_INSECURE_JWT", "false"));
         boolean authDebug = Boolean.parseBoolean(env.getProperty("ENGINE_AUTH_DEBUG", "false"));
+        // Always log the resolved values so local runs can confirm whether env is being loaded.
+        log.info("engine security flags: ENGINE_INSECURE_JWT={}, ENGINE_AUTH_DEBUG={}", insecureJwt, authDebug);
         if (insecureJwt) {
             log.warn("ENGINE_INSECURE_JWT=true: JWT signature verification is DISABLED (local dev only).");
         }

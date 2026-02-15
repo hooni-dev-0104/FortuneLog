@@ -22,6 +22,56 @@ class _BirthInputPageState extends State<BirthInputPage> {
   final _timeController = TextEditingController(text: '14:30');
   final _locationController = TextEditingController(text: 'Seoul, KR');
 
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final initial = _parseDate(_dateController.text.trim()) ?? DateTime(1994, 11, 21);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900, 1, 1),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      helpText: '생년월일 선택',
+    );
+    if (picked == null) return;
+    _dateController.text =
+        '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+    setState(() {});
+  }
+
+  Future<void> _pickBirthTime() async {
+    if (_unknownBirthTime) return;
+    final initial = _parseTime(_timeController.text.trim()) ?? const TimeOfDay(hour: 14, minute: 30);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      helpText: '출생시간 선택',
+    );
+    if (picked == null) return;
+    _timeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    setState(() {});
+  }
+
+  DateTime? _parseDate(String v) {
+    try {
+      final parts = v.split('-').map((e) => int.parse(e)).toList();
+      if (parts.length != 3) return null;
+      return DateTime(parts[0], parts[1], parts[2]);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  TimeOfDay? _parseTime(String v) {
+    try {
+      final parts = v.split(':').map((e) => int.parse(e)).toList();
+      if (parts.length != 2) return null;
+      return TimeOfDay(hour: parts[0], minute: parts[1]);
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool _unknownBirthTime = false;
   bool _isLunar = false;
   bool _isLeapMonth = false;
@@ -159,10 +209,13 @@ class _BirthInputPageState extends State<BirthInputPage> {
                     children: [
                       TextFormField(
                         controller: _dateController,
+                        readOnly: true,
                         decoration: const InputDecoration(
                           labelText: '생년월일',
                           hintText: 'YYYY-MM-DD',
+                          suffixIcon: Icon(Icons.calendar_month_outlined),
                         ),
+                        onTap: _pickBirthDate,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return '생년월일을 입력해주세요.';
                           final parts = v.split('-');
@@ -214,10 +267,13 @@ class _BirthInputPageState extends State<BirthInputPage> {
                       TextFormField(
                         controller: _timeController,
                         enabled: !_unknownBirthTime,
+                        readOnly: true,
                         decoration: const InputDecoration(
                           labelText: '출생시간',
                           hintText: 'HH:mm',
+                          suffixIcon: Icon(Icons.schedule_outlined),
                         ),
+                        onTap: _pickBirthTime,
                         validator: (v) {
                           if (_unknownBirthTime) return null;
                           if (v == null || v.trim().isEmpty) return '출생시간을 입력해주세요.';
