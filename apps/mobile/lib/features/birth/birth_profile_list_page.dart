@@ -16,6 +16,7 @@ class BirthProfileListPage extends StatefulWidget {
 class _BirthProfileListPageState extends State<BirthProfileListPage> {
   late Future<List<Map<String, dynamic>>> _future;
   bool _showAll = false;
+  bool _deletingAll = false;
 
   @override
   void initState() {
@@ -46,6 +47,84 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
 
   Future<void> _refresh() async {
     setState(() => _future = _fetch());
+  }
+
+  Future<void> _deleteAllMyProfiles(int count) async {
+    final supabase = Supabase.instance.client;
+    final session = supabase.auth.currentSession;
+    if (session == null) {
+      throw StateError('로그인이 필요합니다.');
+    }
+    final userId = session.user.id;
+
+    final controller = TextEditingController();
+    bool confirmed = false;
+
+    // Ask for an explicit confirmation keyword to prevent accidental data loss.
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('전체 삭제'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('내 출생 프로필 $count개를 삭제합니다.'),
+              const SizedBox(height: 8),
+              const Text(
+                '연동된 사주 차트/리포트/오늘 운세 데이터도 함께 삭제될 수 있습니다.',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              const Text('진행하려면 아래에 "삭제"를 입력하세요.'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(hintText: '삭제'),
+                autofocus: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                final ok = value.text.trim() == '삭제';
+                return FilledButton(
+                  onPressed: ok
+                      ? () {
+                          confirmed = true;
+                          Navigator.pop(context);
+                        }
+                      : null,
+                  child: const Text('삭제하기'),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+    if (!confirmed) return;
+
+    setState(() => _deletingAll = true);
+    try {
+      // Delete only my rows; DB FKs should cascade related rows (charts/reports).
+      await supabase.from('birth_profiles').delete().eq('user_id', userId);
+      if (!mounted) return;
+      setState(() => _showAll = false);
+      await _refresh();
+    } finally {
+      if (mounted) setState(() => _deletingAll = false);
+    }
   }
 
   String _titleFor(Map<String, dynamic> p) {
@@ -193,6 +272,19 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                         ).then((_) => _refresh()),
                         child: const Text('새 프로필 만들기'),
                       ),
+                      if (profiles.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: _deletingAll ? null : () => _deleteAllMyProfiles(profiles.length),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF9A3025),
+                            side: const BorderSide(color: Color(0xFFF3C4C1)),
+                          ),
+                          child: _deletingAll
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('내 출생 프로필 전체 삭제'),
+                        ),
+                      ],
                     ],
                   ],
                 ),
