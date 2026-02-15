@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
@@ -167,7 +168,9 @@ class _DashboardPageState extends State<DashboardPage> {
     } on FormatException {
       setState(() {
         _loading = false;
-        _error = 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.';
+        _error = kDebugMode
+            ? 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.'
+            : '운세 계산 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
       });
     } on StateError catch (e) {
       setState(() {

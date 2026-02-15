@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
@@ -27,7 +28,9 @@ class _AppGateState extends State<AppGate> {
       _supabase = Supabase.instance.client;
       _authStream = _supabase!.auth.onAuthStateChange;
     } catch (_) {
-      _initError = 'SUPABASE_URL / SUPABASE_ANON_KEY dart-define가 필요합니다.';
+      _initError = kDebugMode
+          ? 'SUPABASE_URL / SUPABASE_ANON_KEY dart-define가 필요합니다.'
+          : '서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.';
     }
   }
 

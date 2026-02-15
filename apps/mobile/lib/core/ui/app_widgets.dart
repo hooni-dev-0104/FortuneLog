@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'app_theme.dart';
 
@@ -72,6 +73,7 @@ class StatusNotice extends StatelessWidget {
     final tone = isError ? AppTheme.danger : AppTheme.warning;
     final icon = isError ? Icons.error_outline : Icons.warning_amber_rounded;
     final label = isError ? '오류' : '주의';
+    final showDebugIds = kDebugMode && const bool.fromEnvironment('SHOW_DEBUG_IDS');
 
     return Container(
       width: double.infinity,
@@ -93,7 +95,7 @@ class StatusNotice extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tone)),
-          if (requestId != null && requestId!.isNotEmpty) ...[
+          if (showDebugIds && requestId != null && requestId!.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text('요청 ID: $requestId', style: Theme.of(context).textTheme.bodySmall),
           ],

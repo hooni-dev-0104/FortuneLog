@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -312,7 +313,9 @@ class _BirthInputPageState extends State<BirthInputPage> {
       _error = e.message;
       _lastRequestId = e.requestId;
     } on FormatException {
-      _error = 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.';
+      _error = kDebugMode
+          ? 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.'
+          : '운세 계산 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
     } catch (_) {
       _error = '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     }

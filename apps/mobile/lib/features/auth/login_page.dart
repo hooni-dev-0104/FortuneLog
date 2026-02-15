@@ -43,6 +43,13 @@ class _LoginPageState extends State<LoginPage> {
     return redirectTo;
   }
 
+  String _authRedirectMissingMessage() {
+    if (kDebugMode) {
+      return 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+    }
+    return '현재 환경에서 소셜 로그인을 시작할 수 없습니다.';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -137,7 +144,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+        _error = _authRedirectMissingMessage();
       });
     } on StateError catch (e) {
       if (!mounted) return;
@@ -175,7 +182,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+        _error = _authRedirectMissingMessage();
       });
     } on StateError catch (e) {
       if (!mounted) return;
@@ -213,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'AUTH_REDIRECT_TO가 비어 있습니다. .env 설정을 확인해주세요.';
+        _error = _authRedirectMissingMessage();
       });
     } on StateError catch (e) {
       if (!mounted) return;
