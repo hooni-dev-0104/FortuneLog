@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <!--
+    Starts engine-api as a plain Java "Application" run, which works well with IntelliJ's Spring Boot support.
+    .env is loaded via spring.config.import in services/engine-api/src/main/resources/application.yml.
+  -->
+  <configuration default="false" name="engine-api (Application)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.fortunelog.engine.EngineApiApplication" />
+    <module name="engine-api.main" />
+    <!-- Running from project root makes `./services/engine-api/.env` import resolve consistently. -->
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>
+
