@@ -343,43 +343,63 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _SocialIconButton(
-                onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
-                // Keep the original PNG to match the exact silhouette 1:1.
-                // Render close to native size to avoid blurry upscaling.
-                icon: Image.asset(
-                  'assets/auth/kakao.png',
-                  width: 34,
-                  height: 34,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.none,
-                  isAntiAlias: false,
-                ),
-                semanticsLabel: '카카오 로그인',
-                decorated: false,
-              ),
-              const SizedBox(width: 14),
-              _SocialIconButton(
-                onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
-                icon: SvgPicture.asset(
-                  'assets/auth/google.svg',
-                  width: 34,
-                  height: 34,
-                ),
-                semanticsLabel: '구글 로그인',
-                decorated: false,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
             children: [
               TextButton(onPressed: _loading ? null : _submitSignUp, child: const Text('회원가입')),
               const SizedBox(width: 6),
               TextButton(onPressed: _loading ? null : _sendPasswordReset, child: const Text('비밀번호 찾기')),
             ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(child: Divider(height: 1)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text('또는', style: Theme.of(context).textTheme.bodySmall),
+              ),
+              const Expanded(child: Divider(height: 1)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          PageSection(
+            title: '소셜 로그인',
+            subtitle: '간편하게 계속하세요.',
+            child: Column(
+              children: [
+                _SocialLoginButton(
+                  provider: OAuthProvider.kakao,
+                  label: '카카오로 계속하기',
+                  leading: Image.asset(
+                    'assets/auth/kakao.png',
+                    width: 22,
+                    height: 22,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.none,
+                    isAntiAlias: false,
+                  ),
+                  backgroundColor: const Color(0xFFFEE500),
+                  foregroundColor: Colors.black,
+                  borderColor: const Color(0xFFE7D200),
+                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
+                  loading: _loading,
+                ),
+                const SizedBox(height: 10),
+                _SocialLoginButton(
+                  provider: OAuthProvider.google,
+                  label: '구글로 계속하기',
+                  leading: SvgPicture.asset(
+                    'assets/auth/google.svg',
+                    width: 22,
+                    height: 22,
+                  ),
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF16211D),
+                  borderColor: const Color(0xFFD8E0DC),
+                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
+                  loading: _loading,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -396,58 +416,63 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   }
 }
 
-class _SocialIconButton extends StatelessWidget {
-  const _SocialIconButton({
+class _SocialLoginButton extends StatelessWidget {
+  const _SocialLoginButton({
+    required this.provider,
+    required this.label,
+    required this.leading,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.borderColor,
     required this.onPressed,
-    required this.icon,
-    required this.semanticsLabel,
-    this.decorated = true,
+    required this.loading,
   });
 
+  final OAuthProvider provider;
+  final String label;
+  final Widget leading;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final Color borderColor;
   final VoidCallback? onPressed;
-  final Widget icon;
-  final String semanticsLabel;
-  final bool decorated;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
+
     return Semantics(
       button: true,
-      label: semanticsLabel,
+      label: label,
       child: Opacity(
-        opacity: enabled ? 1 : 0.6,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              width: 56,
-              height: 56,
-              decoration: decorated
-                  ? BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE6E8EB)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x1A0B0F14),
-                          blurRadius: 14,
-                          offset: Offset(0, 8),
-                        ),
-                        BoxShadow(
-                          color: Color(0x0A0B0F14),
-                          blurRadius: 3,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    )
-                  : null,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Center(child: icon),
-              ),
+        opacity: enabled ? 1 : 0.65,
+        child: SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              backgroundColor: backgroundColor,
+              foregroundColor: foregroundColor,
+              side: BorderSide(color: borderColor),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            child: Row(
+              children: [
+                leading,
+                const SizedBox(width: 10),
+                Expanded(child: Text(label)),
+                if (loading)
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: foregroundColor.withValues(alpha: 0.8),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
