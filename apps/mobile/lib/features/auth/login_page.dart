@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../app/app_gate.dart';
+import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -144,41 +145,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       setState(() {
         _loading = false;
         _error = '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-      });
-    }
-  }
-
-  Future<void> _submitSignUp() async {
-    setState(() => _error = null);
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _loading = true);
-    try {
-      await _supabase().auth.signUp(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            emailRedirectTo: _redirectToForMobile(),
-          );
-      if (!mounted) return;
-      setState(() => _loading = false);
-      _showSnack('회원가입 요청 완료. 이메일 인증 후 로그인해주세요.');
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.message;
-      });
-    } on FormatException {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = _authRedirectMissingMessage();
-      });
-    } on StateError catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.message;
       });
     }
   }
@@ -344,7 +310,10 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           const SizedBox(height: 14),
           Row(
             children: [
-              TextButton(onPressed: _loading ? null : _submitSignUp, child: const Text('회원가입')),
+              TextButton(
+                onPressed: _loading ? null : () => Navigator.pushNamed(context, SignupPage.routeName),
+                child: const Text('회원가입'),
+              ),
               const SizedBox(width: 6),
               TextButton(onPressed: _loading ? null : _sendPasswordReset, child: const Text('비밀번호 찾기')),
             ],

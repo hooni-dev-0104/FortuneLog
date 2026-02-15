@@ -7,6 +7,7 @@ import 'core/ui/app_theme.dart';
 
 import 'features/app/app_gate.dart';
 import 'features/auth/login_page.dart';
+import 'features/auth/signup_page.dart';
 import 'features/birth/birth_input_page.dart';
 import 'features/birth/birth_profile_list_page.dart';
 import 'features/devtest/dev_test_page.dart';
@@ -74,6 +75,7 @@ class _FortuneLogAppState extends State<FortuneLogApp> {
         AppGate.routeName: (_) => const AppGate(),
         OnboardingPage.routeName: (_) => const OnboardingPage(),
         LoginPage.routeName: (_) => const LoginPage(),
+        SignupPage.routeName: (_) => const SignupPage(),
         BirthInputPage.routeName: (_) => const BirthInputPage(),
         BirthProfileListPage.routeName: (_) => const BirthProfileListPage(),
         HomePage.routeName: (_) => const HomePage(),
