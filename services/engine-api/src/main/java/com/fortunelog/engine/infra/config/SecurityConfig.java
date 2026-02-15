@@ -36,8 +36,12 @@ public class SecurityConfig {
             Environment env
     ) throws Exception {
         boolean insecureJwt = Boolean.parseBoolean(env.getProperty("ENGINE_INSECURE_JWT", "false"));
+        boolean authDebug = Boolean.parseBoolean(env.getProperty("ENGINE_AUTH_DEBUG", "false"));
         if (insecureJwt) {
             log.warn("ENGINE_INSECURE_JWT=true: JWT signature verification is DISABLED (local dev only).");
+        }
+        if (authDebug) {
+            log.warn("ENGINE_AUTH_DEBUG=true: auth failure responses will include exception details (local dev only).");
         }
 
         http
@@ -47,8 +51,20 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             String requestId = requestId(request);
-                            log.warn("auth failed (requestId={}): {}", requestId, authException.toString());
-                            writeAuthError(objectMapper, request, response, 401, "UNAUTHORIZED", "authentication required");
+                            log.warn("auth failed (requestId={}, path={}): {}", requestId, request.getRequestURI(), authException.toString());
+                            String message = "authentication required";
+                            if (authDebug) {
+                                String detail = authException.getClass().getSimpleName();
+                                if (authException.getMessage() != null && !authException.getMessage().isBlank()) {
+                                    detail += ": " + authException.getMessage();
+                                }
+                                // Keep it short to avoid dumping huge traces into the client response.
+                                if (detail.length() > 200) {
+                                    detail = detail.substring(0, 200);
+                                }
+                                message = message + " (" + detail + ")";
+                            }
+                            writeAuthError(objectMapper, request, response, 401, "UNAUTHORIZED", message);
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeAuthError(objectMapper, request, response, 403, "FORBIDDEN", "access denied")
