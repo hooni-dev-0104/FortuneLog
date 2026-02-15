@@ -112,7 +112,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnackBar(context, message);
   }
 
   Future<void> _submitEmailLogin() async {

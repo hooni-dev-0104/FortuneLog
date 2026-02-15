@@ -202,6 +202,8 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                         description: '새 프로필을 만들어 사주 계산을 시작할 수 있습니다.',
                         actionText: '새로 만들기',
                         onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName).then((_) => _refresh()),
+                        icon: Icons.person_outline,
+                        tone: BadgeTone.neutral,
                       ),
                     ] else ...[
                       for (final p in profiles) ...[

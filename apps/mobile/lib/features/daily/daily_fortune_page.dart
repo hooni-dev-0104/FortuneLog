@@ -227,12 +227,16 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
                       description: '먼저 출생정보를 입력하고 사주 계산을 완료해주세요.',
                       actionText: '출생정보 입력',
                       onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                      icon: Icons.auto_graph_outlined,
+                      tone: BadgeTone.warning,
                     )
                   : EmptyState(
                       title: '오늘 운세가 아직 없습니다',
                       description: '오늘 기준 데이터가 없어 지금 바로 생성이 필요합니다.',
                       actionText: '오늘 운세 생성',
                       onAction: _generateToday,
+                      icon: Icons.today_outlined,
+                      tone: BadgeTone.neutral,
                     ),
               const SizedBox(height: 10),
               // Even when the failure reason isn't the "missing chart" message,

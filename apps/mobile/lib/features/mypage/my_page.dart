@@ -53,7 +53,7 @@ class _MyPageState extends State<MyPage> {
       Navigator.pushNamedAndRemoveUntil(context, LoginPage.routeName, (route) => false);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('로그아웃에 실패했습니다. 다시 시도해주세요.')));
+      showAppSnackBar(context, '로그아웃에 실패했습니다. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _loggingOut = false);
     }

@@ -144,21 +144,44 @@ class EmptyState extends StatelessWidget {
     required this.description,
     required this.actionText,
     required this.onAction,
+    this.icon = Icons.inbox_outlined,
+    this.tone = BadgeTone.neutral,
   });
 
   final String title;
   final String description;
   final String actionText;
   final VoidCallback onAction;
+  final IconData icon;
+  final BadgeTone tone;
+
+  (Color, Color) _toneColors() {
+    return switch (tone) {
+      BadgeTone.success => (const Color(0xFF096B52), const Color(0xFFE8F5F1)),
+      BadgeTone.warning => (const Color(0xFF8A5A00), const Color(0xFFFFF3DE)),
+      BadgeTone.danger => (const Color(0xFF9A3025), const Color(0xFFFCECEB)),
+      BadgeTone.neutral => (const Color(0xFF42514B), Colors.white),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
+    final (iconColor, iconBg) = _toneColors();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Icon(Icons.inbox_outlined, size: 36),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Icon(icon, size: 28, color: iconColor),
+            ),
             const SizedBox(height: 10),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
@@ -170,6 +193,19 @@ class EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+void showAppSnackBar(BuildContext context, String message) {
+  final m = ScaffoldMessenger.of(context);
+  m.hideCurrentSnackBar();
+  m.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      duration: const Duration(seconds: 2),
+    ),
+  );
 }
 
 class PageLoading extends StatelessWidget {
