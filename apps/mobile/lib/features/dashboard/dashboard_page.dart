@@ -248,6 +248,8 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 10),
           _AuspiciousStarsSection(chart: _chart!),
           const SizedBox(height: 10),
+          _InauspiciousStarsSection(chart: _chart!),
+          const SizedBox(height: 10),
           PageSection(
             title: '오행 분포',
             subtitle: '시각 요소와 수치를 함께 제공합니다.',
@@ -367,6 +369,104 @@ class _AuspiciousStarsSection extends StatelessWidget {
           ],
           Text(
             '길신은 참고용이며, 전체 사주 맥락에 따라 해석이 달라질 수 있습니다.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                SajuGuidePage.routeName,
+                arguments: chart,
+              ),
+              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              label: const Text('용어/설명 보기'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InauspiciousStarsSection extends StatelessWidget {
+  const _InauspiciousStarsSection({required this.chart});
+
+  final Map<String, String> chart;
+
+  @override
+  Widget build(BuildContext context) {
+    final day = chart['day'] ?? '';
+    final dayStem = SajuStars.stemOf(day);
+
+    final pillars = <String>[
+      chart['year'] ?? '',
+      chart['month'] ?? '',
+      chart['day'] ?? '',
+      chart['hour'] ?? '',
+    ];
+    final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
+
+    final yangInTarget = dayStem == null ? null : SajuStars.yangInTarget(dayStem);
+    final hasYangIn = yangInTarget != null && SajuStars.hasAnyBranch(branches, yangInTarget);
+
+    final hasGueGang = SajuStars.isGueGangDayPillar(day);
+    final hasSipAkDaePae = SajuStars.isSipAkDaePaeDayPillar(day);
+
+    final hyeonChimCount = SajuStars.hyeonChimCount(pillars);
+    final hasHyeonChim = hyeonChimCount >= 2;
+
+    final stars = <_StarCardData>[
+      if (hasYangIn)
+        _StarCardData(
+          name: '양인살',
+          description: '강한 추진력/에너지를 뜻하는 것으로 소개되며, 과열과 충돌에 주의하라고 풀이되기도 합니다.',
+          hint: yangInTarget,
+        ),
+      if (hasGueGang)
+        const _StarCardData(
+          name: '괴강살',
+          description: '강한 기질/독립성으로 설명되며, 장단이 뚜렷하게 나타난다고 풀이되기도 합니다.',
+        ),
+      if (hasSipAkDaePae)
+        const _StarCardData(
+          name: '십악대패',
+          description: '흐름이 거칠어지기 쉬운 날주로 소개되며, 리스크 관리가 중요하다고 풀이되기도 합니다.',
+        ),
+      if (hasHyeonChim)
+        _StarCardData(
+          name: '현침살',
+          description: '말/표현이 날카롭게 비칠 수 있다고 설명되며, 정밀함이 강점이 되기도 합니다.',
+          hint: '$hyeonChimCount',
+        ),
+    ];
+
+    return PageSection(
+      title: '흉살',
+      subtitle: '신살 중 “주의가 필요한 기운”으로 자주 소개되는 요소',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (stars.isEmpty) ...[
+            Text(
+              '현재 계산 가능한 흉살이 없습니다.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+          ] else ...[
+            for (final s in stars) ...[
+              _StarRow(
+                name: s.name,
+                hint: s.hint,
+                description: s.description,
+              ),
+              if (s != stars.last) const SizedBox(height: 10),
+            ],
+            const SizedBox(height: 10),
+          ],
+          Text(
+            '흉살이 있다고 해서 “무조건 나쁜 일”이 생긴다는 뜻은 아니며, 해석은 전체 맥락에 따라 달라질 수 있습니다.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),

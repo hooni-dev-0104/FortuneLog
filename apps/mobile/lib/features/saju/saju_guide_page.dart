@@ -122,6 +122,152 @@ class SajuGuidePage extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          PageSection(
+            title: '신살의 흉살(凶煞)',
+            subtitle: '사주 해석에서 “주의가 필요한 기운”으로 자주 설명됩니다.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StarGuideRow(
+                  title: '양인살',
+                  description: '강한 추진력/에너지로 소개되며, 과열과 충돌에 주의하라고 풀이되기도 합니다.',
+                  status: _statusForYangIn(chart),
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '백호살',
+                  description: '큰 변화/사고수로 연결해 풀이되는 경우가 있어, 생활 리스크 관리로 해석하기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '괴강살',
+                  description: '기질이 강하게 드러나는 날주로 소개되며, 장단이 뚜렷하다고 풀이되기도 합니다.',
+                  status: _statusForGueGang(chart),
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '홍염살',
+                  description: '매력/호감/관계 이슈와 연결해 해석하는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '고진살',
+                  description: '고독/고립감으로 연결해 풀이하는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '과숙살',
+                  description: '관계의 단절감/혼자 감당하는 기운으로 풀이되는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '격각살',
+                  description: '부딪힘/충돌로 풀이되기도 하며, 안전·규칙을 강조하는 해석이 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '암금적살',
+                  description: '대외적으로 드러나지 않는 갈등/손실로 해석하는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '귀문관살',
+                  description: '예민함/몰입으로 풀이되기도 하며, 마음 관리가 중요하다고 해석하기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '급각살',
+                  description: '급작스러운 변수로 해석하는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '단교관살',
+                  description: '관계의 단절/끊김으로 풀이되는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '곡각살',
+                  description: '말/상처/굴곡으로 연결해 풀이하는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '천라지망',
+                  description: '답답함/제약으로 풀이되기도 하며, 장기적으로 정리/정돈이 필요하다고 해석하기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '대모살',
+                  description: '가족/양육/돌봄 이슈와 연결해 풀이되는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '구교살',
+                  description: '구설/오해로 연결해 풀이하는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '십악대패',
+                  description: '흐름이 거칠어지기 쉬운 날주로 소개되며, 리스크 관리가 중요하다고 풀이되기도 합니다.',
+                  status: _statusForSipAkDaePae(chart),
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '고란과곡살',
+                  description: '외로움/고립으로 풀이되기도 하며, 관계의 균형을 강조하기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '평두살',
+                  description: '막힘/꺾임으로 풀이되는 경우가 있습니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '현침살',
+                  description: '표현이 날카롭게 비칠 수 있다고 풀이되기도 하며, 정밀함이 강점이 되기도 합니다.',
+                  status: _statusForHyeonChim(chart),
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '장형살',
+                  description: '벌/형벌/규정과 연결해 풀이되는 경우가 있어, 규칙 준수를 강조하기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '상문살',
+                  description: '상실/이별로 풀이되는 경우가 있어, 마음 관리를 권하기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 10),
+                _StarGuideRow(
+                  title: '조객살',
+                  description: '외부 방문/변동 이슈로 풀이되기도 합니다.',
+                  status: StarCalcStatus.todo,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '주의: 흉살이 있어도 “무조건 나쁜 일”이 생긴다는 뜻은 아니고, 전체 사주 맥락에 따라 해석이 달라질 수 있습니다.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -157,6 +303,49 @@ class SajuGuidePage extends StatelessWidget {
     ].whereType<String>();
     final present = branches.contains(target);
     return present ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForYangIn(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    if (dayStem == null) return StarCalcStatus.none;
+    final target = SajuStars.yangInTarget(dayStem);
+    if (target == null) return StarCalcStatus.none;
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    final present = branches.contains(target);
+    return present ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForGueGang(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final day = chart['day'] ?? '';
+    if (day.trim().length < 2) return StarCalcStatus.none;
+    return SajuStars.isGueGangDayPillar(day) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForSipAkDaePae(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final day = chart['day'] ?? '';
+    if (day.trim().length < 2) return StarCalcStatus.none;
+    return SajuStars.isSipAkDaePaeDayPillar(day) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForHyeonChim(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final pillars = <String>[
+      chart['year'] ?? '',
+      chart['month'] ?? '',
+      chart['day'] ?? '',
+      chart['hour'] ?? '',
+    ];
+    final c = SajuStars.hyeonChimCount(pillars);
+    // In many references, it is treated as "present" when 2+ relevant elements exist.
+    return c >= 2 ? StarCalcStatus.present : StarCalcStatus.absent;
   }
 }
 
@@ -254,4 +443,3 @@ class _FourPillarsMeaningTable extends StatelessWidget {
     );
   }
 }
-

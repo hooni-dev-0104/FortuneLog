@@ -53,6 +53,55 @@ class SajuStars {
   static List<String> cheonEulTargets(String dayStem) => _cheonEul[dayStem] ?? const [];
   static String? munChangTarget(String dayStem) => _munChang[dayStem];
 
+  // 양인살: day stem -> 1 branch (간단 버전).
+  // Source: widely-used tables in Korean 명리 references.
+  static const Map<String, String> _yangIn = {
+    '갑': '묘',
+    '을': '인',
+    '병': '오',
+    '정': '사',
+    '무': '오',
+    '기': '사',
+    '경': '유',
+    '신': '신',
+    '임': '자',
+    '계': '해',
+  };
+
+  // 괴강살: day pillar is one of these (narrow/common variant).
+  static const Set<String> _gueGangDayPillars = {'경진', '경술', '임진', '임술'};
+
+  // 십악대패: day pillar is one of these 10.
+  static const Set<String> _sipAkDaePaeDayPillars = {
+    '갑진',
+    '을사',
+    '병신',
+    '정해',
+    '무술',
+    '기축',
+    '경진',
+    '신사',
+    '임신',
+    '계해',
+  };
+
+  static String? yangInTarget(String dayStem) => _yangIn[dayStem];
+  static bool isGueGangDayPillar(String dayPillar) => _gueGangDayPillars.contains(dayPillar.trim());
+  static bool isSipAkDaePaeDayPillar(String dayPillar) => _sipAkDaePaeDayPillars.contains(dayPillar.trim());
+
+  // 현침살(간단): 甲/辛/卯/午/申 요소가 2개 이상이면 성립으로 소개되는 경우가 많음.
+  // We compute by counting stems+branches matches across all four pillars.
+  static int hyeonChimCount(Iterable<String> pillars) {
+    int count = 0;
+    for (final p in pillars) {
+      final s = stemOf(p);
+      final b = branchOf(p);
+      if (s == '갑' || s == '신') count++;
+      if (b == '묘' || b == '오' || b == '신') count++;
+    }
+    return count;
+  }
+
   static bool hasAnyBranch(Iterable<String> branches, String target) {
     for (final b in branches) {
       if (b == target) return true;
