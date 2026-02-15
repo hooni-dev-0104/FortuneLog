@@ -302,9 +302,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 12),
-          Text('로그인하고 계속하기', style: Theme.of(context).textTheme.headlineSmall),
+          Text('오늘의 흐름을 이어볼까요', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text('로그인하면 오늘 운세와 리포트를 이어서 확인할 수 있어요.', style: Theme.of(context).textTheme.bodyMedium),
+          Text('로그인하고 금전·연애·일·건강의 흐름을 한 번에 확인하세요.', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 16),
           if (_error != null) ...[
             StatusNotice.error(message: _error!, requestId: 'auth-login-001'),
