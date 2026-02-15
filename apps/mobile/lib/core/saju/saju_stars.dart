@@ -6,6 +6,32 @@
 class SajuStars {
   static const _stems = <String>['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
   static const _branches = <String>['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+  static const _stemHanja = <String, String>{
+    '갑': '甲',
+    '을': '乙',
+    '병': '丙',
+    '정': '丁',
+    '무': '戊',
+    '기': '己',
+    '경': '庚',
+    '신': '辛',
+    '임': '壬',
+    '계': '癸',
+  };
+  static const _branchHanja = <String, String>{
+    '자': '子',
+    '축': '丑',
+    '인': '寅',
+    '묘': '卯',
+    '진': '辰',
+    '사': '巳',
+    '오': '午',
+    '미': '未',
+    '신': '申',
+    '유': '酉',
+    '술': '戌',
+    '해': '亥',
+  };
 
   static String? stemOf(String pillar) {
     final p = pillar.trim();
@@ -19,6 +45,19 @@ class SajuStars {
     if (p.length < 2) return null;
     final b = p.substring(1, 2);
     return _branches.contains(b) ? b : null;
+  }
+
+  static String? stemHanja(String stem) => _stemHanja[stem];
+  static String? branchHanja(String branch) => _branchHanja[branch];
+
+  static String? pillarHanja(String pillar) {
+    final s = stemOf(pillar);
+    final b = branchOf(pillar);
+    if (s == null || b == null) return null;
+    final hs = stemHanja(s);
+    final hb = branchHanja(b);
+    if (hs == null || hb == null) return null;
+    return '$hs$hb';
   }
 
   // 천을귀인: day stem -> 2 branches

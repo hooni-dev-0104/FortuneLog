@@ -231,17 +231,33 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 10),
           PageSection(
-            title: '사주 4주',
-            subtitle: '연/월/일/시 기준',
+            title: '만세력(사주팔자)',
+            subtitle: '한글/한문(漢字) 표기',
             child: Row(
               children: [
-                _PillarCard(label: '연주', value: _chart!['year'] ?? '-'),
+                _PillarCard(
+                  label: '연주',
+                  value: _chart!['year'] ?? '-',
+                  hanja: SajuStars.pillarHanja(_chart!['year'] ?? ''),
+                ),
                 const SizedBox(width: 8),
-                _PillarCard(label: '월주', value: _chart!['month'] ?? '-'),
+                _PillarCard(
+                  label: '월주',
+                  value: _chart!['month'] ?? '-',
+                  hanja: SajuStars.pillarHanja(_chart!['month'] ?? ''),
+                ),
                 const SizedBox(width: 8),
-                _PillarCard(label: '일주', value: _chart!['day'] ?? '-'),
+                _PillarCard(
+                  label: '일주',
+                  value: _chart!['day'] ?? '-',
+                  hanja: SajuStars.pillarHanja(_chart!['day'] ?? ''),
+                ),
                 const SizedBox(width: 8),
-                _PillarCard(label: '시주', value: _chart!['hour'] ?? '-'),
+                _PillarCard(
+                  label: '시주',
+                  value: _chart!['hour'] ?? '-',
+                  hanja: SajuStars.pillarHanja(_chart!['hour'] ?? ''),
+                ),
               ],
             ),
           ),
@@ -528,10 +544,11 @@ class _StarRow extends StatelessWidget {
 }
 
 class _PillarCard extends StatelessWidget {
-  const _PillarCard({required this.label, required this.value});
+  const _PillarCard({required this.label, required this.value, this.hanja});
 
   final String label;
   final String value;
+  final String? hanja;
 
   @override
   Widget build(BuildContext context) {
@@ -548,6 +565,10 @@ class _PillarCard extends StatelessWidget {
             Text(label, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 4),
             Text(value, style: Theme.of(context).textTheme.titleMedium),
+            if (hanja != null && hanja!.trim().isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(hanja!, style: Theme.of(context).textTheme.bodySmall),
+            ],
           ],
         ),
       ),
