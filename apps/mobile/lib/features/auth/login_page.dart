@@ -17,12 +17,14 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   StreamSubscription<AuthState>? _authSubscription;
+  Timer? _oauthWatchdog;
+  bool _oauthInFlight = false;
   bool _loading = false;
   String? _error;
 
@@ -53,11 +55,14 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     try {
       _authSubscription = _supabase().auth.onAuthStateChange.listen((event) {
         if (!mounted) return;
         if (event.event == AuthChangeEvent.signedIn) {
+          _oauthInFlight = false;
+          _oauthWatchdog?.cancel();
           setState(() {
             _loading = false;
             _error = null;
@@ -75,8 +80,31 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When a user closes the in-app OAuth screen (e.g. taps "Done"),
+    // we typically get a resume without a signedIn event. In that case,
+    // unblock the UI so they can retry.
+    if (state != AppLifecycleState.resumed) return;
+    if (!_oauthInFlight) return;
+
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      final session = _supabase().auth.currentSession;
+      if (session != null) return;
+
+      _oauthInFlight = false;
+      _oauthWatchdog?.cancel();
+      setState(() => _loading = false);
+      // Don't show as an "error" box. Cancellation is a normal path.
+      _showSnack('로그인이 취소되었습니다.');
+    });
+  }
+
+  @override
   void dispose() {
     _authSubscription?.cancel();
+    _oauthWatchdog?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -198,6 +226,19 @@ class _LoginPageState extends State<LoginPage> {
       _loading = true;
       _error = null;
     });
+    _oauthInFlight = true;
+    _oauthWatchdog?.cancel();
+    _oauthWatchdog = Timer(const Duration(seconds: 30), () {
+      if (!mounted) return;
+      if (!_oauthInFlight) return;
+
+      final session = _supabase().auth.currentSession;
+      if (session != null) return;
+
+      _oauthInFlight = false;
+      setState(() => _loading = false);
+      _showSnack('로그인이 완료되지 않았습니다. 다시 시도해주세요.');
+    });
 
     try {
       final kakaoScopes =
@@ -212,24 +253,32 @@ class _LoginPageState extends State<LoginPage> {
           );
     } on AuthException catch (e) {
       if (!mounted) return;
+      _oauthInFlight = false;
+      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = e.message;
       });
     } on FormatException {
       if (!mounted) return;
+      _oauthInFlight = false;
+      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = _authRedirectMissingMessage();
       });
     } on StateError catch (e) {
       if (!mounted) return;
+      _oauthInFlight = false;
+      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = e.message;
       });
     } catch (_) {
       if (!mounted) return;
+      _oauthInFlight = false;
+      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = '소셜 로그인 시작에 실패했습니다.';
