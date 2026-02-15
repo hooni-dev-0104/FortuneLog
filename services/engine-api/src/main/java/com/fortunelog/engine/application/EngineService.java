@@ -6,6 +6,7 @@ import com.fortunelog.engine.application.dto.GenerateReportRequest;
 import com.fortunelog.engine.domain.LunarDateConverter;
 import com.fortunelog.engine.domain.SajuCalculator;
 import com.fortunelog.engine.domain.model.ChartResult;
+import com.fortunelog.engine.domain.model.DailyCategoryDetail;
 import com.fortunelog.engine.domain.model.DailyFortuneResult;
 import com.fortunelog.engine.domain.model.ReportResult;
 import com.fortunelog.engine.infra.supabase.SupabasePersistenceService;
@@ -104,15 +105,49 @@ public class EngineService {
     }
 
     public DailyFortuneResult generateDailyFortune(String userId, GenerateDailyFortuneRequest request) {
+        // MVP: canned content. Next iteration should use chart/five-elements + target date.
         Map<String, String> category = Map.of(
-                "love", "대화의 온도를 낮추면 관계가 안정됩니다.",
-                "work", "집중 시간대를 오전에 배치하세요.",
-                "money", "소액 반복 지출 점검이 유리합니다.",
-                "health", "수면 리듬을 우선 복구하세요."
+                "money", "지출 관리가 성과로 이어지는 하루입니다.",
+                "love", "관계는 속도보다 톤 조절이 중요합니다.",
+                "work", "오전 집중, 오후 정리가 유리합니다.",
+                "health", "컨디션은 수면/수분이 좌우합니다."
         );
+
+        Map<String, DailyCategoryDetail> details = Map.of(
+                "money", new DailyCategoryDetail(
+                        72,
+                        "소액 반복 지출이 누적되기 쉬워요.",
+                        List.of("필수 지출만 남기면 마음이 편해집니다.", "작은 절약이 하루의 주도권을 줍니다."),
+                        List.of("충동 구매", "구독/배달 같은 자동 지출"),
+                        List.of("오늘 예산 상한 1개 정하기", "구독 1개 점검하기")
+                ),
+                "love", new DailyCategoryDetail(
+                        70,
+                        "연애/결혼 모두 '말투'가 핵심입니다.",
+                        List.of("상대 입장을 요약해 주면 갈등이 줄어듭니다.", "연락 타이밍은 '짧게, 자주'가 좋아요."),
+                        List.of("단정적인 표현", "감정 누적 후 폭발"),
+                        List.of("요청은 한 문장으로", "대화 전 10초 멈춤")
+                ),
+                "work", new DailyCategoryDetail(
+                        78,
+                        "가장 잘 풀리는 시간대를 선점하세요.",
+                        List.of("짧은 집중 블록이 성과를 만듭니다.", "정리 시간이 있으면 피로가 줄어요."),
+                        List.of("멀티태스킹", "오후에 중요한 의사결정"),
+                        List.of("오전 90분 집중 블록", "오늘 Top3만 완료")
+                ),
+                "health", new DailyCategoryDetail(
+                        68,
+                        "회복이 곧 생산성입니다.",
+                        List.of("가벼운 움직임이 머리를 맑게 해요.", "수분을 챙기면 피로가 덜합니다."),
+                        List.of("수면 부족", "카페인 과다"),
+                        List.of("물 2잔 먼저", "저녁 20분 산책")
+                )
+        );
+
+        String summary = "실행력은 좋지만, 컨디션과 지출 관리가 관건입니다.";
         List<String> actions = List.of(
-                "중요한 결정은 오후로 미루기",
-                "오늘의 지출 상한 정하기",
+                "오늘 예산 상한 정하기",
+                "오전 90분 집중 블록 만들기",
                 "저녁 20분 산책"
         );
 
@@ -123,7 +158,9 @@ public class EngineService {
                 Map.of(
                         "date", request.date(),
                         "score", 74,
+                        "summary", summary,
                         "category", category,
+                        "categoryDetails", details,
                         "actions", actions
                 ),
                 false,
@@ -135,6 +172,8 @@ public class EngineService {
                 LocalDate.parse(request.date()),
                 74,
                 category,
+                details,
+                summary,
                 actions
         );
     }

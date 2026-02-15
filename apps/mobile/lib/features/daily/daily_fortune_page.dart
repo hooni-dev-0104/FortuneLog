@@ -258,7 +258,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
           const SizedBox(height: 10),
           PageSection(
             title: '카테고리',
-            child: _CategoryList(category: _content!['category'] as Map<String, dynamic>?),
+            child: _CategoryList(category: _content),
           ),
           const SizedBox(height: 10),
           PageSection(
@@ -283,17 +283,105 @@ class _CategoryList extends StatelessWidget {
       return const Text('카테고리 정보가 없습니다.');
     }
 
-    final entries = c.entries.toList();
+    // New format: categoryDetails.money|love|work|health with score/summary/good/cautions/actions.
+    final details = c['categoryDetails'] as Map<String, dynamic>?;
+    if (details != null && details.isNotEmpty) {
+      return Column(
+        children: [
+          _CategoryCard(label: '금전', icon: Icons.payments_outlined, data: details['money'] as Map<String, dynamic>?),
+          const SizedBox(height: 10),
+          _CategoryCard(label: '연애/결혼', icon: Icons.favorite_border, data: details['love'] as Map<String, dynamic>?),
+          const SizedBox(height: 10),
+          _CategoryCard(label: '직업', icon: Icons.work_outline, data: details['work'] as Map<String, dynamic>?),
+          const SizedBox(height: 10),
+          _CategoryCard(label: '건강', icon: Icons.health_and_safety_outlined, data: details['health'] as Map<String, dynamic>?),
+        ],
+      );
+    }
+
+    // Backward compatible format: category.money|love|work|health as short strings.
+    final entries = c.entries.where((e) => e.value is String).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: entries
-          .map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text('${e.key}: ${e.value}'),
-            ),
-          )
+          .map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('${e.key}: ${e.value}'),
+              ))
           .toList(),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({required this.label, required this.icon, required this.data});
+
+  final String label;
+  final IconData icon;
+  final Map<String, dynamic>? data;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data ?? const <String, dynamic>{};
+    final score = d['score'];
+    final summary = d['summary']?.toString().trim();
+    final good = (d['good'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final cautions = (d['cautions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final actions = (d['actions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+
+    return PageSection(
+      title: label,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          StatusBadge(
+            label: score is int ? '${score}점' : '-',
+            tone: BadgeTone.neutral,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (summary != null && summary.isNotEmpty) ...[
+            Text(summary, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 10),
+          ],
+          if (good.isNotEmpty) ...[
+            Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            for (final g in good) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $g')),
+            const SizedBox(height: 10),
+          ],
+          if (cautions.isNotEmpty) ...[
+            Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            for (final w in cautions) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $w')),
+            const SizedBox(height: 10),
+          ],
+          if (actions.isNotEmpty) ...[
+            Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            for (final a in actions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Icon(Icons.check_circle_outline, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(a)),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

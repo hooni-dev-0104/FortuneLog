@@ -15,14 +15,12 @@ class SajuCalculatorTest {
     void shouldUsePreviousYearPillarBeforeIpchunBoundary() {
         SajuCalculator.SajuChart before = calculator.calculate(
                 LocalDateTime.of(2026, 2, 4, 9, 59),
-                false,
-                "solar"
+                false
         );
 
         SajuCalculator.SajuChart after = calculator.calculate(
                 LocalDateTime.of(2026, 2, 4, 10, 0),
-                false,
-                "solar"
+                false
         );
 
         assertEquals("을사", before.chart().get("year"));
@@ -33,19 +31,9 @@ class SajuCalculatorTest {
     void shouldCalculateHourAsUnknownWhenUnknownBirthTime() {
         SajuCalculator.SajuChart chart = calculator.calculate(
                 LocalDateTime.of(2026, 9, 1, 12, 0),
-                true,
-                "solar"
+                true
         );
 
         assertEquals("미상", chart.chart().get("hour"));
-    }
-
-    @Test
-    void shouldRejectLunarCalendarInV1() {
-        assertThrows(IllegalArgumentException.class, () -> calculator.calculate(
-                LocalDateTime.of(2026, 9, 1, 12, 0),
-                false,
-                "lunar"
-        ));
     }
 }

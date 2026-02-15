@@ -130,7 +130,9 @@ class DailyFortuneResponseDto {
   final String userId;
   final String date;
   final int score;
+  final String? summary;
   final Map<String, String> category;
+  final Map<String, dynamic>? categoryDetails;
   final List<String> actions;
 
   const DailyFortuneResponseDto({
@@ -138,7 +140,9 @@ class DailyFortuneResponseDto {
     required this.userId,
     required this.date,
     required this.score,
+    required this.summary,
     required this.category,
+    required this.categoryDetails,
     required this.actions,
   });
 
@@ -148,9 +152,11 @@ class DailyFortuneResponseDto {
       userId: json['userId'] as String,
       date: json['date'] as String,
       score: json['score'] as int,
+      summary: json['summary'] as String?,
       category: (json['category'] as Map<String, dynamic>).map(
         (key, value) => MapEntry(key, value as String),
       ),
+      categoryDetails: json['categoryDetails'] as Map<String, dynamic>?,
       actions: List<String>.from(json['actions'] as List<dynamic>),
     );
   }

@@ -9,6 +9,8 @@ public record DailyFortuneResult(
         LocalDate date,
         int score,
         Map<String, String> category,
+        Map<String, DailyCategoryDetail> categoryDetails,
+        String summary,
         List<String> actions
 ) {
 }

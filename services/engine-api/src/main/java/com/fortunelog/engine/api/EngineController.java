@@ -78,7 +78,9 @@ public class EngineController {
                 "userId", result.userId(),
                 "date", result.date().toString(),
                 "score", result.score(),
+                "summary", result.summary(),
                 "category", result.category(),
+                "categoryDetails", result.categoryDetails(),
                 "actions", result.actions()
         );
     }
