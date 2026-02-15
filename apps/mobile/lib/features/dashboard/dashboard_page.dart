@@ -246,7 +246,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 10),
-          _NoblemanSection(chart: _chart!),
+          _AuspiciousStarsSection(chart: _chart!),
           const SizedBox(height: 10),
           PageSection(
             title: '오행 분포',
@@ -284,8 +284,20 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-class _NoblemanSection extends StatelessWidget {
-  const _NoblemanSection({required this.chart});
+class _StarCardData {
+  const _StarCardData({
+    required this.name,
+    required this.description,
+    this.hint,
+  });
+
+  final String name;
+  final String description;
+  final String? hint;
+}
+
+class _AuspiciousStarsSection extends StatelessWidget {
+  const _AuspiciousStarsSection({required this.chart});
 
   final Map<String, String> chart;
 
@@ -295,7 +307,7 @@ class _NoblemanSection extends StatelessWidget {
     final dayStem = SajuStars.stemOf(day);
     if (dayStem == null) {
       return const PageSection(
-        title: '귀인',
+        title: '길신',
         subtitle: '참고용',
         child: Text('귀인 정보를 계산할 수 없습니다.'),
       );
@@ -315,28 +327,46 @@ class _NoblemanSection extends StatelessWidget {
     final munChangTarget = SajuStars.munChangTarget(dayStem);
     final hasMunChang = munChangTarget != null && SajuStars.hasAnyBranch(branches, munChangTarget);
 
+    final stars = <_StarCardData>[
+      if (hasCheonEul)
+        _StarCardData(
+          name: '천을귀인',
+          description: '도움/지원의 기운으로 자주 설명됩니다.',
+          hint: cheonEulTargets.isEmpty ? null : cheonEulTargets.join(', '),
+        ),
+      if (hasMunChang)
+        _StarCardData(
+          name: '문창귀인',
+          description: '공부/문서/표현력의 기운으로 자주 설명됩니다.',
+          hint: munChangTarget,
+        ),
+    ];
+
     return PageSection(
-      title: '귀인',
-      subtitle: '참고용',
+      title: '길신',
+      subtitle: '신살 중 “도와주는 기운”으로 자주 소개되는 요소',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StarRow(
-            name: '천을귀인',
-            present: hasCheonEul,
-            hint: cheonEulTargets.isEmpty ? '-' : cheonEulTargets.join(', '),
-            description: '도움/지원의 기운으로 자주 설명됩니다.',
-          ),
-          const SizedBox(height: 10),
-          _StarRow(
-            name: '문창귀인',
-            present: hasMunChang,
-            hint: munChangTarget ?? '-',
-            description: '공부/문서/표현력의 기운으로 자주 설명됩니다.',
-          ),
-          const SizedBox(height: 8),
+          if (stars.isEmpty) ...[
+            Text(
+              '현재 계산 가능한 길신이 없습니다.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+          ] else ...[
+            for (final s in stars) ...[
+              _StarRow(
+                name: s.name,
+                hint: s.hint,
+                description: s.description,
+              ),
+              if (s != stars.last) const SizedBox(height: 10),
+            ],
+            const SizedBox(height: 10),
+          ],
           Text(
-            '귀인은 사주 해석의 한 요소이며, 상황에 따라 의미가 달라질 수 있습니다.',
+            '길신은 참고용이며, 전체 사주 맥락에 따라 해석이 달라질 수 있습니다.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -361,14 +391,12 @@ class _NoblemanSection extends StatelessWidget {
 class _StarRow extends StatelessWidget {
   const _StarRow({
     required this.name,
-    required this.present,
-    required this.hint,
+    this.hint,
     required this.description,
   });
 
   final String name;
-  final bool present;
-  final String hint;
+  final String? hint;
   final String description;
 
   @override
@@ -383,11 +411,6 @@ class _StarRow extends StatelessWidget {
               Row(
                 children: [
                   Text(name, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(width: 8),
-                  StatusBadge(
-                    label: present ? '있음' : '없음',
-                    tone: present ? BadgeTone.success : BadgeTone.neutral,
-                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -395,8 +418,10 @@ class _StarRow extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
-        StatusBadge(label: hint, tone: BadgeTone.neutral),
+        if (hint != null && hint!.trim().isNotEmpty) ...[
+          const SizedBox(width: 12),
+          StatusBadge(label: hint!, tone: BadgeTone.neutral),
+        ],
       ],
     );
   }
