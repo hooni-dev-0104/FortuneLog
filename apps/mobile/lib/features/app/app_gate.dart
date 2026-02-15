@@ -24,12 +24,21 @@ class _AppGateState extends State<AppGate> {
   @override
   void initState() {
     super.initState();
+    _attemptInit();
+  }
+
+  void _attemptInit() {
     try {
       _supabase = Supabase.instance.client;
       _authStream = _supabase!.auth.onAuthStateChange;
+      _initError = null;
     } catch (_) {
+      _supabase = null;
+      _authStream = null;
       _initError = kDebugMode
-          ? 'SUPABASE_URL / SUPABASE_ANON_KEY dart-define가 필요합니다.'
+          ? 'Supabase 설정이 없어 앱을 시작할 수 없습니다.\n'
+              '개발 환경에서는 `scripts/run_ios_dev.sh`로 실행하거나, `flutter run`에 '
+              '`--dart-define=SUPABASE_URL=...` / `--dart-define=SUPABASE_ANON_KEY=...`를 붙여주세요.'
           : '서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.';
     }
   }
@@ -40,7 +49,7 @@ class _AppGateState extends State<AppGate> {
       return _GateError(
         message: _initError!,
         requestId: 'app-gate-init',
-        onRetry: () => setState(() => _initError = null),
+        onRetry: () => setState(_attemptInit),
       );
     }
     final supabase = _supabase;
