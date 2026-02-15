@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep splash consistent in dark mode for now (brand-first first impression). -->
+    <color name="fortunelog_splash_bg">#E9F4F1</color>
+</resources>
+

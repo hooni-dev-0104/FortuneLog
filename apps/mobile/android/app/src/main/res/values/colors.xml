@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash background color (matches in-app onboarding gradient start). -->
+    <color name="fortunelog_splash_bg">#E9F4F1</color>
+</resources>
+
