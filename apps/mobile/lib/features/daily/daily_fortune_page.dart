@@ -187,8 +187,8 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
     } on StateError catch (e) {
       setState(() {
         _loading = false;
-        _error = e.message;
         _missingChart = e.message.contains('사주 차트가 없습니다');
+        _error = _missingChart ? null : e.message;
       });
     } catch (_) {
       setState(() {
@@ -207,7 +207,8 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
-        if (_error != null) ...[
+        // "차트 없음"은 정상적인 온보딩 상태이므로 에러 박스로 보이지 않게 한다.
+        if (_error != null && !_missingChart) ...[
           StatusNotice.error(message: _error!, requestId: _requestId ?? 'daily'),
           const SizedBox(height: 10),
         ],
