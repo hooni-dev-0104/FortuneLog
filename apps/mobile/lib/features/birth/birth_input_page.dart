@@ -8,9 +8,11 @@ import '../../core/network/http_engine_api_client.dart';
 import '../home/home_page.dart';
 
 class BirthInputPage extends StatefulWidget {
-  const BirthInputPage({super.key});
+  const BirthInputPage({super.key, this.initialProfile});
 
   static const routeName = '/birth-input';
+
+  final Map<String, dynamic>? initialProfile;
 
   @override
   State<BirthInputPage> createState() => _BirthInputPageState();
@@ -18,9 +20,11 @@ class BirthInputPage extends StatefulWidget {
 
 class _BirthInputPageState extends State<BirthInputPage> {
   final _formKey = GlobalKey<FormState>();
-  final _dateController = TextEditingController(text: '1994-11-21');
-  final _timeController = TextEditingController(text: '14:30');
-  final _locationController = TextEditingController(text: 'Seoul, KR');
+  late final TextEditingController _dateController;
+  late final TextEditingController _timeController;
+  late final TextEditingController _locationController;
+
+  String? _editingBirthProfileId;
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -82,6 +86,34 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   List<String> _summaryErrors = const [];
 
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.initialProfile;
+    _editingBirthProfileId = p?['id'] as String?;
+
+    final dt = (p?['birth_datetime_local'] as String?) ?? '1994-11-21T14:30:00';
+    final date = dt.contains('T') ? dt.split('T').first : '1994-11-21';
+    final time = dt.contains('T') ? dt.split('T').last.substring(0, 5) : '14:30';
+
+    _unknownBirthTime = (p?['unknown_birth_time'] as bool?) ?? false;
+    _isLunar = ((p?['calendar_type'] as String?) ?? 'solar') == 'lunar';
+    _isLeapMonth = (p?['is_leap_month'] as bool?) ?? false;
+    _gender = (p?['gender'] as String?) ?? 'female';
+
+    _dateController = TextEditingController(text: date);
+    _timeController = TextEditingController(text: time);
+    _locationController = TextEditingController(text: (p?['birth_location'] as String?) ?? 'Seoul, KR');
+  }
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    _timeController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
   EngineApiClient _engineClient() {
     final baseUrl = const String.fromEnvironment('ENGINE_BASE_URL');
     if (baseUrl.isEmpty) {
@@ -126,22 +158,36 @@ class _BirthInputPageState extends State<BirthInputPage> {
       // For now, timezone is fixed to Asia/Seoul in the production UX. (DevTest lets you override it.)
       const birthTimezone = 'Asia/Seoul';
 
-      final row = await supabase
-          .from('birth_profiles')
-          .insert({
-            'user_id': userId,
-            'birth_datetime_local': birthDatetime,
-            'birth_timezone': birthTimezone,
-            'birth_location': _locationController.text.trim(),
-            'calendar_type': _isLunar ? 'lunar' : 'solar',
-            'is_leap_month': _isLeapMonth,
-            'gender': _gender,
-            'unknown_birth_time': _unknownBirthTime,
-          })
-          .select('id')
-          .single();
+      final payload = <String, dynamic>{
+        'birth_datetime_local': birthDatetime,
+        'birth_timezone': birthTimezone,
+        'birth_location': _locationController.text.trim(),
+        'calendar_type': _isLunar ? 'lunar' : 'solar',
+        'is_leap_month': _isLeapMonth,
+        'gender': _gender,
+        'unknown_birth_time': _unknownBirthTime,
+      };
 
-      final birthProfileId = row['id'] as String;
+      String birthProfileId;
+      if (_editingBirthProfileId != null && _editingBirthProfileId!.isNotEmpty) {
+        final row = await supabase
+            .from('birth_profiles')
+            .update(payload)
+            .eq('id', _editingBirthProfileId!)
+            .select('id')
+            .single();
+        birthProfileId = row['id'] as String;
+      } else {
+        final row = await supabase
+            .from('birth_profiles')
+            .insert({
+              'user_id': userId,
+              ...payload,
+            })
+            .select('id')
+            .single();
+        birthProfileId = row['id'] as String;
+      }
 
       final client = _engineClient();
       final chartResponse = await client.calculateChart(
@@ -183,8 +229,9 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = _editingBirthProfileId != null && _editingBirthProfileId!.isNotEmpty;
     return Scaffold(
-      appBar: AppBar(title: const Text('출생정보 입력')),
+      appBar: AppBar(title: Text(isEdit ? '출생정보 수정' : '출생정보 입력')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         children: [
@@ -318,7 +365,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
           onPressed: _saving ? null : () => _validateAndSubmit(),
           child: _saving
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('저장하고 결과 보기'),
+              : Text(isEdit ? '수정하고 결과 보기' : '저장하고 결과 보기'),
         ),
       ),
     );

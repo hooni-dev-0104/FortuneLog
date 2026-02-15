@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
+import '../birth/birth_profile_list_page.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -13,6 +14,27 @@ class MyPage extends StatefulWidget {
 
 class _MyPageState extends State<MyPage> {
   bool _loggingOut = false;
+
+  Future<Map<String, String>> _birthProfileSummary() async {
+    final supabase = Supabase.instance.client;
+    final session = supabase.auth.currentSession;
+    if (session == null) {
+      return {'title': '로그인이 필요합니다', 'subtitle': '로그인 후 사용 가능합니다.'};
+    }
+
+    final rows = await supabase
+        .from('birth_profiles')
+        .select('id,updated_at,created_at')
+        .order('updated_at', ascending: false);
+
+    final list = (rows as List).cast<Map<String, dynamic>>();
+    if (list.isEmpty) {
+      return {'title': '출생 프로필 0개', 'subtitle': '아직 생성된 프로필이 없습니다.'};
+    }
+
+    final latest = (list.first['updated_at'] as String?) ?? (list.first['created_at'] as String?) ?? '-';
+    return {'title': '출생 프로필 ${list.length}개', 'subtitle': '최근 수정: $latest'};
+  }
 
   String _currentEmail() {
     try {
@@ -60,10 +82,21 @@ class _MyPageState extends State<MyPage> {
           ),
         ),
         const SizedBox(height: 10),
-        const PageSection(
+        PageSection(
           title: '출생정보 관리',
           subtitle: '기존 프로필 재사용 또는 수정',
-          child: _MenuRow(title: '출생 프로필 2개', subtitle: '최근 수정: 2026-02-13'),
+          child: FutureBuilder<Map<String, String>>(
+            future: _birthProfileSummary(),
+            builder: (context, snapshot) {
+              final title = snapshot.data?['title'] ?? '출생 프로필';
+              final subtitle = snapshot.data?['subtitle'] ?? '목록 불러오는 중...';
+              return _MenuRow(
+                title: title,
+                subtitle: subtitle,
+                onTap: () => Navigator.pushNamed(context, BirthProfileListPage.routeName),
+              );
+            },
+          ),
         ),
         const SizedBox(height: 10),
         const PageSection(
@@ -104,27 +137,35 @@ class _MyPageState extends State<MyPage> {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.title, required this.subtitle});
+  const _MenuRow({required this.title, required this.subtitle, this.onTap});
 
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
         ),
-        const Icon(Icons.chevron_right),
-      ],
+      ),
     );
   }
 }

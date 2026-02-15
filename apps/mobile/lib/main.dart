@@ -5,6 +5,7 @@ import 'core/ui/app_theme.dart';
 import 'features/app/app_gate.dart';
 import 'features/auth/login_page.dart';
 import 'features/birth/birth_input_page.dart';
+import 'features/birth/birth_profile_list_page.dart';
 import 'features/devtest/dev_test_page.dart';
 import 'features/home/home_page.dart';
 import 'features/onboarding/onboarding_page.dart';
@@ -37,6 +38,7 @@ class FortuneLogApp extends StatelessWidget {
         OnboardingPage.routeName: (_) => const OnboardingPage(),
         LoginPage.routeName: (_) => const LoginPage(),
         BirthInputPage.routeName: (_) => const BirthInputPage(),
+        BirthProfileListPage.routeName: (_) => const BirthProfileListPage(),
         HomePage.routeName: (_) => const HomePage(),
         ReportPage.routeName: (_) => const ReportPage(),
         DevTestPage.routeName: (_) => const DevTestPage(),
