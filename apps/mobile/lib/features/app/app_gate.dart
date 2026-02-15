@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
+import '../../core/app_prefs.dart';
 import '../birth/birth_input_page.dart';
 import '../home/home_page.dart';
 import '../onboarding/onboarding_page.dart';
@@ -20,18 +21,26 @@ class _AppGateState extends State<AppGate> {
   SupabaseClient? _supabase;
   Stream<AuthState>? _authStream;
   String? _initError;
+  bool _initializing = true;
 
   @override
   void initState() {
     super.initState();
-    _attemptInit();
+    _init();
   }
 
-  void _attemptInit() {
+  Future<void> _init() async {
     try {
       _supabase = Supabase.instance.client;
       _authStream = _supabase!.auth.onAuthStateChange;
       _initError = null;
+
+      final keep = await AppPrefs.keepSignedIn();
+      final session = _supabase!.auth.currentSession;
+      if (!keep && session != null) {
+        // User opted out of persisting login. Clear any stored session on app start.
+        await _supabase!.auth.signOut();
+      }
     } catch (_) {
       _supabase = null;
       _authStream = null;
@@ -43,16 +52,25 @@ class _AppGateState extends State<AppGate> {
       }
       // Keep user-facing message short. Debug guidance belongs in logs/docs, not UI.
       _initError = '서비스 연결에 실패했습니다. 앱을 다시 실행해주세요.';
+    } finally {
+      if (mounted) setState(() => _initializing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_initializing) {
+      return const _GateLoading(message: '초기화 중...');
+    }
     if (_initError != null) {
       return _GateError(
         message: _initError!,
         requestId: 'app-gate-init',
-        onRetry: () => setState(_attemptInit),
+        onRetry: () => setState(() {
+          _initializing = true;
+          _initError = null;
+          _init();
+        }),
       );
     }
     final supabase = _supabase;

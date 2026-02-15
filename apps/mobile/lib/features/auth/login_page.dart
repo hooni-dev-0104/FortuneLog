@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/app_prefs.dart';
 import '../../core/ui/app_widgets.dart';
 import '../app/app_gate.dart';
 import 'signup_page.dart';
@@ -31,6 +32,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   bool _oauthInFlight = false;
   bool _loading = false;
   String? _error;
+  bool _keepSignedIn = true;
 
   SupabaseClient _supabase() {
     try {
@@ -60,6 +62,11 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    AppPrefs.keepSignedIn().then((v) {
+      if (!mounted) return;
+      setState(() => _keepSignedIn = v);
+    });
 
     final initialEmail = widget.initialEmail?.trim();
     if (initialEmail != null && initialEmail.isNotEmpty && !_emailController.text.contains('@')) {
@@ -130,6 +137,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
     setState(() => _loading = true);
     try {
+      await AppPrefs.setKeepSignedIn(_keepSignedIn);
       await _supabase().auth.signInWithPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text,
@@ -167,6 +175,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
     setState(() => _loading = true);
     try {
+      await AppPrefs.setKeepSignedIn(_keepSignedIn);
       await _supabase().auth.resetPasswordForEmail(
             email,
             redirectTo: _redirectToForMobile(),
@@ -201,6 +210,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       _error = null;
     });
     _oauthInFlight = true;
+    await AppPrefs.setKeepSignedIn(_keepSignedIn);
     _oauthWatchdog?.cancel();
     _oauthWatchdog = Timer(const Duration(seconds: 30), () {
       if (!mounted) return;
@@ -310,6 +320,19 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                       if (v == null || v.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _keepSignedIn,
+                    onChanged: _loading
+                        ? null
+                        : (v) {
+                            setState(() => _keepSignedIn = v ?? true);
+                          },
+                    title: const Text('로그인 유지하기'),
+                    subtitle: const Text('앱을 다시 열어도 자동으로 로그인 상태를 유지합니다.'),
+                    controlAffinity: ListTileControlAffinity.leading,
                   ),
                 ],
               ),
