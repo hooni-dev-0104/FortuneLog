@@ -6,6 +6,7 @@ import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.core.env.Environment;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,9 +25,11 @@ import jakarta.servlet.http.HttpServletRequest;
 public class EngineController {
 
     private final EngineService engineService;
+    private final Environment env;
 
-    public EngineController(EngineService engineService) {
+    public EngineController(EngineService engineService, Environment env) {
         this.engineService = engineService;
+        this.env = env;
     }
 
     @PostMapping("/charts:calculate")
@@ -81,10 +84,20 @@ public class EngineController {
     }
 
     @GetMapping("/health")
-    public Map<String, String> health(HttpServletRequest httpRequest) {
+    public Map<String, Object> health(HttpServletRequest httpRequest) {
+        boolean insecureJwt = Boolean.parseBoolean(env.getProperty("ENGINE_INSECURE_JWT", "false"));
+        boolean authDebug = Boolean.parseBoolean(env.getProperty("ENGINE_AUTH_DEBUG", "false"));
+        String jwkSetUri = env.getProperty("spring.security.oauth2.resourceserver.jwt.jwk-set-uri", "");
+
         return Map.of(
                 "requestId", requestId(httpRequest),
-                "status", "ok"
+                "status", "ok",
+                "engineVersion", "v0.1.0",
+                "security", Map.of(
+                        "insecureJwt", insecureJwt,
+                        "authDebug", authDebug
+                ),
+                "jwkSetUri", jwkSetUri
         );
     }
 
