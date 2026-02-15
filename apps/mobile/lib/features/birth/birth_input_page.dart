@@ -8,12 +8,11 @@ import '../../core/network/http_engine_api_client.dart';
 import '../home/home_page.dart';
 
 class BirthInputPage extends StatefulWidget {
-  const BirthInputPage({super.key, this.initialProfile, this.forceCreate = false});
+  const BirthInputPage({super.key, this.initialProfile});
 
   static const routeName = '/birth-input';
 
   final Map<String, dynamic>? initialProfile;
-  final bool forceCreate;
 
   @override
   State<BirthInputPage> createState() => _BirthInputPageState();
@@ -91,7 +90,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
   void initState() {
     super.initState();
     final p = widget.initialProfile;
-    _editingBirthProfileId = widget.forceCreate ? null : (p?['id'] as String?);
+    _editingBirthProfileId = p?['id'] as String?;
 
     final dt = (p?['birth_datetime_local'] as String?) ?? '1994-11-21T14:30:00';
     final date = dt.contains('T') ? dt.split('T').first : '1994-11-21';
@@ -180,15 +179,50 @@ class _BirthInputPageState extends State<BirthInputPage> {
             .single();
         birthProfileId = row['id'] as String;
       } else {
-        final row = await supabase
-            .from('birth_profiles')
-            .insert({
-              'user_id': userId,
-              ...payload,
-            })
-            .select('id')
-            .single();
-        birthProfileId = row['id'] as String;
+        // Enforce "single birth profile per user" at the app level too:
+        // if one exists, update it; otherwise insert.
+        try {
+          final existing = await supabase
+              .from('birth_profiles')
+              .select('id')
+              .eq('user_id', userId)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          final existingId = existing?['id'] as String?;
+          if (existingId != null && existingId.isNotEmpty) {
+            final row = await supabase
+                .from('birth_profiles')
+                .update(payload)
+                .eq('id', existingId)
+                .eq('user_id', userId)
+                .select('id')
+                .single();
+            birthProfileId = row['id'] as String;
+          } else {
+            final row = await supabase
+                .from('birth_profiles')
+                .insert({
+                  'user_id': userId,
+                  ...payload,
+                })
+                .select('id')
+                .single();
+            birthProfileId = row['id'] as String;
+          }
+        } on PostgrestException {
+          // Fallback: if the environment doesn't support maybeSingle or ordering,
+          // insert and rely on DB constraints/migrations to clean up.
+          final row = await supabase
+              .from('birth_profiles')
+              .insert({
+                'user_id': userId,
+                ...payload,
+              })
+              .select('id')
+              .single();
+          birthProfileId = row['id'] as String;
+        }
       }
 
       final client = _engineClient();
