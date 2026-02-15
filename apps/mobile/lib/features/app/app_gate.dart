@@ -129,13 +129,7 @@ class _GateLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F7B64), Color(0xFF11524E)],
-          ),
-        ),
+        color: const Color(0xFF0F7B64),
         child: SafeArea(
           child: Center(
             child: Padding(
@@ -144,9 +138,12 @@ class _GateLoading extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
-                    'assets/branding/fortunelog-logo.png',
-                    width: 84,
-                    height: 84,
+                    // Use the mark-only asset on solid/brand backgrounds.
+                    // The full logo includes a rounded-rect background which looks like a "square patch"
+                    // during app start when the background is also brand green.
+                    'assets/branding/fortunelog-mark.png',
+                    width: 92,
+                    height: 92,
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 12),

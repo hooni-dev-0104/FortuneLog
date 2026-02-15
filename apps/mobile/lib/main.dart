@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/ui/app_theme.dart';
 
@@ -25,8 +27,30 @@ Future<void> main() async {
   runApp(const FortuneLogApp());
 }
 
-class FortuneLogApp extends StatelessWidget {
+class FortuneLogApp extends StatefulWidget {
   const FortuneLogApp({super.key});
+
+  @override
+  State<FortuneLogApp> createState() => _FortuneLogAppState();
+}
+
+class _FortuneLogAppState extends State<FortuneLogApp> {
+  static const _nativeSplashChannel = MethodChannel('fortunelog/splash');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // iOS-only: hide the native splash overlay after Flutter draws its first frame.
+      // This avoids showing any unstyled intermediate frame between LaunchScreen and Flutter UI.
+      if (kIsWeb) return;
+      try {
+        await _nativeSplashChannel.invokeMethod('hide');
+      } catch (_) {
+        // Ignore: older builds might not have the native channel wired yet.
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

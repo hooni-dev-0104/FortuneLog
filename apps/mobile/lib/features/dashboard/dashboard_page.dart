@@ -62,7 +62,7 @@ class _DashboardPageState extends State<DashboardPage> {
           .order('created_at', ascending: false)
           .limit(1);
 
-      if ((rows as List).isEmpty) {
+      if (rows.isEmpty) {
         setState(() {
           _loading = false;
           _chart = null;
@@ -71,7 +71,7 @@ class _DashboardPageState extends State<DashboardPage> {
         return;
       }
 
-      final row = rows.first as Map<String, dynamic>;
+      final row = rows.first;
       final chartJson = row['chart_json'] as Map<String, dynamic>;
       final fiveJson = row['five_elements_json'] as Map<String, dynamic>;
 
@@ -119,11 +119,11 @@ class _DashboardPageState extends State<DashboardPage> {
           .order('created_at', ascending: false)
           .limit(1);
 
-      if ((rows as List).isEmpty) {
+      if (rows.isEmpty) {
         throw StateError('출생정보가 없습니다. 출생정보를 먼저 입력해주세요.');
       }
 
-      final row = rows.first as Map<String, dynamic>;
+      final row = rows.first;
       final birthProfileId = row['id'] as String;
       final birthDatetime = row['birth_datetime_local'] as String;
       final birthTimezone = row['birth_timezone'] as String;

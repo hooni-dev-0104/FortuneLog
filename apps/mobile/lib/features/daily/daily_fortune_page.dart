@@ -82,7 +82,7 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
             .limit(1);
       }
 
-      if ((rows as List).isEmpty) {
+      if (rows.isEmpty) {
         setState(() {
           _loading = false;
           _content = null;
@@ -145,11 +145,11 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
         .order('created_at', ascending: false)
         .limit(1);
 
-    if ((rows as List).isEmpty) {
+    if (rows.isEmpty) {
       throw StateError('사주 차트가 없습니다. 먼저 출생정보 입력 후 계산을 완료해주세요.');
     }
 
-    final row = rows.first as Map<String, dynamic>;
+    final row = rows.first;
     return row['id'] as String;
   }
 
