@@ -525,9 +525,49 @@ class _StarsChips extends StatelessWidget {
     // 흉살(일부)
     final yangIn = SajuStars.yangInTarget(dayStem);
     if (yangIn != null && branches.contains(yangIn)) chips.add('양인살');
+    if (pillars.any(SajuStars.isBaekHoPillar)) chips.add('백호살');
     if (SajuStars.isGueGangDayPillar(day)) chips.add('괴강살');
+    final hongYeom = SajuStars.hongYeomTarget(dayStem);
+    if (hongYeom != null && branches.contains(hongYeom)) chips.add('홍염살');
+    final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
+    final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
+    if (SajuStars.isGyeokGak(yearBranch: yearBranch, dayBranch: dayBranch)) chips.add('격각살');
+    final goJinT1 = yearBranch == null ? null : SajuStars.goJinTargetByBaseBranch(yearBranch);
+    final goJinT2 = dayBranch == null ? null : SajuStars.goJinTargetByBaseBranch(dayBranch);
+    if ((goJinT1 != null && branches.contains(goJinT1)) || (goJinT2 != null && branches.contains(goJinT2))) chips.add('고진살');
+    final gwaSukT1 = yearBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(yearBranch);
+    final gwaSukT2 = dayBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(dayBranch);
+    if ((gwaSukT1 != null && branches.contains(gwaSukT1)) || (gwaSukT2 != null && branches.contains(gwaSukT2))) chips.add('과숙살');
+    if (SajuStars.hasGwiMunGwanSal(
+      monthBranch: SajuStars.branchOf(chart['month'] ?? ''),
+      dayBranch: dayBranch,
+      hourBranch: SajuStars.branchOf(chart['hour'] ?? ''),
+    )) {
+      chips.add('귀문관살');
+    }
+    final geupGakTargets = monthBranch == null ? const <String>{} : SajuStars.geupGakTargetsByMonthBranch(monthBranch);
+    if (geupGakTargets.isNotEmpty && geupGakTargets.any(branches.contains)) chips.add('급각살');
+    final danGyoTarget = monthBranch == null ? null : SajuStars.danGyoGwanTargetByMonthBranch(monthBranch);
+    if (danGyoTarget != null &&
+        (dayBranch == danGyoTarget || SajuStars.branchOf(chart['hour'] ?? '') == danGyoTarget)) {
+      chips.add('단교관살');
+    }
+    if (pillars.any(SajuStars.isGokGakPillar)) chips.add('곡각살');
+    final cheonRaJiMangType = SajuStars.cheonRaJiMangType(dayBranch: dayBranch, allBranches: branches);
+    if (cheonRaJiMangType != null) chips.add('천라지망');
+    final daeMoTarget = yearBranch == null ? null : SajuStars.daeMoTargetByYearBranch(yearBranch);
+    if (daeMoTarget != null && branches.contains(daeMoTarget)) chips.add('대모살');
+    if (SajuStars.isGuGyoDayPillar(day)) chips.add('구교살');
+    if (SajuStars.pyeongDuCount(pillars) >= 4) chips.add('평두살');
     if (SajuStars.isSipAkDaePaeDayPillar(day)) chips.add('십악대패');
     if (SajuStars.hyeonChimCount(pillars) >= 2) chips.add('현침살');
+    if (SajuStars.hasJangHyeongSal(branches)) chips.add('장형살');
+    if (yearBranch != null) {
+      final sangMun = SajuStars.sangMunTargetByYearBranch(yearBranch);
+      if (sangMun != null && branches.contains(sangMun)) chips.add('상문살');
+      final joGaek = SajuStars.joGaekTargetByYearBranch(yearBranch);
+      if (joGaek != null && branches.contains(joGaek)) chips.add('조객살');
+    }
 
     if (chips.isEmpty) {
       return Text('표시할 길신/흉살이 없습니다.', style: Theme.of(context).textTheme.bodySmall);

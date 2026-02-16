@@ -119,6 +119,14 @@ class SajuStars {
     return _branches[(i + _branches.length - 1) % _branches.length];
   }
 
+  static String? branchAtOffset(String branch, int delta) {
+    final i = _branches.indexOf(branch);
+    if (i < 0) return null;
+    final n = _branches.length;
+    final j = (i + delta) % n;
+    return _branches[(j + n) % n];
+  }
+
   static String? stemHanja(String stem) => _stemHanja[stem];
   static String? branchHanja(String branch) => _branchHanja[branch];
 
@@ -434,5 +442,263 @@ class SajuStars {
     const jiHa = {'을', '병', '정'};
     const inJung = {'임', '계', '신'}; // here '신' is the stem 辛
     return stems.containsAll(cheonSang) || stems.containsAll(jiHa) || stems.containsAll(inJung);
+  }
+
+  // ---- Additional 길신/흉살 helpers (UI-facing) ----
+
+  // 홍염살: day stem -> branch (from common tables).
+  static const Map<String, String> _hongYeom = {
+    '갑': '오',
+    '을': '오',
+    '병': '인',
+    '정': '미',
+    '무': '진',
+    '기': '진',
+    '경': '술',
+    '신': '유',
+    '임': '자',
+    '계': '신',
+  };
+
+  static String? hongYeomTarget(String dayStem) => _hongYeom[dayStem];
+
+  // 백호살(백호대살): 7 pillars (presence if any pillar matches; strongest when day pillar).
+  static const Set<String> _baekHoPillars = {
+    '갑진',
+    '을미',
+    '병술',
+    '정축',
+    '무진',
+    '임술',
+    '계축',
+  };
+
+  static bool isBaekHoPillar(String pillar) => _baekHoPillars.contains(pillar.trim());
+
+  // 격각살: year branch + day branch combos (table-form).
+  static bool isGyeokGak({required String? yearBranch, required String? dayBranch}) {
+    if (yearBranch == null || dayBranch == null) return false;
+    if (const {'인', '묘', '진'}.contains(yearBranch)) return dayBranch == '오';
+    if (const {'사', '오', '미'}.contains(yearBranch)) return dayBranch == '유';
+    if (const {'신', '유', '술'}.contains(yearBranch)) return dayBranch == '자';
+    if (const {'해', '자', '축'}.contains(yearBranch)) return dayBranch == '묘';
+    return false;
+  }
+
+  // 고진살(=고신살로 부르는 경우가 많음): base(연지/일지) -> target branch.
+  static String? goJinTargetByBaseBranch(String baseBranch) {
+    if (const {'인', '묘', '진'}.contains(baseBranch)) return '사';
+    if (const {'사', '오', '미'}.contains(baseBranch)) return '신';
+    if (const {'신', '유', '술'}.contains(baseBranch)) return '해';
+    if (const {'해', '자', '축'}.contains(baseBranch)) return '인';
+    return null;
+  }
+
+  // 과숙살: base(연지/일지) -> target branch.
+  static String? gwaSukTargetByBaseBranch(String baseBranch) {
+    if (const {'인', '묘', '진'}.contains(baseBranch)) return '축';
+    if (const {'사', '오', '미'}.contains(baseBranch)) return '진';
+    if (const {'신', '유', '술'}.contains(baseBranch)) return '미';
+    if (const {'해', '자', '축'}.contains(baseBranch)) return '술';
+    return null;
+  }
+
+  // 귀문관살: adjacent pairs among (month/day) or (day/hour).
+  static const List<Set<String>> _gwiMunPairs = [
+    {'진', '해'},
+    {'축', '오'},
+    {'사', '술'},
+    {'묘', '신'},
+    {'인', '미'},
+    {'자', '유'},
+  ];
+
+  static bool _isGwiMunPair(String a, String b) {
+    for (final p in _gwiMunPairs) {
+      if (p.contains(a) && p.contains(b)) return true;
+    }
+    return false;
+  }
+
+  static bool hasGwiMunGwanSal({required String? monthBranch, required String? dayBranch, required String? hourBranch}) {
+    if (monthBranch == null || dayBranch == null) return false;
+    if (_isGwiMunPair(monthBranch, dayBranch)) return true;
+    if (hourBranch != null && _isGwiMunPair(dayBranch, hourBranch)) return true;
+    return false;
+  }
+
+  // 급각살: month-branch season group -> target branches; present if target appears in any pillar.
+  static Set<String> geupGakTargetsByMonthBranch(String monthBranch) {
+    if (const {'인', '묘', '진'}.contains(monthBranch)) return const {'해', '자'};
+    if (const {'사', '오', '미'}.contains(monthBranch)) return const {'묘', '미'};
+    if (const {'신', '유', '술'}.contains(monthBranch)) return const {'인', '술'};
+    if (const {'해', '자', '축'}.contains(monthBranch)) return const {'진', '축'};
+    return const {};
+  }
+
+  // 단교관살: month branch -> target branch; present if day/hour branch equals the target.
+  static const Map<String, String> _danGyoGwan = {
+    '인': '오',
+    '묘': '묘',
+    '진': '신',
+    '사': '축',
+    '오': '술',
+    '미': '유',
+    '신': '진',
+    '유': '사',
+    '술': '오',
+    '해': '미',
+    '자': '해',
+    '축': '자',
+  };
+
+  static String? danGyoGwanTargetByMonthBranch(String monthBranch) => _danGyoGwan[monthBranch];
+
+  // 곡각살: commonly cited pillar sets.
+  static const Set<String> _gokGakPillars = {
+    '을축',
+    '을사',
+    '을미',
+    '을유',
+    '을해',
+    '기축',
+    '기사',
+    '기미',
+    '기유',
+    '기해',
+    '정사',
+    '신사',
+    '계사',
+  };
+
+  static bool isGokGakPillar(String pillar) => _gokGakPillars.contains(pillar.trim());
+
+  // 천라지망: day-branch + (other branch) pair.
+  // We keep it simple:
+  // - 천라: 일지가 술/해이고, 다른 지지에 술 또는 해가 함께 있으면 성립.
+  // - 지망: 일지가 진/사이고, 다른 지지에 진 또는 사가 함께 있으면 성립.
+  static String? cheonRaJiMangType({required String? dayBranch, required List<String> allBranches}) {
+    if (dayBranch == null) return null;
+    if (dayBranch == '술' || dayBranch == '해') {
+      final other = dayBranch == '술' ? '해' : '술';
+      return allBranches.contains(other) ? '천라' : null;
+    }
+    if (dayBranch == '진' || dayBranch == '사') {
+      final other = dayBranch == '진' ? '사' : '진';
+      return allBranches.contains(other) ? '지망' : null;
+    }
+    return null;
+  }
+
+  // 평두살(간단): 특정 글자(예: 甲, 丙, 丁, 壬, 辰, 子)가 4자 이상이면 성립으로 소개되는 경우가 있음.
+  static const Set<String> _pyeongDuStems = {'갑', '병', '정', '임'};
+  static const Set<String> _pyeongDuBranches = {'진', '자'};
+
+  static int pyeongDuCount(Iterable<String> pillars) {
+    int c = 0;
+    for (final p in pillars) {
+      final s = stemOf(p);
+      final b = branchOf(p);
+      if (s != null && _pyeongDuStems.contains(s)) c++;
+      if (b != null && _pyeongDuBranches.contains(b)) c++;
+    }
+    return c;
+  }
+
+  // 상문살/조객살: year branch -> target branch (often used in 운(年) 해석; we provide a natal "presence" helper).
+  static String? sangMunTargetByYearBranch(String yearBranch) => branchAtOffset(yearBranch, 2);
+  static String? joGaekTargetByYearBranch(String yearBranch) => branchAtOffset(yearBranch, -2);
+
+  // 대모살(대耗): In some references used as an alias of 겁살.
+  // We compute a commonly used "겁살" target from year-branch's 삼합 group.
+  static String? daeMoTargetByYearBranch(String yearBranch) {
+    // 인오술 -> 해, 사유축 -> 인, 신자진 -> 사, 해묘미 -> 신
+    if (const {'인', '오', '술'}.contains(yearBranch)) return '해';
+    if (const {'사', '유', '축'}.contains(yearBranch)) return '인';
+    if (const {'신', '자', '진'}.contains(yearBranch)) return '사';
+    if (const {'해', '묘', '미'}.contains(yearBranch)) return '신';
+    return null;
+  }
+
+  // 구교살(=구추살 九醜煞 로 소개되는 경우가 많음): 9 day-pillar set.
+  static const Set<String> _guGyoDayPillars = {
+    '갑술',
+    '을유',
+    '병신',
+    '정미',
+    '무오',
+    '기사',
+    '경진',
+    '신묘',
+    '임인',
+  };
+
+  static bool isGuGyoDayPillar(String dayPillar) => _guGyoDayPillars.contains(dayPillar.trim());
+
+  // 장형살(간단): 형(刑) 계열 조합이 있을 때 "규정/처벌"로 풀이되는 경우가 있어,
+  // 대표 조합(자묘형, 인사신 삼형, 축미술 삼형, 진/오/유/해 자형)을 체크합니다.
+  static bool hasJangHyeongSal(List<String> branches) {
+    if (branches.contains('자') && branches.contains('묘')) return true; // 자묘형
+    const insasin = {'인', '사', '신'};
+    if (branches.toSet().containsAll(insasin)) return true;
+    const chukmisul = {'축', '미', '술'};
+    if (branches.toSet().containsAll(chukmisul)) return true;
+
+    // 자형(自刑) - 진/오/유/해가 2개 이상 등장하는 경우
+    for (final b in const ['진', '오', '유', '해']) {
+      int c = 0;
+      for (final x in branches) {
+        if (x == b) c++;
+      }
+      if (c >= 2) return true;
+    }
+    return false;
+  }
+
+  // 정인(십신) - day stem 기준으로 다른 stem이 정인에 해당하는지 (본가인 신살과는 다른 계산일 수 있음).
+  static const Map<String, int> _stemIndex = {
+    '갑': 0,
+    '을': 1,
+    '병': 2,
+    '정': 3,
+    '무': 4,
+    '기': 5,
+    '경': 6,
+    '신': 7,
+    '임': 8,
+    '계': 9,
+  };
+
+  static bool _isYangStem(String stem) {
+    final i = _stemIndex[stem];
+    if (i == null) return false;
+    return i % 2 == 0;
+  }
+
+  static String? jeongInStemForDayStem(String dayStem) {
+    final dayEl = stemElementKey(dayStem);
+    if (dayEl == null) return null;
+    final resourceEl = switch (dayEl) {
+      'wood' => 'water',
+      'fire' => 'wood',
+      'earth' => 'fire',
+      'metal' => 'earth',
+      'water' => 'metal',
+      _ => null,
+    };
+    if (resourceEl == null) return null;
+
+    // 정인: same polarity as day stem among resource element stems.
+    final wantYang = _isYangStem(dayStem);
+    final candidates = switch (resourceEl) {
+      'wood' => const ['갑', '을'],
+      'fire' => const ['병', '정'],
+      'earth' => const ['무', '기'],
+      'metal' => const ['경', '신'],
+      'water' => const ['임', '계'],
+      _ => const <String>[],
+    };
+    if (candidates.isEmpty) return null;
+    return wantYang ? candidates.first : candidates.last;
   }
 }

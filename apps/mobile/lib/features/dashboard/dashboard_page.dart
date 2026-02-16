@@ -555,6 +555,59 @@ class _InauspiciousStarsSection extends StatelessWidget {
     final yangInTarget = dayStem == null ? null : SajuStars.yangInTarget(dayStem);
     final hasYangIn = yangInTarget != null && SajuStars.hasAnyBranch(branches, yangInTarget);
 
+    final hasBaekHo = pillars.any(SajuStars.isBaekHoPillar);
+    final hongYeomTarget = dayStem == null ? null : SajuStars.hongYeomTarget(dayStem);
+    final hasHongYeom = hongYeomTarget != null && branches.contains(hongYeomTarget);
+
+    final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
+    final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
+
+    final hasGyeokGak = SajuStars.isGyeokGak(yearBranch: yearBranch, dayBranch: dayBranch);
+
+    final goJinT1 = yearBranch == null ? null : SajuStars.goJinTargetByBaseBranch(yearBranch);
+    final goJinT2 = dayBranch == null ? null : SajuStars.goJinTargetByBaseBranch(dayBranch);
+    final hasGoJin = (goJinT1 != null && branches.contains(goJinT1)) || (goJinT2 != null && branches.contains(goJinT2));
+
+    final gwaSukT1 = yearBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(yearBranch);
+    final gwaSukT2 = dayBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(dayBranch);
+    final hasGwaSuk = (gwaSukT1 != null && branches.contains(gwaSukT1)) || (gwaSukT2 != null && branches.contains(gwaSukT2));
+
+    final hasGwiMun = SajuStars.hasGwiMunGwanSal(
+      monthBranch: SajuStars.branchOf(chart['month'] ?? ''),
+      dayBranch: dayBranch,
+      hourBranch: SajuStars.branchOf(chart['hour'] ?? ''),
+    );
+
+    final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
+    final geupGakTargets = monthBranch == null ? const <String>{} : SajuStars.geupGakTargetsByMonthBranch(monthBranch);
+    final hasGeupGak = geupGakTargets.isNotEmpty && geupGakTargets.any(branches.contains);
+
+    final danGyoTarget = monthBranch == null ? null : SajuStars.danGyoGwanTargetByMonthBranch(monthBranch);
+    final hasDanGyo = danGyoTarget != null && (dayBranch == danGyoTarget || SajuStars.branchOf(chart['hour'] ?? '') == danGyoTarget);
+
+    final hasGokGak = pillars.any(SajuStars.isGokGakPillar);
+
+    final cheonRaJiMangType = SajuStars.cheonRaJiMangType(dayBranch: dayBranch, allBranches: branches);
+    final hasCheonRaJiMang = cheonRaJiMangType != null;
+
+    final daeMoTarget = yearBranch == null ? null : SajuStars.daeMoTargetByYearBranch(yearBranch);
+    final hasDaeMo = daeMoTarget != null && branches.contains(daeMoTarget);
+
+    final hasGuGyo = SajuStars.isGuGyoDayPillar(day);
+
+    final pyeongDuCount = SajuStars.pyeongDuCount(pillars);
+    final hasPyeongDu = pyeongDuCount >= 4;
+
+    final hasJangHyeong = SajuStars.hasJangHyeongSal(branches);
+
+    final sangMunTarget = yearBranch == null ? null : SajuStars.sangMunTargetByYearBranch(yearBranch);
+    final hasSangMun = sangMunTarget != null && branches.contains(sangMunTarget);
+    final joGaekTarget = yearBranch == null ? null : SajuStars.joGaekTargetByYearBranch(yearBranch);
+    final hasJoGaek = joGaekTarget != null && branches.contains(joGaekTarget);
+
+    const goran = {'갑인', '을사', '정사', '무신', '신해'};
+    final hasGoran = goran.contains(day.trim());
+
     final hasGueGang = SajuStars.isGueGangDayPillar(day);
     final hasSipAkDaePae = SajuStars.isSipAkDaePaeDayPillar(day);
 
@@ -568,21 +621,116 @@ class _InauspiciousStarsSection extends StatelessWidget {
           description: '강한 추진력/에너지를 뜻하는 것으로 소개되며, 과열과 충돌에 주의하라고 풀이되기도 합니다.',
           hint: yangInTarget,
         ),
+      if (hasBaekHo)
+        const _StarCardData(
+          name: '백호살',
+          description: '큰 변화/사고수로 연결해 풀이되는 경우가 있어, 생활 리스크 관리로 해석하기도 합니다.',
+        ),
       if (hasGueGang)
         const _StarCardData(
           name: '괴강살',
           description: '강한 기질/독립성으로 설명되며, 장단이 뚜렷하게 나타난다고 풀이되기도 합니다.',
+        ),
+      if (hasHongYeom)
+        _StarCardData(
+          name: '홍염살',
+          description: '매력/호감/관계 이슈와 연결해 해석하는 경우가 있습니다.',
+          hint: hongYeomTarget,
+        ),
+      if (hasGoJin)
+        _StarCardData(
+          name: '고진살',
+          description: '고독/고립감으로 연결해 풀이하는 경우가 있습니다.',
+          hint: (goJinT1 ?? goJinT2),
+        ),
+      if (hasGwaSuk)
+        _StarCardData(
+          name: '과숙살',
+          description: '관계의 단절감/혼자 감당하는 기운으로 풀이되는 경우가 있습니다.',
+          hint: (gwaSukT1 ?? gwaSukT2),
+        ),
+      if (hasGyeokGak)
+        const _StarCardData(
+          name: '격각살',
+          description: '부딪힘/충돌로 풀이되기도 하며, 안전·규칙을 강조하는 해석이 있습니다.',
+        ),
+      if (hasGwiMun)
+        const _StarCardData(
+          name: '귀문관살',
+          description: '예민함/몰입으로 풀이되기도 하며, 마음 관리가 중요하다고 해석하기도 합니다.',
+        ),
+      if (hasGeupGak)
+        _StarCardData(
+          name: '급각살',
+          description: '급작스러운 변수로 해석하는 경우가 있습니다.',
+          hint: geupGakTargets.isEmpty ? null : geupGakTargets.join(', '),
+        ),
+      if (hasDanGyo)
+        _StarCardData(
+          name: '단교관살',
+          description: '관계의 단절/끊김으로 풀이되는 경우가 있습니다.',
+          hint: danGyoTarget,
+        ),
+      if (hasGokGak)
+        const _StarCardData(
+          name: '곡각살',
+          description: '말/상처/굴곡으로 연결해 풀이하는 경우가 있습니다.',
+        ),
+      if (hasCheonRaJiMang)
+        _StarCardData(
+          name: '천라지망',
+          description: '답답함/제약으로 풀이되기도 하며, 장기적으로 정리/정돈이 필요하다고 해석하기도 합니다.',
+          hint: cheonRaJiMangType,
+        ),
+      if (hasDaeMo)
+        _StarCardData(
+          name: '대모살',
+          description: '큰 지출/손재로 풀이되는 경우가 있어, 리스크 관리를 강조하기도 합니다.',
+          hint: daeMoTarget,
+        ),
+      if (hasGuGyo)
+        const _StarCardData(
+          name: '구교살',
+          description: '구설/오해로 연결해 풀이하는 경우가 있습니다.',
         ),
       if (hasSipAkDaePae)
         const _StarCardData(
           name: '십악대패',
           description: '흐름이 거칠어지기 쉬운 날주로 소개되며, 리스크 관리가 중요하다고 풀이되기도 합니다.',
         ),
+      if (hasGoran)
+        const _StarCardData(
+          name: '고란살',
+          description: '관계에서의 외로움/고독으로 풀이되는 경우가 있습니다.',
+        ),
+      if (hasPyeongDu)
+        _StarCardData(
+          name: '평두살',
+          description: '막힘/꺾임으로 풀이되는 경우가 있습니다.',
+          hint: '$pyeongDuCount',
+        ),
       if (hasHyeonChim)
         _StarCardData(
           name: '현침살',
           description: '말/표현이 날카롭게 비칠 수 있다고 설명되며, 정밀함이 강점이 되기도 합니다.',
           hint: '$hyeonChimCount',
+        ),
+      if (hasJangHyeong)
+        const _StarCardData(
+          name: '장형살',
+          description: '벌/형벌/규정과 연결해 풀이되는 경우가 있어, 규칙 준수를 강조하기도 합니다.',
+        ),
+      if (hasSangMun)
+        _StarCardData(
+          name: '상문살',
+          description: '상실/이별로 풀이되는 경우가 있어, 마음 관리를 권하기도 합니다.',
+          hint: sangMunTarget,
+        ),
+      if (hasJoGaek)
+        _StarCardData(
+          name: '조객살',
+          description: '외부 방문/변동 이슈로 풀이되기도 합니다.',
+          hint: joGaekTarget,
         ),
     ];
 
