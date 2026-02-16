@@ -16,32 +16,36 @@ class ManseoryeokDetailPage extends StatefulWidget {
   State<ManseoryeokDetailPage> createState() => _ManseoryeokDetailPageState();
 }
 
-class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
-  bool _loading = true;
-  String? _error;
+class _HeaderData {
+  const _HeaderData({
+    required this.displayName,
+    required this.birthProfile,
+    this.errorMessage,
+  });
 
-  Map<String, dynamic>? _birthProfile;
-  String? _displayName;
+  final String displayName;
+  final Map<String, dynamic>? birthProfile;
+  final String? errorMessage;
+}
+
+class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
+  late Future<_HeaderData> _headerFuture;
 
   @override
   void initState() {
     super.initState();
-    _init();
+    _headerFuture = _loadHeader();
   }
 
-  Future<void> _init() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<_HeaderData> _loadHeader() async {
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
       if (user == null) throw StateError('로그인이 필요합니다.');
 
-      _displayName = (user.userMetadata?['display_name'] as String?)?.trim();
-      if (_displayName == null || _displayName!.isEmpty) {
-        _displayName = user.email?.trim();
+      var displayName = (user.userMetadata?['display_name'] as String?)?.trim();
+      if (displayName == null || displayName.isEmpty) {
+        displayName = user.email?.trim() ?? '사용자';
       }
 
       final rows = await supabase
@@ -50,33 +54,19 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
           .eq('user_id', user.id)
           .order('created_at', ascending: false)
           .limit(1);
-      _birthProfile = rows.isEmpty ? null : rows.first;
-
-      if (!mounted) return;
-      setState(() => _loading = false);
+      final birthProfile = rows.isEmpty ? null : rows.first;
+      return _HeaderData(displayName: displayName, birthProfile: birthProfile);
     } on PostgrestException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.message;
-      });
+      return _HeaderData(displayName: '사용자', birthProfile: null, errorMessage: e.message);
     } on StateError catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.message;
-      });
+      return _HeaderData(displayName: '사용자', birthProfile: null, errorMessage: e.message);
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = '만세력 정보를 불러오지 못했습니다.';
-      });
+      return const _HeaderData(displayName: '사용자', birthProfile: null, errorMessage: '만세력 정보를 불러오지 못했습니다.');
     }
   }
 
-  String _birthSummary() {
-    final p = _birthProfile;
+  String _birthSummary(Map<String, dynamic>? birthProfile) {
+    final p = birthProfile;
     if (p == null) return '출생정보가 없습니다.';
     final dt = (p['birth_datetime_local'] as String?) ?? '';
     final cal = (p['calendar_type'] as String?) ?? 'solar';
@@ -96,26 +86,6 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const PageLoading(title: '불러오는 중', message: '만세력을 준비하고 있어요.');
-    }
-
-    if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('만세력 상세')),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              StatusNotice.error(message: _error!, requestId: 'manseoryeok'),
-              const SizedBox(height: 12),
-              FilledButton.tonal(onPressed: _init, child: const Text('재시도')),
-            ],
-          ),
-        ),
-      );
-    }
-
     final c = widget.chart;
     final hour = c['hour'] ?? '-';
     final day = c['day'] ?? '-';
@@ -129,9 +99,31 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         children: [
-          _HeaderCard(
-            name: _displayName ?? '사용자',
-            birthLine: _birthSummary(),
+          FutureBuilder<_HeaderData>(
+            future: _headerFuture,
+            builder: (context, snapshot) {
+              final data = snapshot.data;
+              final name = data?.displayName ?? '불러오는 중...';
+              final birthLine = data == null ? '출생정보를 불러오는 중...' : _birthSummary(data.birthProfile);
+
+              return Column(
+                children: [
+                  _HeaderCard(name: name, birthLine: birthLine),
+                  if (data?.errorMessage != null) ...[
+                    const SizedBox(height: 10),
+                    StatusNotice.warning(message: data!.errorMessage!, requestId: 'manseoryeok-header'),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () => setState(() => _headerFuture = _loadHeader()),
+                        child: const Text('다시 불러오기'),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
           const SizedBox(height: 10),
           PageSection(
