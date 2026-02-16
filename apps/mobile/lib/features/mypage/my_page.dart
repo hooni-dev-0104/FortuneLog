@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
+import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
 
 class MyPage extends StatefulWidget {
@@ -13,13 +14,19 @@ class MyPage extends StatefulWidget {
 }
 
 class _MyPageState extends State<MyPage> {
+  static const int _maxProfilesForFreeTier = 4;
   bool _loggingOut = false;
 
-  Future<Map<String, String>> _birthProfileSummary() async {
+  Future<Map<String, dynamic>> _birthProfileSummary() async {
     final supabase = Supabase.instance.client;
     final session = supabase.auth.currentSession;
     if (session == null) {
-      return {'title': '로그인이 필요합니다', 'subtitle': '로그인 후 사용 가능합니다.'};
+      return {
+        'title': '로그인이 필요합니다',
+        'subtitle': '로그인 후 사용 가능합니다.',
+        'count': 0,
+        'canAdd': false,
+      };
     }
     final userId = session.user.id;
 
@@ -31,12 +38,20 @@ class _MyPageState extends State<MyPage> {
 
     final list = (rows as List).cast<Map<String, dynamic>>();
     if (list.isEmpty) {
-      return {'title': '출생 프로필 0개', 'subtitle': '아직 생성된 프로필이 없습니다.'};
+      return {
+        'title': '출생 프로필 0개',
+        'subtitle': '아직 생성된 프로필이 없습니다.',
+        'count': 0,
+        'canAdd': true,
+      };
     }
 
+    final count = list.length;
     return {
-      'title': '출생 프로필 ${list.length}개',
-      'subtitle': '무료 버전 최대 4개까지 관리할 수 있습니다.'
+      'title': '출생 프로필 $count개',
+      'subtitle': '무료 버전 최대 4개까지 관리할 수 있습니다.',
+      'count': count,
+      'canAdd': count < _maxProfilesForFreeTier,
     };
   }
 
@@ -92,12 +107,14 @@ class _MyPageState extends State<MyPage> {
         const SizedBox(height: 10),
         PageSection(
           title: '출생정보 관리',
-          subtitle: '기존 프로필 재사용 또는 수정',
-          child: FutureBuilder<Map<String, String>>(
+          subtitle: '마이페이지에서 최대 4개까지 직접 등록/수정할 수 있습니다.',
+          child: FutureBuilder<Map<String, dynamic>>(
             future: _birthProfileSummary(),
             builder: (context, snapshot) {
               final waiting = snapshot.connectionState != ConnectionState.done;
               final hasError = snapshot.hasError;
+              final canAdd = (snapshot.data?['canAdd'] as bool?) ?? false;
+              final count = (snapshot.data?['count'] as int?) ?? 0;
 
               final title = snapshot.data?['title'] ?? '출생 프로필';
               final subtitle = hasError
@@ -105,11 +122,49 @@ class _MyPageState extends State<MyPage> {
                   : (snapshot.data?['subtitle'] ??
                       (waiting ? '불러오는 중...' : '내 프로필을 확인하고 수정할 수 있습니다.'));
 
-              return _MenuRow(
-                title: title,
-                subtitle: subtitle,
-                onTap: () => Navigator.pushNamed(
-                    context, BirthProfileListPage.routeName),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _MenuRow(
+                    title: title,
+                    subtitle: subtitle,
+                    onTap: () => Navigator.pushNamed(
+                        context, BirthProfileListPage.routeName),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: waiting
+                              ? null
+                              : () => Navigator.pushNamed(
+                                  context, BirthProfileListPage.routeName),
+                          child: const Text('목록에서 관리'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.tonal(
+                          onPressed: (!waiting && !hasError && canAdd)
+                              ? () async {
+                                  await Navigator.pushNamed(
+                                      context, BirthInputPage.routeName);
+                                  if (!mounted) return;
+                                  setState(() {});
+                                }
+                              : null,
+                          child: Text(canAdd ? '새 출생정보 추가' : '4개 등록 완료'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$count/$_maxProfilesForFreeTier 사용 중',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               );
             },
           ),
