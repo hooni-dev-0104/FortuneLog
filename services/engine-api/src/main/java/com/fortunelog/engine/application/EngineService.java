@@ -55,10 +55,10 @@ public class EngineService {
                 request.birthProfileId(),
                 chart.chart(),
                 chart.fiveElements(),
-                "v0.1.0"
+                EngineVersion.CURRENT
         );
 
-        return new ChartResult(chartId, "v0.1.0", chart.chart(), chart.fiveElements());
+        return new ChartResult(chartId, EngineVersion.CURRENT, chart.chart(), chart.fiveElements());
     }
 
     private LocalDate resolveSolarBirthDate(CalculateChartRequest request) {

@@ -37,7 +37,7 @@ Response 200:
 ```json
 {
   "chartId": "0b3d45a2-fc2b-4abf-9926-615ea3fcd912",
-  "engineVersion": "v0.1.0",
+  "engineVersion": "v0.1.1",
   "chart": {
     "year": "갑자",
     "month": "을축",

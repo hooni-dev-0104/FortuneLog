@@ -1,6 +1,7 @@
 package com.fortunelog.engine.api;
 
 import com.fortunelog.engine.application.EngineService;
+import com.fortunelog.engine.application.EngineVersion;
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
@@ -94,7 +95,7 @@ public class EngineController {
         return Map.of(
                 "requestId", requestId(httpRequest),
                 "status", "ok",
-                "engineVersion", "v0.1.0",
+                "engineVersion", EngineVersion.CURRENT,
                 "security", Map.of(
                         "insecureJwt", insecureJwt,
                         "authDebug", authDebug

@@ -1,6 +1,7 @@
 package com.fortunelog.engine.infra.supabase;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fortunelog.engine.application.EngineVersion;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -47,7 +48,7 @@ class SupabasePersistenceServiceTest {
                 "birth-1",
                 Map.of("year", "갑자"),
                 Map.of("wood", 2),
-                "v0.1.0"
+                EngineVersion.CURRENT
         );
 
         assertEquals("chart-1", id);

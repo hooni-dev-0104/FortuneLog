@@ -34,7 +34,9 @@ public class SajuCalculator {
             4  // 해 -> water
     };
 
-    private static final LocalDate REFERENCE_GAPJA_DAY = LocalDate.of(1984, 2, 2);
+    // Calibrated against external manse-ryeok references:
+    // 1984-01-31 (Gregorian) is a 갑자(甲子) day.
+    private static final LocalDate REFERENCE_GAPJA_DAY = LocalDate.of(1984, 1, 31);
 
     public SajuChart calculate(
             LocalDateTime birthDateTime,
