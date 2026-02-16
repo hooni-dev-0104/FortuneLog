@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.fortune_log_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Keep in sync with Android plugin deps (app_links/path_provider/shared_preferences/url_launcher).
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

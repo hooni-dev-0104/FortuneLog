@@ -227,13 +227,17 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     try {
       final kakaoScopes =
           provider == OAuthProvider.kakao ? 'profile_nickname profile_image' : null;
+      final launchMode = (provider == OAuthProvider.kakao && !kIsWeb)
+          // Kakao auth page can hang on a white in-app browser screen on some devices.
+          // Launching externally (browser/KakaoTalk app) is more stable.
+          ? LaunchMode.externalApplication
+          : LaunchMode.inAppBrowserView;
 
       await _supabase().auth.signInWithOAuth(
             provider,
             redirectTo: _redirectToForMobile(),
             scopes: kakaoScopes,
-            // 인앱으로 열고, signedIn 시점에 closeInAppWebView()로 자동 닫힘 처리한다.
-            authScreenLaunchMode: LaunchMode.inAppBrowserView,
+            authScreenLaunchMode: launchMode,
           );
     } on AuthException catch (e) {
       if (!mounted) return;
