@@ -12,6 +12,7 @@ import '../../core/network/engine_error_mapper.dart';
 import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
 import '../report/report_page.dart';
+import '../saju/manseoryeok_detail_page.dart';
 import '../saju/saju_guide_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -267,6 +268,10 @@ class _DashboardPageState extends State<DashboardPage> {
           PageSection(
             title: '만세력(사주팔자)',
             subtitle: '천간/지지 한문(漢字) 표기 + 오행 색상',
+            trailing: TextButton(
+              onPressed: () => Navigator.pushNamed(context, ManseoryeokDetailPage.routeName, arguments: _chart),
+              child: const Text('상세보기'),
+            ),
             child: _MansePillars(chart: _chart!),
           ),
           const SizedBox(height: 10),
