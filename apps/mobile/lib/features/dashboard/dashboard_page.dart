@@ -266,34 +266,8 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 10),
           PageSection(
             title: '만세력(사주팔자)',
-            subtitle: '한글/한문(漢字) 표기',
-            child: Row(
-              children: [
-                _PillarCard(
-                  label: '연주',
-                  value: _chart!['year'] ?? '-',
-                  hanja: SajuStars.pillarHanja(_chart!['year'] ?? ''),
-                ),
-                const SizedBox(width: 8),
-                _PillarCard(
-                  label: '월주',
-                  value: _chart!['month'] ?? '-',
-                  hanja: SajuStars.pillarHanja(_chart!['month'] ?? ''),
-                ),
-                const SizedBox(width: 8),
-                _PillarCard(
-                  label: '일주',
-                  value: _chart!['day'] ?? '-',
-                  hanja: SajuStars.pillarHanja(_chart!['day'] ?? ''),
-                ),
-                const SizedBox(width: 8),
-                _PillarCard(
-                  label: '시주',
-                  value: _chart!['hour'] ?? '-',
-                  hanja: SajuStars.pillarHanja(_chart!['hour'] ?? ''),
-                ),
-              ],
-            ),
+            subtitle: '천간/지지 한문(漢字) 표기 + 오행 색상',
+            child: _MansePillars(chart: _chart!),
           ),
           const SizedBox(height: 10),
           _AuspiciousStarsSection(chart: _chart!),
@@ -692,31 +666,189 @@ class _StarRow extends StatelessWidget {
   }
 }
 
-class _PillarCard extends StatelessWidget {
-  const _PillarCard({required this.label, required this.value, this.hanja});
+class _MansePillars extends StatelessWidget {
+  const _MansePillars({required this.chart});
 
-  final String label;
-  final String value;
-  final String? hanja;
+  final Map<String, String> chart;
 
   @override
   Widget build(BuildContext context) {
+    // Match common 만세력 UI ordering: 시/일/월/년.
+    final hour = chart['hour'] ?? '-';
+    final day = chart['day'] ?? '-';
+    final month = chart['month'] ?? '-';
+    final year = chart['year'] ?? '-';
+
+    return Row(
+      children: [
+        _MansePillarColumn(label: '시주', pillar: hour),
+        const SizedBox(width: 8),
+        _MansePillarColumn(label: '일주', pillar: day),
+        const SizedBox(width: 8),
+        _MansePillarColumn(label: '월주', pillar: month),
+        const SizedBox(width: 8),
+        _MansePillarColumn(label: '년주', pillar: year),
+      ],
+    );
+  }
+}
+
+class _MansePillarColumn extends StatelessWidget {
+  const _MansePillarColumn({required this.label, required this.pillar});
+
+  final String label;
+  final String pillar;
+
+  static const Color _unknownBg = Color(0xFFF3F4F6);
+  static const Color _unknownBorder = Color(0xFFE5E7EB);
+
+  Color _elementColor(String key) {
+    switch (key) {
+      case 'wood':
+        return const Color(0xFF1F8A5B);
+      case 'fire':
+        return const Color(0xFFE14C3A);
+      case 'earth':
+        return const Color(0xFFF0C24A);
+      case 'metal':
+        return const Color(0xFF9CA3AF);
+      case 'water':
+        return const Color(0xFF0F172A);
+    }
+    return _unknownBg;
+  }
+
+  String _elementLabel(String key) {
+    switch (key) {
+      case 'wood':
+        return '목';
+      case 'fire':
+        return '화';
+      case 'earth':
+        return '토';
+      case 'metal':
+        return '금';
+      case 'water':
+        return '수';
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stem = SajuStars.stemOf(pillar);
+    final branch = SajuStars.branchOf(pillar);
+
+    final stemHanja = stem == null ? null : SajuStars.stemHanja(stem);
+    final branchHanja = branch == null ? null : SajuStars.branchHanja(branch);
+
+    final stemEl = stem == null ? null : SajuStars.stemElementKey(stem);
+    final branchEl = branch == null ? null : SajuStars.branchElementKey(branch);
+
+    final pillarHanja = SajuStars.pillarHanja(pillar);
+
     return Expanded(
+      child: Column(
+        children: [
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 6),
+          _HanjaTile(
+            hanja: stemHanja,
+            hangul: stem,
+            elementKey: stemEl,
+            elementLabel: stemEl == null ? null : _elementLabel(stemEl),
+            unknownBg: _unknownBg,
+            unknownBorder: _unknownBorder,
+            elementColor: (k) => _elementColor(k),
+          ),
+          const SizedBox(height: 6),
+          _HanjaTile(
+            hanja: branchHanja,
+            hangul: branch,
+            elementKey: branchEl,
+            elementLabel: branchEl == null ? null : _elementLabel(branchEl),
+            unknownBg: _unknownBg,
+            unknownBorder: _unknownBorder,
+            elementColor: (k) => _elementColor(k),
+          ),
+          const SizedBox(height: 6),
+          Text(pillar, style: Theme.of(context).textTheme.titleMedium),
+          if (pillarHanja != null && pillarHanja.trim().isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(pillarHanja, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HanjaTile extends StatelessWidget {
+  const _HanjaTile({
+    required this.hanja,
+    required this.hangul,
+    required this.elementKey,
+    required this.elementLabel,
+    required this.unknownBg,
+    required this.unknownBorder,
+    required this.elementColor,
+  });
+
+  final String? hanja;
+  final String? hangul;
+  final String? elementKey;
+  final String? elementLabel;
+  final Color unknownBg;
+  final Color unknownBorder;
+  final Color Function(String key) elementColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = elementKey == null ? unknownBg : elementColor(elementKey!);
+    final border = elementKey == null ? unknownBorder : Colors.transparent;
+    final brightness = ThemeData.estimateBrightnessForColor(bg);
+    final fg = brightness == Brightness.dark ? Colors.white : const Color(0xFF111827);
+
+    return AspectRatio(
+      aspectRatio: 1,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFD8E0DC)),
+          border: Border.all(color: border),
         ),
-        child: Column(
+        child: Stack(
           children: [
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.titleMedium),
-            if (hanja != null && hanja!.trim().isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(hanja!, style: Theme.of(context).textTheme.bodySmall),
+            Center(
+              child: Text(
+                hanja ?? '-',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: fg,
+                      fontWeight: FontWeight.w800,
+                      height: 1.0,
+                    ),
+              ),
+            ),
+            if (hangul != null && hangul!.trim().isNotEmpty) ...[
+              Positioned(
+                left: 8,
+                bottom: 6,
+                child: Text(
+                  hangul!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.92)),
+                ),
+              ),
+            ],
+            if (elementLabel != null && elementLabel!.trim().isNotEmpty) ...[
+              Positioned(
+                right: 8,
+                top: 6,
+                child: Text(
+                  elementLabel!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.92)),
+                ),
+              ),
             ],
           ],
         ),

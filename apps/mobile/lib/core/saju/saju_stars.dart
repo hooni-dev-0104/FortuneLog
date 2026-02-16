@@ -6,6 +6,62 @@
 class SajuStars {
   static const _stems = <String>['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
   static const _branches = <String>['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+
+  // Element keys: wood/fire/earth/metal/water
+  static String? stemElementKey(String stem) {
+    switch (stem) {
+      case '갑':
+      case '을':
+        return 'wood';
+      case '병':
+      case '정':
+        return 'fire';
+      case '무':
+      case '기':
+        return 'earth';
+      case '경':
+      case '신':
+        return 'metal';
+      case '임':
+      case '계':
+        return 'water';
+    }
+    return null;
+  }
+
+  static String? branchElementKey(String branch) {
+    switch (branch) {
+      case '자':
+      case '해':
+        return 'water';
+      case '축':
+      case '진':
+      case '미':
+      case '술':
+        return 'earth';
+      case '인':
+      case '묘':
+        return 'wood';
+      case '사':
+      case '오':
+        return 'fire';
+      case '신':
+      case '유':
+        return 'metal';
+    }
+    return null;
+  }
+
+  static String? pillarStemElementKey(String pillar) {
+    final s = stemOf(pillar);
+    return s == null ? null : stemElementKey(s);
+  }
+
+  static String? pillarBranchElementKey(String pillar) {
+    final b = branchOf(pillar);
+    return b == null ? null : branchElementKey(b);
+  }
+
   static const _stemHanja = <String, String>{
     '갑': '甲',
     '을': '乙',
