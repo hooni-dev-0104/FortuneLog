@@ -332,6 +332,39 @@ class _AuspiciousStarsSection extends StatelessWidget {
 
   final Map<String, String> chart;
 
+  List<({String label, String pillar, String? stem, String? branch})> _pillarEntries(Map<String, String> chart) {
+    final year = chart['year'] ?? '';
+    final month = chart['month'] ?? '';
+    final day = chart['day'] ?? '';
+    final hour = chart['hour'] ?? '';
+    return [
+      (label: '년주', pillar: year, stem: SajuStars.stemOf(year), branch: SajuStars.branchOf(year)),
+      (label: '월주', pillar: month, stem: SajuStars.stemOf(month), branch: SajuStars.branchOf(month)),
+      (label: '일주', pillar: day, stem: SajuStars.stemOf(day), branch: SajuStars.branchOf(day)),
+      (label: '시주', pillar: hour, stem: SajuStars.stemOf(hour), branch: SajuStars.branchOf(hour)),
+    ];
+  }
+
+  String? _hintForStems(List<({String label, String pillar, String? stem, String? branch})> entries, Set<String> targets) {
+    if (targets.isEmpty) return null;
+    final labels = <String>[];
+    for (final e in entries) {
+      final s = e.stem;
+      if (s != null && targets.contains(s)) labels.add(e.label);
+    }
+    return labels.isEmpty ? null : labels.join('/');
+  }
+
+  String? _hintForBranches(List<({String label, String pillar, String? stem, String? branch})> entries, Set<String> targets) {
+    if (targets.isEmpty) return null;
+    final labels = <String>[];
+    for (final e in entries) {
+      final b = e.branch;
+      if (b != null && targets.contains(b)) labels.add(e.label);
+    }
+    return labels.isEmpty ? null : labels.join('/');
+  }
+
   @override
   Widget build(BuildContext context) {
     final day = chart['day'] ?? '';
@@ -350,6 +383,7 @@ class _AuspiciousStarsSection extends StatelessWidget {
       chart['day'] ?? '',
       chart['hour'] ?? '',
     ];
+    final entries = _pillarEntries(chart);
     final stems = pillars.map(SajuStars.stemOf).whereType<String>().toList(growable: false);
     final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
 
@@ -407,79 +441,87 @@ class _AuspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '월덕귀인',
           description: '대인관계/인복, 정서적 안정과 연결해 풀이하는 경우가 있습니다.',
-          hint: wolDeokStem,
+          hint: _hintForStems(entries, {wolDeokStem}),
         ),
       if (hasCheonDeok)
         _StarCardData(
           name: '천덕귀인',
           description: '덕으로 풀리는 복, 큰 흐름에서 보호받는 느낌으로 설명되기도 합니다.',
-          hint: cheonDeokStem,
+          hint: _hintForStems(entries, {cheonDeokStem}),
         ),
       if (hasCheonEul)
         _StarCardData(
           name: '천을귀인',
           description: '도움/지원의 기운으로 자주 설명됩니다.',
-          hint: cheonEulTargets.isEmpty ? null : cheonEulTargets.join(', '),
+          hint: _hintForBranches(entries, cheonEulTargets.toSet()),
         ),
       if (hasTaeGeuk)
         _StarCardData(
           name: '태극귀인',
           description: '위기 회피/난관 돌파에 유리한 길신으로 소개되곤 합니다.',
-          hint: taeGeukTargets.isEmpty ? null : taeGeukTargets.join(', '),
+          hint: _hintForBranches(entries, taeGeukTargets.toSet()),
         ),
       if (hasMunChang)
         _StarCardData(
           name: '문창귀인',
           description: '공부/문서/표현력의 기운으로 자주 설명됩니다.',
-          hint: munChangTarget,
+          hint: _hintForBranches(entries, {munChangTarget}),
         ),
       if (hasHakDang)
         _StarCardData(
           name: '학당귀인',
           description: '학업/자격/연구로 풀어 설명되는 경우가 있습니다.',
-          hint: hakDangTarget,
+          hint: _hintForBranches(entries, {hakDangTarget}),
         ),
       if (hasMunGok)
         _StarCardData(
           name: '문곡귀인',
           description: '문장/글/표현력이 돋보인다고 풀이되는 경우가 있습니다.',
-          hint: munGokTarget,
+          hint: _hintForBranches(entries, {munGokTarget}),
         ),
       if (hasGwanGwi)
         _StarCardData(
           name: '사관귀인',
           description: '관직/직위/조직 내 역할과 연결해서 풀이하는 경우가 있습니다.',
-          hint: gwanGwiTarget,
+          hint: _hintForBranches(entries, {gwanGwiTarget}),
         ),
       if (hasCheonJu)
         _StarCardData(
           name: '천주귀인',
           description: '환경의 도움/보호로 설명되는 경우가 있습니다.',
-          hint: cheonJuTarget,
+          hint: _hintForBranches(entries, {cheonJuTarget}),
         ),
       if (hasGeumYeo)
         _StarCardData(
           name: '금여',
           description: '재물/배우자 복과 연결해 설명되는 경우가 있습니다.',
-          hint: geumYeoTarget,
+          hint: _hintForBranches(entries, {geumYeoTarget}),
         ),
       if (hasAmRok)
         _StarCardData(
           name: '암록',
           description: '예상하지 못한 도움/수입처럼 “숨은 복”으로 풀이되기도 합니다.',
-          hint: amRokTarget,
+          hint: _hintForBranches(entries, {amRokTarget}),
         ),
       if (hasCheonEui)
         _StarCardData(
           name: '천의성',
           description: '건강/치유/상담 등과 연결해서 해석하는 경우가 있습니다.',
-          hint: cheonEuiTarget,
+          hint: _hintForBranches(entries, {cheonEuiTarget}),
         ),
       if (hasRokMa)
         _StarCardData(
           name: isRokMaDongHyang ? '녹마동향' : '록마교치',
           description: '움직임(역마)과 성취(록)가 맞물릴 때의 흐름을 말합니다.',
-          hint: isRokMaDongHyang ? geonRokBranch : '$geonRokBranch, $yeokMaTarget',
+          hint: () {
+            final rokHint = _hintForBranches(entries, {geonRokBranch});
+            final maHint = _hintForBranches(entries, {yeokMaTarget});
+            if (isRokMaDongHyang) {
+              // Same pillar can satisfy both.
+              return rokHint;
+            }
+            return '건록:$rokHint / 역마:$maHint';
+          }(),
         ),
       if (hasSamGi)
         const _StarCardData(
@@ -539,6 +581,29 @@ class _InauspiciousStarsSection extends StatelessWidget {
 
   final Map<String, String> chart;
 
+  List<({String label, String pillar, String? stem, String? branch})> _pillarEntries(Map<String, String> chart) {
+    final year = chart['year'] ?? '';
+    final month = chart['month'] ?? '';
+    final day = chart['day'] ?? '';
+    final hour = chart['hour'] ?? '';
+    return [
+      (label: '년주', pillar: year, stem: SajuStars.stemOf(year), branch: SajuStars.branchOf(year)),
+      (label: '월주', pillar: month, stem: SajuStars.stemOf(month), branch: SajuStars.branchOf(month)),
+      (label: '일주', pillar: day, stem: SajuStars.stemOf(day), branch: SajuStars.branchOf(day)),
+      (label: '시주', pillar: hour, stem: SajuStars.stemOf(hour), branch: SajuStars.branchOf(hour)),
+    ];
+  }
+
+  String? _hintForBranches(List<({String label, String pillar, String? stem, String? branch})> entries, Set<String> targets) {
+    if (targets.isEmpty) return null;
+    final labels = <String>[];
+    for (final e in entries) {
+      final b = e.branch;
+      if (b != null && targets.contains(b)) labels.add(e.label);
+    }
+    return labels.isEmpty ? null : labels.join('/');
+  }
+
   @override
   Widget build(BuildContext context) {
     final day = chart['day'] ?? '';
@@ -550,6 +615,7 @@ class _InauspiciousStarsSection extends StatelessWidget {
       chart['day'] ?? '',
       chart['hour'] ?? '',
     ];
+    final entries = _pillarEntries(chart);
     final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
 
     final yangInTarget = dayStem == null ? null : SajuStars.yangInTarget(dayStem);
@@ -619,12 +685,19 @@ class _InauspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '양인살',
           description: '강한 추진력/에너지를 뜻하는 것으로 소개되며, 과열과 충돌에 주의하라고 풀이되기도 합니다.',
-          hint: yangInTarget,
+          hint: _hintForBranches(entries, {yangInTarget}),
         ),
       if (hasBaekHo)
-        const _StarCardData(
+        _StarCardData(
           name: '백호살',
           description: '큰 변화/사고수로 연결해 풀이되는 경우가 있어, 생활 리스크 관리로 해석하기도 합니다.',
+          hint: () {
+            final labels = <String>[];
+            for (final e in entries) {
+              if (SajuStars.isBaekHoPillar(e.pillar)) labels.add(e.label);
+            }
+            return labels.isEmpty ? null : labels.join('/');
+          }(),
         ),
       if (hasGueGang)
         const _StarCardData(
@@ -635,19 +708,19 @@ class _InauspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '홍염살',
           description: '매력/호감/관계 이슈와 연결해 해석하는 경우가 있습니다.',
-          hint: hongYeomTarget,
+          hint: _hintForBranches(entries, {hongYeomTarget}),
         ),
       if (hasGoJin)
         _StarCardData(
           name: '고진살',
           description: '고독/고립감으로 연결해 풀이하는 경우가 있습니다.',
-          hint: (goJinT1 ?? goJinT2),
+          hint: _hintForBranches(entries, {if (goJinT1 != null) goJinT1, if (goJinT2 != null) goJinT2}),
         ),
       if (hasGwaSuk)
         _StarCardData(
           name: '과숙살',
           description: '관계의 단절감/혼자 감당하는 기운으로 풀이되는 경우가 있습니다.',
-          hint: (gwaSukT1 ?? gwaSukT2),
+          hint: _hintForBranches(entries, {if (gwaSukT1 != null) gwaSukT1, if (gwaSukT2 != null) gwaSukT2}),
         ),
       if (hasGyeokGak)
         const _StarCardData(
@@ -663,30 +736,43 @@ class _InauspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '급각살',
           description: '급작스러운 변수로 해석하는 경우가 있습니다.',
-          hint: geupGakTargets.isEmpty ? null : geupGakTargets.join(', '),
+          hint: _hintForBranches(entries, geupGakTargets),
         ),
       if (hasDanGyo)
         _StarCardData(
           name: '단교관살',
           description: '관계의 단절/끊김으로 풀이되는 경우가 있습니다.',
-          hint: danGyoTarget,
+          hint: _hintForBranches(entries, {danGyoTarget}),
         ),
       if (hasGokGak)
-        const _StarCardData(
+        _StarCardData(
           name: '곡각살',
           description: '말/상처/굴곡으로 연결해 풀이하는 경우가 있습니다.',
+          hint: () {
+            final labels = <String>[];
+            for (final e in entries) {
+              if (SajuStars.isGokGakPillar(e.pillar)) labels.add(e.label);
+            }
+            return labels.isEmpty ? null : labels.join('/');
+          }(),
         ),
       if (hasCheonRaJiMang)
         _StarCardData(
           name: '천라지망',
           description: '답답함/제약으로 풀이되기도 하며, 장기적으로 정리/정돈이 필요하다고 해석하기도 합니다.',
-          hint: cheonRaJiMangType,
+          hint: () {
+            if (dayBranch == '술') return _hintForBranches(entries, {'술', '해'});
+            if (dayBranch == '해') return _hintForBranches(entries, {'술', '해'});
+            if (dayBranch == '진') return _hintForBranches(entries, {'진', '사'});
+            if (dayBranch == '사') return _hintForBranches(entries, {'진', '사'});
+            return cheonRaJiMangType;
+          }(),
         ),
       if (hasDaeMo)
         _StarCardData(
           name: '대모살',
           description: '큰 지출/손재로 풀이되는 경우가 있어, 리스크 관리를 강조하기도 합니다.',
-          hint: daeMoTarget,
+          hint: _hintForBranches(entries, {daeMoTarget}),
         ),
       if (hasGuGyo)
         const _StarCardData(
@@ -707,13 +793,34 @@ class _InauspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '평두살',
           description: '막힘/꺾임으로 풀이되는 경우가 있습니다.',
-          hint: '$pyeongDuCount',
+          hint: () {
+            // Based on pyeongDuCount implementation.
+            final labels = <String>{};
+            for (final e in entries) {
+              final s = e.stem;
+              final b = e.branch;
+              if (s == '갑' || s == '병' || s == '정' || s == '임') labels.add(e.label);
+              if (b == '진' || b == '자') labels.add(e.label);
+            }
+            final list = labels.toList()..sort();
+            return list.isEmpty ? null : list.join('/');
+          }(),
         ),
       if (hasHyeonChim)
         _StarCardData(
           name: '현침살',
           description: '말/표현이 날카롭게 비칠 수 있다고 설명되며, 정밀함이 강점이 되기도 합니다.',
-          hint: '$hyeonChimCount',
+          hint: () {
+            final labels = <String>{};
+            for (final e in entries) {
+              final s = e.stem;
+              final b = e.branch;
+              if (s == '갑' || s == '신') labels.add(e.label);
+              if (b == '묘' || b == '오' || b == '신') labels.add(e.label);
+            }
+            final list = labels.toList()..sort();
+            return list.isEmpty ? null : list.join('/');
+          }(),
         ),
       if (hasJangHyeong)
         const _StarCardData(
@@ -724,13 +831,13 @@ class _InauspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '상문살',
           description: '상실/이별로 풀이되는 경우가 있어, 마음 관리를 권하기도 합니다.',
-          hint: sangMunTarget,
+          hint: _hintForBranches(entries, {sangMunTarget}),
         ),
       if (hasJoGaek)
         _StarCardData(
           name: '조객살',
           description: '외부 방문/변동 이슈로 풀이되기도 합니다.',
-          hint: joGaekTarget,
+          hint: _hintForBranches(entries, {joGaekTarget}),
         ),
     ];
 
