@@ -40,19 +40,19 @@ class SajuGuidePage extends StatelessWidget {
                 _StarGuideRow(
                   title: '월덕귀인',
                   description: '대인관계/인복, 정서적 안정과 연결해 풀이하는 경우가 있습니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForWolDeok(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
                   title: '천덕귀인',
                   description: '덕으로 풀리는 복, 큰 흐름에서 보호받는 느낌으로 설명되기도 합니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForCheonDeok(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
                   title: '태극귀인',
                   description: '위기 회피/난관 돌파에 유리한 길신으로 소개되곤 합니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForTaeGeuk(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
@@ -64,13 +64,13 @@ class SajuGuidePage extends StatelessWidget {
                 _StarGuideRow(
                   title: '사관귀인',
                   description: '관직/직위/조직 내 역할과 연결해서 풀이하는 경우가 있습니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForGwanGwiHakGwan(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
                   title: '천록천마/록마교치/녹마동향',
                   description: '움직임(역마)과 성취(록)가 맞물릴 때의 흐름을 말합니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForRokMa(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
@@ -82,19 +82,19 @@ class SajuGuidePage extends StatelessWidget {
                 _StarGuideRow(
                   title: '금여',
                   description: '재물/배우자 복과 연결해 설명되는 경우가 있습니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForGeumYeo(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
                   title: '암록',
                   description: '예상하지 못한 도움/수입처럼 “숨은 복”으로 풀이되기도 합니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForAmRok(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
                   title: '천의성',
                   description: '건강/치유/상담 등과 연결해서 해석하는 경우가 있습니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForCheonEui(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
@@ -106,7 +106,7 @@ class SajuGuidePage extends StatelessWidget {
                 _StarGuideRow(
                   title: '삼기귀인',
                   description: '배움/재능/특별한 기회로 설명되는 경우가 있습니다.',
-                  status: StarCalcStatus.todo,
+                  status: _statusForSamGi(chart),
                 ),
                 const SizedBox(height: 10),
                 _StarGuideRow(
@@ -346,6 +346,143 @@ class SajuGuidePage extends StatelessWidget {
     final c = SajuStars.hyeonChimCount(pillars);
     // In many references, it is treated as "present" when 2+ relevant elements exist.
     return c >= 2 ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForWolDeok(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
+    if (monthBranch == null) return StarCalcStatus.none;
+    final targetStem = SajuStars.wolDeokStemByMonthBranch(monthBranch);
+    if (targetStem == null) return StarCalcStatus.none;
+    final stems = [
+      SajuStars.stemOf(chart['year'] ?? ''),
+      SajuStars.stemOf(chart['month'] ?? ''),
+      SajuStars.stemOf(chart['day'] ?? ''),
+      SajuStars.stemOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return stems.contains(targetStem) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForCheonDeok(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
+    if (monthBranch == null) return StarCalcStatus.none;
+    final targetStem = SajuStars.cheonDeokStemByMonthBranch(monthBranch);
+    if (targetStem == null) return StarCalcStatus.none;
+    final stems = [
+      SajuStars.stemOf(chart['year'] ?? ''),
+      SajuStars.stemOf(chart['month'] ?? ''),
+      SajuStars.stemOf(chart['day'] ?? ''),
+      SajuStars.stemOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return stems.contains(targetStem) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForTaeGeuk(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    if (dayStem == null) return StarCalcStatus.none;
+    final targets = SajuStars.taeGeukTargets(dayStem);
+    if (targets.isEmpty) return StarCalcStatus.none;
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return targets.any(branches.contains) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForGwanGwiHakGwan(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    if (dayStem == null) return StarCalcStatus.none;
+    final target = SajuStars.gwanGwiHakGwanTarget(dayStem);
+    if (target == null) return StarCalcStatus.none;
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return branches.contains(target) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForGeumYeo(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    if (dayStem == null) return StarCalcStatus.none;
+    final target = SajuStars.geumYeoTarget(dayStem);
+    if (target == null) return StarCalcStatus.none;
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return branches.contains(target) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForAmRok(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    if (dayStem == null) return StarCalcStatus.none;
+    final target = SajuStars.amRokTarget(dayStem);
+    if (target == null) return StarCalcStatus.none;
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return branches.contains(target) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForCheonEui(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
+    if (monthBranch == null) return StarCalcStatus.none;
+    final target = SajuStars.cheonEuiTargetByMonthBranch(monthBranch);
+    if (target == null) return StarCalcStatus.none;
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    return branches.contains(target) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForSamGi(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final pillars = <String>[
+      chart['year'] ?? '',
+      chart['month'] ?? '',
+      chart['day'] ?? '',
+      chart['hour'] ?? '',
+    ];
+    return SajuStars.hasSamGi(pillars) ? StarCalcStatus.present : StarCalcStatus.absent;
+  }
+
+  static StarCalcStatus _statusForRokMa(Map<String, String>? chart) {
+    if (chart == null) return StarCalcStatus.none;
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    if (dayStem == null) return StarCalcStatus.none;
+    final geonRok = SajuStars.geonRokBranch(dayStem);
+    final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
+    final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
+    final yeokMa = SajuStars.yeokMaTarget(yearBranch: yearBranch, dayBranch: dayBranch);
+    if (geonRok == null || yeokMa == null) return StarCalcStatus.none;
+
+    final branches = [
+      SajuStars.branchOf(chart['year'] ?? ''),
+      SajuStars.branchOf(chart['month'] ?? ''),
+      SajuStars.branchOf(chart['day'] ?? ''),
+      SajuStars.branchOf(chart['hour'] ?? ''),
+    ].whereType<String>();
+    final hasRok = branches.contains(geonRok);
+    final hasMa = branches.contains(yeokMa);
+    return (hasRok && hasMa) ? StarCalcStatus.present : StarCalcStatus.absent;
   }
 }
 

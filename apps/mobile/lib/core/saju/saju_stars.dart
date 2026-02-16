@@ -47,6 +47,22 @@ class SajuStars {
     return _branches.contains(b) ? b : null;
   }
 
+  static List<String> stemsOfPillars(Iterable<String> pillars) =>
+      pillars.map(stemOf).whereType<String>().toList(growable: false);
+
+  static List<String> branchesOfPillars(Iterable<String> pillars) =>
+      pillars.map(branchOf).whereType<String>().toList(growable: false);
+
+  static bool hasStem(Iterable<String> pillars, String stem) => stemsOfPillars(pillars).contains(stem);
+
+  static bool hasBranch(Iterable<String> pillars, String branch) => branchesOfPillars(pillars).contains(branch);
+
+  static String? previousBranch(String branch) {
+    final i = _branches.indexOf(branch);
+    if (i < 0) return null;
+    return _branches[(i + _branches.length - 1) % _branches.length];
+  }
+
   static String? stemHanja(String stem) => _stemHanja[stem];
   static String? branchHanja(String branch) => _branchHanja[branch];
 
@@ -91,6 +107,183 @@ class SajuStars {
 
   static List<String> cheonEulTargets(String dayStem) => _cheonEul[dayStem] ?? const [];
   static String? munChangTarget(String dayStem) => _munChang[dayStem];
+
+  // 월덕귀인/천덕귀인: month branch -> stem (common "triad" table).
+  // Notes:
+  // - There are multiple variants in the wild (some include stem+branch targets).
+  // - We intentionally implement a widely-used stem-only table for consistency in UI.
+  // - If later needed, we can extend to stem/branch targets with disambiguation.
+  static String? wolDeokStemByMonthBranch(String monthBranch) {
+    // 寅午戌 -> 丙, 巳酉丑 -> 庚, 申子辰 -> 壬, 亥卯未 -> 甲
+    switch (monthBranch) {
+      case '인':
+      case '오':
+      case '술':
+        return '병';
+      case '사':
+      case '유':
+      case '축':
+        return '경';
+      case '신':
+      case '자':
+      case '진':
+        return '임';
+      case '해':
+      case '묘':
+      case '미':
+        return '갑';
+      default:
+        return null;
+    }
+  }
+
+  static String? cheonDeokStemByMonthBranch(String monthBranch) {
+    // 寅午戌 -> 丁, 巳酉丑 -> 庚, 申子辰 -> 壬, 亥卯未 -> 甲
+    // (A common simplified variant; some sources differ.)
+    switch (monthBranch) {
+      case '인':
+      case '오':
+      case '술':
+        return '정';
+      case '사':
+      case '유':
+      case '축':
+        return '경';
+      case '신':
+      case '자':
+      case '진':
+        return '임';
+      case '해':
+      case '묘':
+      case '미':
+        return '갑';
+      default:
+        return null;
+    }
+  }
+
+  static String? cheonEuiTargetByMonthBranch(String monthBranch) => previousBranch(monthBranch);
+
+  // 태극귀인: day stem -> branches (표 기준).
+  static const Map<String, List<String>> _taeGeuk = {
+    '갑': ['자', '오'],
+    '을': ['자', '오'],
+    '병': ['묘', '유'],
+    '정': ['묘', '유'],
+    '무': ['축', '진', '미', '술'],
+    '기': ['축', '진', '미', '술'],
+    '경': ['인', '해'],
+    '신': ['인', '해'],
+    '임': ['사', '신'],
+    '계': ['사', '신'],
+  };
+
+  // 천주귀인(=천주귀인/천주성): day stem -> branch.
+  static const Map<String, String> _cheonJu = {
+    '갑': '사',
+    '을': '오',
+    '병': '사',
+    '정': '오',
+    '무': '신',
+    '기': '유',
+    '경': '해',
+    '신': '자',
+    '임': '인',
+    '계': '묘',
+  };
+
+  // 관귀학관(사관귀인): day stem -> branch.
+  static const Map<String, String> _gwanGwiHakGwan = {
+    '갑': '사',
+    '을': '사',
+    '병': '신',
+    '정': '신',
+    '무': '해',
+    '기': '해',
+    '경': '인',
+    '신': '인',
+    '임': '신',
+    '계': '신',
+  };
+
+  // 문곡귀인: day stem -> branch.
+  static const Map<String, String> _munGok = {
+    '갑': '해',
+    '을': '자',
+    '병': '인',
+    '정': '묘',
+    '무': '인',
+    '기': '묘',
+    '경': '사',
+    '신': '오',
+    '임': '신',
+    '계': '유',
+  };
+
+  // 학당귀인: day stem -> branch.
+  static const Map<String, String> _hakDang = {
+    '갑': '해',
+    '을': '오',
+    '병': '인',
+    '정': '유',
+    '무': '인',
+    '기': '유',
+    '경': '사',
+    '신': '자',
+    '임': '신',
+    '계': '묘',
+  };
+
+  // 금여록: day stem -> branch.
+  static const Map<String, String> _geumYeo = {
+    '갑': '진',
+    '을': '사',
+    '병': '미',
+    '정': '신',
+    '무': '미',
+    '기': '신',
+    '경': '술',
+    '신': '해',
+    '임': '축',
+    '계': '인',
+  };
+
+  // 암록: day stem -> branch.
+  static const Map<String, String> _amRok = {
+    '갑': '해',
+    '을': '술',
+    '병': '신',
+    '정': '미',
+    '무': '신',
+    '기': '미',
+    '경': '사',
+    '신': '진',
+    '임': '인',
+    '계': '축',
+  };
+
+  // 십간록(건록): day stem -> branch.
+  static const Map<String, String> _geonRok = {
+    '갑': '인',
+    '을': '묘',
+    '병': '사',
+    '정': '오',
+    '무': '사',
+    '기': '오',
+    '경': '신',
+    '신': '유',
+    '임': '해',
+    '계': '자',
+  };
+
+  static List<String> taeGeukTargets(String dayStem) => _taeGeuk[dayStem] ?? const [];
+  static String? cheonJuTarget(String dayStem) => _cheonJu[dayStem];
+  static String? gwanGwiHakGwanTarget(String dayStem) => _gwanGwiHakGwan[dayStem];
+  static String? munGokTarget(String dayStem) => _munGok[dayStem];
+  static String? hakDangTarget(String dayStem) => _hakDang[dayStem];
+  static String? geumYeoTarget(String dayStem) => _geumYeo[dayStem];
+  static String? amRokTarget(String dayStem) => _amRok[dayStem];
+  static String? geonRokBranch(String dayStem) => _geonRok[dayStem];
 
   // 양인살: day stem -> 1 branch (간단 버전).
   // Source: widely-used tables in Korean 명리 references.
@@ -146,5 +339,44 @@ class SajuStars {
       if (b == target) return true;
     }
     return false;
+  }
+
+  static String? yeokMaTargetByBranch(String baseBranch) {
+    // 역마: (연지 또는 일지) 기준 삼합의 첫 글자를 충하는 지지.
+    // 인오술 -> 신, 신자진 -> 인, 사유축 -> 해, 해묘미 -> 사
+    switch (baseBranch) {
+      case '인':
+      case '오':
+      case '술':
+        return '신';
+      case '신':
+      case '자':
+      case '진':
+        return '인';
+      case '사':
+      case '유':
+      case '축':
+        return '해';
+      case '해':
+      case '묘':
+      case '미':
+        return '사';
+      default:
+        return null;
+    }
+  }
+
+  static String? yeokMaTarget({String? yearBranch, String? dayBranch}) {
+    final base = yearBranch ?? dayBranch;
+    if (base == null) return null;
+    return yeokMaTargetByBranch(base);
+  }
+
+  static bool hasSamGi(Iterable<String> pillars) {
+    final stems = stemsOfPillars(pillars).toSet();
+    const cheonSang = {'갑', '무', '경'};
+    const jiHa = {'을', '병', '정'};
+    const inJung = {'임', '계', '신'}; // here '신' is the stem 辛
+    return stems.containsAll(cheonSang) || stems.containsAll(jiHa) || stems.containsAll(inJung);
   }
 }

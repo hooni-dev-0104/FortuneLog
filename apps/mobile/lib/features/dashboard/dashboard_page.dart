@@ -371,6 +371,7 @@ class _AuspiciousStarsSection extends StatelessWidget {
       chart['day'] ?? '',
       chart['hour'] ?? '',
     ];
+    final stems = pillars.map(SajuStars.stemOf).whereType<String>().toList(growable: false);
     final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
 
     final cheonEulTargets = SajuStars.cheonEulTargets(dayStem);
@@ -379,18 +380,132 @@ class _AuspiciousStarsSection extends StatelessWidget {
     final munChangTarget = SajuStars.munChangTarget(dayStem);
     final hasMunChang = munChangTarget != null && SajuStars.hasAnyBranch(branches, munChangTarget);
 
+    final taeGeukTargets = SajuStars.taeGeukTargets(dayStem);
+    final hasTaeGeuk = taeGeukTargets.any((t) => SajuStars.hasAnyBranch(branches, t));
+
+    final cheonJuTarget = SajuStars.cheonJuTarget(dayStem);
+    final hasCheonJu = cheonJuTarget != null && SajuStars.hasAnyBranch(branches, cheonJuTarget);
+
+    final hakDangTarget = SajuStars.hakDangTarget(dayStem);
+    final hasHakDang = hakDangTarget != null && SajuStars.hasAnyBranch(branches, hakDangTarget);
+
+    final gwanGwiTarget = SajuStars.gwanGwiHakGwanTarget(dayStem);
+    final hasGwanGwi = gwanGwiTarget != null && SajuStars.hasAnyBranch(branches, gwanGwiTarget);
+
+    final munGokTarget = SajuStars.munGokTarget(dayStem);
+    final hasMunGok = munGokTarget != null && SajuStars.hasAnyBranch(branches, munGokTarget);
+
+    final geumYeoTarget = SajuStars.geumYeoTarget(dayStem);
+    final hasGeumYeo = geumYeoTarget != null && SajuStars.hasAnyBranch(branches, geumYeoTarget);
+
+    final amRokTarget = SajuStars.amRokTarget(dayStem);
+    final hasAmRok = amRokTarget != null && SajuStars.hasAnyBranch(branches, amRokTarget);
+
+    final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
+    final wolDeokStem = monthBranch == null ? null : SajuStars.wolDeokStemByMonthBranch(monthBranch);
+    final hasWolDeok = wolDeokStem != null && stems.contains(wolDeokStem);
+
+    final cheonDeokStem = monthBranch == null ? null : SajuStars.cheonDeokStemByMonthBranch(monthBranch);
+    final hasCheonDeok = cheonDeokStem != null && stems.contains(cheonDeokStem);
+
+    final cheonEuiTarget = monthBranch == null ? null : SajuStars.cheonEuiTargetByMonthBranch(monthBranch);
+    final hasCheonEui = cheonEuiTarget != null && SajuStars.hasAnyBranch(branches, cheonEuiTarget);
+
+    final geonRokBranch = SajuStars.geonRokBranch(dayStem);
+    final hasGeonRok = geonRokBranch != null && SajuStars.hasAnyBranch(branches, geonRokBranch);
+
+    final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
+    final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
+    final yeokMaTarget = SajuStars.yeokMaTarget(yearBranch: yearBranch, dayBranch: dayBranch);
+    final hasYeokMa = yeokMaTarget != null && SajuStars.hasAnyBranch(branches, yeokMaTarget);
+    final hasRokMa = hasGeonRok && hasYeokMa;
+    final isRokMaDongHyang = hasRokMa && geonRokBranch == yeokMaTarget;
+
+    final hasSamGi = SajuStars.hasSamGi(pillars);
+
     final stars = <_StarCardData>[
+      if (hasWolDeok)
+        _StarCardData(
+          name: '월덕귀인',
+          description: '대인관계/인복, 정서적 안정과 연결해 풀이하는 경우가 있습니다.',
+          hint: wolDeokStem,
+        ),
+      if (hasCheonDeok)
+        _StarCardData(
+          name: '천덕귀인',
+          description: '덕으로 풀리는 복, 큰 흐름에서 보호받는 느낌으로 설명되기도 합니다.',
+          hint: cheonDeokStem,
+        ),
       if (hasCheonEul)
         _StarCardData(
           name: '천을귀인',
           description: '도움/지원의 기운으로 자주 설명됩니다.',
           hint: cheonEulTargets.isEmpty ? null : cheonEulTargets.join(', '),
         ),
+      if (hasTaeGeuk)
+        _StarCardData(
+          name: '태극귀인',
+          description: '위기 회피/난관 돌파에 유리한 길신으로 소개되곤 합니다.',
+          hint: taeGeukTargets.isEmpty ? null : taeGeukTargets.join(', '),
+        ),
       if (hasMunChang)
         _StarCardData(
           name: '문창귀인',
           description: '공부/문서/표현력의 기운으로 자주 설명됩니다.',
           hint: munChangTarget,
+        ),
+      if (hasHakDang)
+        _StarCardData(
+          name: '학당귀인',
+          description: '학업/자격/연구로 풀어 설명되는 경우가 있습니다.',
+          hint: hakDangTarget,
+        ),
+      if (hasMunGok)
+        _StarCardData(
+          name: '문곡귀인',
+          description: '문장/글/표현력이 돋보인다고 풀이되는 경우가 있습니다.',
+          hint: munGokTarget,
+        ),
+      if (hasGwanGwi)
+        _StarCardData(
+          name: '사관귀인',
+          description: '관직/직위/조직 내 역할과 연결해서 풀이하는 경우가 있습니다.',
+          hint: gwanGwiTarget,
+        ),
+      if (hasCheonJu)
+        _StarCardData(
+          name: '천주귀인',
+          description: '환경의 도움/보호로 설명되는 경우가 있습니다.',
+          hint: cheonJuTarget,
+        ),
+      if (hasGeumYeo)
+        _StarCardData(
+          name: '금여',
+          description: '재물/배우자 복과 연결해 설명되는 경우가 있습니다.',
+          hint: geumYeoTarget,
+        ),
+      if (hasAmRok)
+        _StarCardData(
+          name: '암록',
+          description: '예상하지 못한 도움/수입처럼 “숨은 복”으로 풀이되기도 합니다.',
+          hint: amRokTarget,
+        ),
+      if (hasCheonEui)
+        _StarCardData(
+          name: '천의성',
+          description: '건강/치유/상담 등과 연결해서 해석하는 경우가 있습니다.',
+          hint: cheonEuiTarget,
+        ),
+      if (hasRokMa)
+        _StarCardData(
+          name: isRokMaDongHyang ? '녹마동향' : '록마교치',
+          description: '움직임(역마)과 성취(록)가 맞물릴 때의 흐름을 말합니다.',
+          hint: isRokMaDongHyang ? geonRokBranch : '$geonRokBranch, $yeokMaTarget',
+        ),
+      if (hasSamGi)
+        const _StarCardData(
+          name: '삼기귀인',
+          description: '배움/재능/특별한 기회로 설명되는 경우가 있습니다.',
         ),
     ];
 
