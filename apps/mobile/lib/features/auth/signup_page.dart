@@ -155,6 +155,16 @@ class _SignupPageState extends State<SignupPage> {
         password: _passwordController.text,
         data: {
           'display_name': _nameController.text.trim(),
+          // Fallback seed data: if birth profile insertion fails or is delayed, AppGate can recreate it
+          // from auth metadata and avoid asking the user to re-enter.
+          'birth_date': _dateController.text.trim(),
+          'birth_time': _unknownBirthTime ? '' : _timeController.text.trim(),
+          'birth_timezone': 'Asia/Seoul',
+          'birth_location': _locationController.text.trim(),
+          'calendar_type': _isLunar ? 'lunar' : 'solar',
+          'is_leap_month': _isLeapMonth,
+          'gender': _gender,
+          'unknown_birth_time': _unknownBirthTime,
         },
       );
 

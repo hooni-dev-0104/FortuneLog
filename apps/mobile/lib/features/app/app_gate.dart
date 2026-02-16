@@ -116,6 +116,49 @@ class _SignedInGateState extends State<_SignedInGate> {
     _future = _hasBirthProfile();
   }
 
+  Future<void> _seedBirthProfileFromAuthMetadataIfPossible() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    final meta = user?.userMetadata;
+    if (meta == null) return;
+
+    final birthDate = meta['birth_date'] as String?;
+    final unknownBirthTime = meta['unknown_birth_time'] as bool? ?? false;
+    final birthTime = meta['birth_time'] as String?;
+    final birthTimezone = (meta['birth_timezone'] as String?)?.trim().isNotEmpty == true
+        ? (meta['birth_timezone'] as String).trim()
+        : 'Asia/Seoul';
+    final birthLocation = (meta['birth_location'] as String?)?.trim() ?? '';
+    final calendarType = (meta['calendar_type'] as String?) ?? 'solar';
+    final isLeapMonth = meta['is_leap_month'] as bool? ?? false;
+    final gender = (meta['gender'] as String?) ?? 'female';
+
+    if (birthDate == null || birthDate.trim().isEmpty) return;
+
+    // birth_datetime_local is stored as "YYYY-MM-DDTHH:mm:ss" (no timezone).
+    final timePart = unknownBirthTime
+        ? '12:00:00'
+        : ((birthTime != null && birthTime.trim().isNotEmpty) ? '${birthTime.trim()}:00' : '12:00:00');
+    final birthDatetime = '${birthDate.trim()}T$timePart';
+
+    try {
+      await supabase.from('birth_profiles').insert({
+        'user_id': widget.userId,
+        'birth_datetime_local': birthDatetime,
+        'birth_timezone': birthTimezone,
+        'birth_location': birthLocation,
+        'calendar_type': calendarType,
+        'is_leap_month': isLeapMonth,
+        'gender': gender,
+        'unknown_birth_time': unknownBirthTime,
+      });
+    } on PostgrestException {
+      // Ignore: might already exist (unique user_id) or policies might block.
+    } catch (_) {
+      // Best-effort only.
+    }
+  }
+
   Future<bool> _hasBirthProfile() async {
     final supabase = Supabase.instance.client;
     final rows = await supabase
@@ -123,7 +166,18 @@ class _SignedInGateState extends State<_SignedInGate> {
         .select('id')
         .eq('user_id', widget.userId)
         .limit(1);
-    return (rows as List).isNotEmpty;
+    if ((rows as List).isNotEmpty) return true;
+
+    // If the user just signed up, the app may have birth info in auth metadata.
+    // Seed DB row so we don't ask the user to re-enter.
+    await _seedBirthProfileFromAuthMetadataIfPossible();
+
+    final rows2 = await supabase
+        .from('birth_profiles')
+        .select('id')
+        .eq('user_id', widget.userId)
+        .limit(1);
+    return (rows2 as List).isNotEmpty;
   }
 
   @override
