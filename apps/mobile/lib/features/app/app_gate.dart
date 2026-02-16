@@ -125,25 +125,32 @@ class _SignedInGateState extends State<_SignedInGate> {
     final birthDate = meta['birth_date'] as String?;
     final unknownBirthTime = meta['unknown_birth_time'] as bool? ?? false;
     final birthTime = meta['birth_time'] as String?;
-    final birthTimezone = (meta['birth_timezone'] as String?)?.trim().isNotEmpty == true
-        ? (meta['birth_timezone'] as String).trim()
-        : 'Asia/Seoul';
+    final birthTimezone =
+        (meta['birth_timezone'] as String?)?.trim().isNotEmpty == true
+            ? (meta['birth_timezone'] as String).trim()
+            : 'Asia/Seoul';
     final birthLocation = (meta['birth_location'] as String?)?.trim() ?? '';
     final calendarType = (meta['calendar_type'] as String?) ?? 'solar';
     final isLeapMonth = meta['is_leap_month'] as bool? ?? false;
     final gender = (meta['gender'] as String?) ?? 'female';
+    final profileName = (meta['profile_name'] as String?)?.trim() ?? '';
+    final profileTag = (meta['profile_tag'] as String?)?.trim() ?? '';
 
     if (birthDate == null || birthDate.trim().isEmpty) return;
 
     // birth_datetime_local is stored as "YYYY-MM-DDTHH:mm:ss" (no timezone).
     final timePart = unknownBirthTime
         ? '12:00:00'
-        : ((birthTime != null && birthTime.trim().isNotEmpty) ? '${birthTime.trim()}:00' : '12:00:00');
+        : ((birthTime != null && birthTime.trim().isNotEmpty)
+            ? '${birthTime.trim()}:00'
+            : '12:00:00');
     final birthDatetime = '${birthDate.trim()}T$timePart';
 
     try {
       await supabase.from('birth_profiles').insert({
         'user_id': widget.userId,
+        'profile_name': profileName.isEmpty ? '내 출생정보' : profileName,
+        'profile_tag': profileTag.isEmpty ? '본인' : profileTag,
         'birth_datetime_local': birthDatetime,
         'birth_timezone': birthTimezone,
         'birth_location': birthLocation,
@@ -236,18 +243,25 @@ class _GateLoading extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'FortuneLog',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(color: Colors.white),
                   ),
                   const SizedBox(height: 10),
                   const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     message,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Colors.white.withValues(alpha: 0.85)),
                   ),
                 ],
               ),
@@ -260,7 +274,8 @@ class _GateLoading extends StatelessWidget {
 }
 
 class _GateError extends StatelessWidget {
-  const _GateError({required this.message, required this.requestId, required this.onRetry});
+  const _GateError(
+      {required this.message, required this.requestId, required this.onRetry});
 
   final String message;
   final String requestId;

@@ -34,7 +34,10 @@ class _MyPageState extends State<MyPage> {
       return {'title': '출생 프로필 0개', 'subtitle': '아직 생성된 프로필이 없습니다.'};
     }
 
-    return {'title': '출생 프로필 ${list.length}개', 'subtitle': '내 프로필을 확인하고 수정할 수 있습니다.'};
+    return {
+      'title': '출생 프로필 ${list.length}개',
+      'subtitle': '무료 버전 최대 4개까지 관리할 수 있습니다.'
+    };
   }
 
   String _currentEmail() {
@@ -50,7 +53,8 @@ class _MyPageState extends State<MyPage> {
     try {
       await Supabase.instance.client.auth.signOut();
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, LoginPage.routeName, (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+          context, LoginPage.routeName, (route) => false);
     } catch (_) {
       if (!mounted) return;
       showAppSnackBar(context, '로그아웃에 실패했습니다. 다시 시도해주세요.');
@@ -76,43 +80,50 @@ class _MyPageState extends State<MyPage> {
               FilledButton.tonal(
                 onPressed: _loggingOut ? null : _logout,
                 child: _loggingOut
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('로그아웃'),
               ),
             ],
           ),
         ),
         const SizedBox(height: 10),
-          PageSection(
-            title: '출생정보 관리',
-            subtitle: '기존 프로필 재사용 또는 수정',
-            child: FutureBuilder<Map<String, String>>(
-              future: _birthProfileSummary(),
-              builder: (context, snapshot) {
+        PageSection(
+          title: '출생정보 관리',
+          subtitle: '기존 프로필 재사용 또는 수정',
+          child: FutureBuilder<Map<String, String>>(
+            future: _birthProfileSummary(),
+            builder: (context, snapshot) {
               final waiting = snapshot.connectionState != ConnectionState.done;
               final hasError = snapshot.hasError;
 
               final title = snapshot.data?['title'] ?? '출생 프로필';
               final subtitle = hasError
                   ? '불러오지 못했습니다. 눌러서 다시 확인해주세요.'
-                  : (snapshot.data?['subtitle'] ?? (waiting ? '불러오는 중...' : '내 프로필을 확인하고 수정할 수 있습니다.'));
+                  : (snapshot.data?['subtitle'] ??
+                      (waiting ? '불러오는 중...' : '내 프로필을 확인하고 수정할 수 있습니다.'));
 
               return _MenuRow(
                 title: title,
                 subtitle: subtitle,
-                onTap: () => Navigator.pushNamed(context, BirthProfileListPage.routeName),
+                onTap: () => Navigator.pushNamed(
+                    context, BirthProfileListPage.routeName),
               );
-              },
-            ),
+            },
           ),
+        ),
         const SizedBox(height: 10),
         const PageSection(
           title: '주문 / 결제',
           child: Column(
             children: [
-              _StatusRow(label: '프리미엄 리포트', badge: '결제 완료', tone: BadgeTone.success),
+              _StatusRow(
+                  label: '프리미엄 리포트', badge: '결제 완료', tone: BadgeTone.success),
               SizedBox(height: 8),
-              _StatusRow(label: '월간 분석 리포트', badge: '결제 대기', tone: BadgeTone.warning),
+              _StatusRow(
+                  label: '월간 분석 리포트', badge: '결제 대기', tone: BadgeTone.warning),
             ],
           ),
         ),
@@ -121,9 +132,15 @@ class _MyPageState extends State<MyPage> {
           title: '구독 관리',
           child: Column(
             children: [
-              _StatusRow(label: 'Fortune Plus', badge: 'active(이용중)', tone: BadgeTone.success),
+              _StatusRow(
+                  label: 'Fortune Plus',
+                  badge: 'active(이용중)',
+                  tone: BadgeTone.success),
               SizedBox(height: 8),
-              _StatusRow(label: '결제수단 갱신 필요', badge: 'grace(유예기간)', tone: BadgeTone.warning),
+              _StatusRow(
+                  label: '결제수단 갱신 필요',
+                  badge: 'grace(유예기간)',
+                  tone: BadgeTone.warning),
             ],
           ),
         ),
@@ -178,7 +195,8 @@ class _MenuRow extends StatelessWidget {
 }
 
 class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.label, required this.badge, required this.tone});
+  const _StatusRow(
+      {required this.label, required this.badge, required this.tone});
 
   final String label;
   final String badge;
@@ -188,7 +206,8 @@ class _StatusRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
+        Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
         StatusBadge(label: badge, tone: tone),
       ],
     );

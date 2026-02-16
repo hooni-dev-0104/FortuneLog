@@ -94,7 +94,8 @@ class _SignupPageState extends State<SignupPage> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final initial = _parseDate(_dateController.text.trim()) ?? DateTime(now.year - 30, now.month, now.day);
+    final initial = _parseDate(_dateController.text.trim()) ??
+        DateTime(now.year - 30, now.month, now.day);
 
     final picked = await showDatePicker(
       context: context,
@@ -111,14 +112,16 @@ class _SignupPageState extends State<SignupPage> {
 
   Future<void> _pickBirthTime() async {
     if (_unknownBirthTime) return;
-    final initial = _parseTime(_timeController.text.trim()) ?? const TimeOfDay(hour: 12, minute: 0);
+    final initial = _parseTime(_timeController.text.trim()) ??
+        const TimeOfDay(hour: 12, minute: 0);
     final picked = await showTimePicker(
       context: context,
       initialTime: initial,
       helpText: '출생시간 선택',
     );
     if (picked == null) return;
-    _timeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    _timeController.text =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     setState(() {});
   }
 
@@ -150,6 +153,7 @@ class _SignupPageState extends State<SignupPage> {
 
       // 1) Create account. We intentionally don't force emailRedirectTo here.
       //    If the Supabase project requires email confirmation, session may be null.
+      final profileName = _nameController.text.trim();
       final auth = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -165,6 +169,8 @@ class _SignupPageState extends State<SignupPage> {
           'is_leap_month': _isLeapMonth,
           'gender': _gender,
           'unknown_birth_time': _unknownBirthTime,
+          'profile_name': profileName,
+          'profile_tag': '본인',
         },
       );
 
@@ -202,13 +208,16 @@ class _SignupPageState extends State<SignupPage> {
 
       final userId = session.user.id;
 
-      // 2) Insert birth profile (single profile per user in current UX).
-      final timePart = _unknownBirthTime ? '12:00:00' : '${_timeController.text.trim()}:00';
+      // 2) Insert default birth profile created during signup.
+      final timePart =
+          _unknownBirthTime ? '12:00:00' : '${_timeController.text.trim()}:00';
       final birthDatetime = '${_dateController.text.trim()}T$timePart';
       const birthTimezone = 'Asia/Seoul';
 
       final payload = <String, dynamic>{
         'user_id': userId,
+        'profile_name': profileName,
+        'profile_tag': '본인',
         'birth_datetime_local': birthDatetime,
         'birth_timezone': birthTimezone,
         'birth_location': _locationController.text.trim(),
@@ -218,12 +227,17 @@ class _SignupPageState extends State<SignupPage> {
         'unknown_birth_time': _unknownBirthTime,
       };
 
-      final row = await supabase.from('birth_profiles').insert(payload).select('id').single();
+      final row = await supabase
+          .from('birth_profiles')
+          .insert(payload)
+          .select('id')
+          .single();
       final birthProfileId = row['id'] as String;
 
       // 3) Calculate chart and persist.
-      final birthLocationForEngine =
-          _locationController.text.trim().isEmpty ? '미입력' : _locationController.text.trim();
+      final birthLocationForEngine = _locationController.text.trim().isEmpty
+          ? '미입력'
+          : _locationController.text.trim();
       final chartResponse = await _engineClient().calculateChart(
         CalculateChartRequestDto(
           birthProfileId: birthProfileId,
@@ -249,7 +263,8 @@ class _SignupPageState extends State<SignupPage> {
 
       if (!mounted) return;
       setState(() => _loading = false);
-      Navigator.pushNamedAndRemoveUntil(context, AppGate.routeName, (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppGate.routeName, (route) => false);
     } on AuthException catch (e) {
       if (!mounted) return;
       final msg = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.signup);
@@ -301,12 +316,16 @@ class _SignupPageState extends State<SignupPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         children: [
-          Text('회원가입하고 사주 계산을 시작해요', style: Theme.of(context).textTheme.headlineSmall),
+          Text('회원가입하고 사주 계산을 시작해요',
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text('필수 정보만 간단히 입력하면 바로 결과를 볼 수 있어요.', style: Theme.of(context).textTheme.bodyMedium),
+          Text('필수 정보만 간단히 입력하면 바로 결과를 볼 수 있어요.',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 14),
           if (_summaryErrors.isNotEmpty) ...[
-            StatusNotice.error(message: _summaryErrors.join('\n'), requestId: 'signup-validate'),
+            StatusNotice.error(
+                message: _summaryErrors.join('\n'),
+                requestId: 'signup-validate'),
             const SizedBox(height: 12),
           ],
           if (_error != null) ...[
@@ -345,8 +364,12 @@ class _SignupPageState extends State<SignupPage> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(labelText: '이름'),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return '이름을 입력해주세요.';
-                          if (v.trim().length < 2) return '이름을 2자 이상 입력해주세요.';
+                          if (v == null || v.trim().isEmpty) {
+                            return '이름을 입력해주세요.';
+                          }
+                          if (v.trim().length < 2) {
+                            return '이름을 2자 이상 입력해주세요.';
+                          }
                           return null;
                         },
                       ),
@@ -357,8 +380,12 @@ class _SignupPageState extends State<SignupPage> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(labelText: '이메일'),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return '이메일을 입력해주세요.';
-                          if (!v.contains('@')) return '이메일 형식이 올바르지 않습니다.';
+                          if (v == null || v.trim().isEmpty) {
+                            return '이메일을 입력해주세요.';
+                          }
+                          if (!v.contains('@')) {
+                            return '이메일 형식이 올바르지 않습니다.';
+                          }
                           return null;
                         },
                       ),
@@ -369,7 +396,9 @@ class _SignupPageState extends State<SignupPage> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(labelText: '비밀번호'),
                         validator: (v) {
-                          if (v == null || v.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+                          if (v == null || v.length < 8) {
+                            return '비밀번호는 8자 이상이어야 합니다.';
+                          }
                           return null;
                         },
                       ),
@@ -380,8 +409,12 @@ class _SignupPageState extends State<SignupPage> {
                         textInputAction: TextInputAction.done,
                         decoration: const InputDecoration(labelText: '비밀번호 확인'),
                         validator: (v) {
-                          if (v == null || v.isEmpty) return '비밀번호 확인을 입력해주세요.';
-                          if (v != _passwordController.text) return '비밀번호가 일치하지 않습니다.';
+                          if (v == null || v.isEmpty) {
+                            return '비밀번호 확인을 입력해주세요.';
+                          }
+                          if (v != _passwordController.text) {
+                            return '비밀번호가 일치하지 않습니다.';
+                          }
                           return null;
                         },
                       ),
@@ -404,9 +437,13 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         onTap: _pickBirthDate,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return '생년월일을 입력해주세요.';
+                          if (v == null || v.trim().isEmpty) {
+                            return '생년월일을 입력해주세요.';
+                          }
                           final parts = v.split('-');
-                          if (parts.length != 3) return 'YYYY-MM-DD 형식으로 입력해주세요.';
+                          if (parts.length != 3) {
+                            return 'YYYY-MM-DD 형식으로 입력해주세요.';
+                          }
                           return null;
                         },
                       ),
@@ -440,7 +477,8 @@ class _SignupPageState extends State<SignupPage> {
                           DropdownMenuItem(value: 'female', child: Text('여성')),
                           DropdownMenuItem(value: 'male', child: Text('남성')),
                         ],
-                        onChanged: (value) => setState(() => _gender = value ?? 'female'),
+                        onChanged: (value) =>
+                            setState(() => _gender = value ?? 'female'),
                       ),
                       const SizedBox(height: 10),
                       SwitchListTile(
@@ -488,7 +526,8 @@ class _SignupPageState extends State<SignupPage> {
                             ),
                           );
                         },
-                        onSelected: (s) => setState(() => _locationController.text = s),
+                        onSelected: (s) =>
+                            setState(() => _locationController.text = s),
                       ),
                     ],
                   ),
@@ -500,7 +539,10 @@ class _SignupPageState extends State<SignupPage> {
           FilledButton(
             onPressed: _loading ? null : _submit,
             child: _loading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('가입하고 사주 계산하기'),
           ),
         ],

@@ -27,6 +27,9 @@ class BirthInputPage extends StatefulWidget {
 
 class _BirthInputPageState extends State<BirthInputPage> {
   final _formKey = GlobalKey<FormState>();
+  static const int _maxProfilesForFreeTier = 4;
+  late final TextEditingController _profileNameController;
+  late final TextEditingController _profileTagController;
   late final TextEditingController _dateController;
   late final TextEditingController _timeController;
   late final TextEditingController _locationController;
@@ -41,7 +44,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final initial = _parseDate(_dateController.text.trim()) ?? DateTime(now.year - 30, now.month, now.day);
+    final initial = _parseDate(_dateController.text.trim()) ??
+        DateTime(now.year - 30, now.month, now.day);
 
     final picked = await showDatePicker(
       context: context,
@@ -58,14 +62,16 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   Future<void> _pickBirthTime() async {
     if (_unknownBirthTime) return;
-    final initial = _parseTime(_timeController.text.trim()) ?? const TimeOfDay(hour: 12, minute: 0);
+    final initial = _parseTime(_timeController.text.trim()) ??
+        const TimeOfDay(hour: 12, minute: 0);
     final picked = await showTimePicker(
       context: context,
       initialTime: initial,
       helpText: '출생시간 선택',
     );
     if (picked == null) return;
-    _timeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    _timeController.text =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     setState(() {});
   }
 
@@ -110,6 +116,10 @@ class _BirthInputPageState extends State<BirthInputPage> {
     _isLunar = ((p?['calendar_type'] as String?) ?? 'solar') == 'lunar';
     _isLeapMonth = (p?['is_leap_month'] as bool?) ?? false;
     _gender = (p?['gender'] as String?) ?? 'female';
+    _profileNameController =
+        TextEditingController(text: (p?['profile_name'] as String?) ?? '');
+    _profileTagController =
+        TextEditingController(text: (p?['profile_tag'] as String?) ?? '');
 
     if (p == null) {
       _dateController = TextEditingController(text: '');
@@ -125,12 +135,15 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
     _dateController = TextEditingController(text: date);
     _timeController = TextEditingController(text: time);
-    _locationController = TextEditingController(text: (p['birth_location'] as String?) ?? '');
+    _locationController =
+        TextEditingController(text: (p['birth_location'] as String?) ?? '');
     _locationFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
+    _profileNameController.dispose();
+    _profileTagController.dispose();
     _dateController.dispose();
     _timeController.dispose();
     _locationController.dispose();
@@ -219,13 +232,18 @@ class _BirthInputPageState extends State<BirthInputPage> {
       }
 
       final userId = session.user.id;
-      final timePart = _unknownBirthTime ? '12:00:00' : '${_timeController.text.trim()}:00';
+      final timePart =
+          _unknownBirthTime ? '12:00:00' : '${_timeController.text.trim()}:00';
       final birthDatetime = '${_dateController.text.trim()}T$timePart';
 
       // For now, timezone is fixed to Asia/Seoul in the production UX. (DevTest lets you override it.)
       const birthTimezone = 'Asia/Seoul';
 
       final payload = <String, dynamic>{
+        'profile_name': _profileNameController.text.trim(),
+        'profile_tag': _profileTagController.text.trim().isEmpty
+            ? null
+            : _profileTagController.text.trim(),
         'birth_datetime_local': birthDatetime,
         'birth_timezone': birthTimezone,
         'birth_location': _locationController.text.trim(),
@@ -236,7 +254,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
       };
 
       String birthProfileId;
-      if (_editingBirthProfileId != null && _editingBirthProfileId!.isNotEmpty) {
+      if (_editingBirthProfileId != null &&
+          _editingBirthProfileId!.isNotEmpty) {
         final row = await supabase
             .from('birth_profiles')
             .update(payload)
@@ -246,55 +265,29 @@ class _BirthInputPageState extends State<BirthInputPage> {
             .single();
         birthProfileId = row['id'] as String;
       } else {
-        // Enforce "single birth profile per user" at the app level too:
-        // if one exists, update it; otherwise insert.
-        try {
-          final existing = await supabase
-              .from('birth_profiles')
-              .select('id')
-              .eq('user_id', userId)
-              .order('created_at', ascending: false)
-              .limit(1)
-              .maybeSingle();
-          final existingId = existing?['id'] as String?;
-          if (existingId != null && existingId.isNotEmpty) {
-            final row = await supabase
-                .from('birth_profiles')
-                .update(payload)
-                .eq('id', existingId)
-                .eq('user_id', userId)
-                .select('id')
-                .single();
-            birthProfileId = row['id'] as String;
-          } else {
-            final row = await supabase
-                .from('birth_profiles')
-                .insert({
-                  'user_id': userId,
-                  ...payload,
-                })
-                .select('id')
-                .single();
-            birthProfileId = row['id'] as String;
-          }
-        } on PostgrestException {
-          // Fallback: if the environment doesn't support maybeSingle or ordering,
-          // insert and rely on DB constraints/migrations to clean up.
-          final row = await supabase
-              .from('birth_profiles')
-              .insert({
-                'user_id': userId,
-                ...payload,
-              })
-              .select('id')
-              .single();
-          birthProfileId = row['id'] as String;
+        final existingRows = await supabase
+            .from('birth_profiles')
+            .select('id')
+            .eq('user_id', userId);
+        final count = (existingRows as List).length;
+        if (count >= _maxProfilesForFreeTier) {
+          throw StateError('무료 버전은 출생정보를 최대 4개까지 저장할 수 있습니다.');
         }
+        final row = await supabase
+            .from('birth_profiles')
+            .insert({
+              'user_id': userId,
+              ...payload,
+            })
+            .select('id')
+            .single();
+        birthProfileId = row['id'] as String;
       }
 
       final client = _engineClient();
-      final birthLocationForEngine =
-          _locationController.text.trim().isEmpty ? '미입력' : _locationController.text.trim();
+      final birthLocationForEngine = _locationController.text.trim().isEmpty
+          ? '미입력'
+          : _locationController.text.trim();
       final chartResponse = await client.calculateChart(
         CalculateChartRequestDto(
           birthProfileId: birthProfileId,
@@ -321,7 +314,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
     } on StateError catch (e) {
       _error = e.message;
     } on PostgrestException catch (e) {
-      _error = e.message;
+      _error = _mapBirthProfileDbError(e.message);
     } on EngineApiException catch (e) {
       _error = EngineErrorMapper.userMessage(e);
       _lastRequestId = e.requestId;
@@ -345,7 +338,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = _editingBirthProfileId != null && _editingBirthProfileId!.isNotEmpty;
+    final isEdit =
+        _editingBirthProfileId != null && _editingBirthProfileId!.isNotEmpty;
     return Scaffold(
       appBar: AppBar(title: Text(isEdit ? '출생정보 수정' : '출생정보 입력')),
       body: ListView(
@@ -357,17 +351,57 @@ class _BirthInputPageState extends State<BirthInputPage> {
           ),
           const SizedBox(height: 12),
           if (_summaryErrors.isNotEmpty) ...[
-            StatusNotice.error(message: _summaryErrors.join('\n'), requestId: 'dev-birth-validate'),
+            StatusNotice.error(
+                message: _summaryErrors.join('\n'),
+                requestId: 'dev-birth-validate'),
             const SizedBox(height: 12),
           ],
           if (_error != null) ...[
-            StatusNotice.error(message: _error!, requestId: _lastRequestId ?? 'birth-submit'),
+            StatusNotice.error(
+                message: _error!, requestId: _lastRequestId ?? 'birth-submit'),
             const SizedBox(height: 12),
           ],
           Form(
             key: _formKey,
             child: Column(
               children: [
+                PageSection(
+                  title: '프로필 정보',
+                  subtitle: '이름은 필수, 태그는 선택입니다.',
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _profileNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: '이름',
+                          hintText: '예: 본인, 어머니, 자녀',
+                        ),
+                        validator: (v) {
+                          final name = v?.trim() ?? '';
+                          if (name.isEmpty) return '이름을 입력해주세요.';
+                          if (name.length > 24) return '이름은 24자 이하로 입력해주세요.';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _profileTagController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: '태그(선택)',
+                          hintText: '예: 본인, 가족, 지인',
+                        ),
+                        validator: (v) {
+                          final tag = v?.trim() ?? '';
+                          if (tag.length > 16) return '태그는 16자 이하로 입력해주세요.';
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 PageSection(
                   title: '기본 정보',
                   subtitle: '필수값: 생년월일, 달력종류, 성별',
@@ -383,9 +417,13 @@ class _BirthInputPageState extends State<BirthInputPage> {
                         ),
                         onTap: _pickBirthDate,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return '생년월일을 입력해주세요.';
+                          if (v == null || v.trim().isEmpty) {
+                            return '생년월일을 입력해주세요.';
+                          }
                           final parts = v.split('-');
-                          if (parts.length != 3) return 'YYYY-MM-DD 형식으로 입력해주세요.';
+                          if (parts.length != 3) {
+                            return 'YYYY-MM-DD 형식으로 입력해주세요.';
+                          }
                           return null;
                         },
                       ),
@@ -411,7 +449,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
                           DropdownMenuItem(value: 'female', child: Text('여성')),
                           DropdownMenuItem(value: 'male', child: Text('남성')),
                         ],
-                        onChanged: (value) => setState(() => _gender = value ?? 'female'),
+                        onChanged: (value) =>
+                            setState(() => _gender = value ?? 'female'),
                       ),
                     ],
                   ),
@@ -425,7 +464,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('출생시간 미상'),
-                        subtitle: const Text('기본값(정오)으로 계산되어 일부 해석 정밀도가 낮아질 수 있습니다.'),
+                        subtitle:
+                            const Text('기본값(정오)으로 계산되어 일부 해석 정밀도가 낮아질 수 있습니다.'),
                         value: _unknownBirthTime,
                         onChanged: (v) => setState(() => _unknownBirthTime = v),
                       ),
@@ -441,9 +481,15 @@ class _BirthInputPageState extends State<BirthInputPage> {
                         ),
                         onTap: _pickBirthTime,
                         validator: (v) {
-                          if (_unknownBirthTime) return null;
-                          if (v == null || v.trim().isEmpty) return '출생시간을 입력해주세요.';
-                          if (!v.contains(':')) return 'HH:mm 형식으로 입력해주세요.';
+                          if (_unknownBirthTime) {
+                            return null;
+                          }
+                          if (v == null || v.trim().isEmpty) {
+                            return '출생시간을 입력해주세요.';
+                          }
+                          if (!v.contains(':')) {
+                            return 'HH:mm 형식으로 입력해주세요.';
+                          }
                           return null;
                         },
                       ),
@@ -453,9 +499,12 @@ class _BirthInputPageState extends State<BirthInputPage> {
                         textEditingController: _locationController,
                         optionsBuilder: (value) {
                           final q = value.text.trim();
-                          if (q.isEmpty) return const Iterable<LocationSuggestion>.empty();
+                          if (q.isEmpty) {
+                            return const Iterable<LocationSuggestion>.empty();
+                          }
                           return _locationSuggestions
-                              .where((s) => s.value.startsWith(q) || s.value.contains(q))
+                              .where((s) =>
+                                  s.value.startsWith(q) || s.value.contains(q))
                               .take(8);
                         },
                         displayStringForOption: (o) => o.value,
@@ -463,7 +512,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
                           _locationController.text = selection.value;
                           setState(() {});
                         },
-                        fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                        fieldViewBuilder: (context, textEditingController,
+                            focusNode, onFieldSubmitted) {
                           return TextFormField(
                             controller: textEditingController,
                             focusNode: focusNode,
@@ -474,7 +524,9 @@ class _BirthInputPageState extends State<BirthInputPage> {
                               suffixIcon: Icon(Icons.location_on_outlined),
                             ),
                             validator: (v) {
-                              if (v == null || v.trim().isEmpty) return '출생 지역을 입력해주세요.';
+                              if (v == null || v.trim().isEmpty) {
+                                return '출생 지역을 입력해주세요.';
+                              }
                               return null;
                             },
                           );
@@ -486,19 +538,26 @@ class _BirthInputPageState extends State<BirthInputPage> {
                               elevation: 6,
                               borderRadius: BorderRadius.circular(12),
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 260, maxWidth: 420),
+                                constraints: const BoxConstraints(
+                                    maxHeight: 260, maxWidth: 420),
                                 child: ListView.separated(
-                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 6),
                                   shrinkWrap: true,
                                   itemCount: options.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1),
                                   itemBuilder: (context, index) {
                                     final o = options.elementAt(index);
                                     return ListTile(
                                       dense: true,
                                       title: Text(o.label),
                                       trailing: _locationSearching && index == 0
-                                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2))
                                           : null,
                                       onTap: () => onSelected(o),
                                     );
@@ -519,10 +578,14 @@ class _BirthInputPageState extends State<BirthInputPage> {
                   child: CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _isLeapMonth,
-                    onChanged: _isLunar ? (v) => setState(() => _isLeapMonth = v ?? false) : null,
+                    onChanged: _isLunar
+                        ? (v) => setState(() => _isLeapMonth = v ?? false)
+                        : null,
                     title: const Text('윤달'),
                     subtitle: Text(
-                      _isLunar ? '실제 출생 월이 윤달이면 체크해주세요.' : '윤달은 음력 선택 시 활성화됩니다.',
+                      _isLunar
+                          ? '실제 출생 월이 윤달이면 체크해주세요.'
+                          : '윤달은 음력 선택 시 활성화됩니다.',
                     ),
                   ),
                 ),
@@ -536,10 +599,21 @@ class _BirthInputPageState extends State<BirthInputPage> {
         child: FilledButton(
           onPressed: _saving ? null : () => _validateAndSubmit(),
           child: _saving
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
               : Text(isEdit ? '수정하고 결과 보기' : '저장하고 결과 보기'),
         ),
       ),
     );
+  }
+
+  String _mapBirthProfileDbError(String message) {
+    final normalized = message.toLowerCase();
+    if (normalized.contains('birth_profiles_limit_exceeded')) {
+      return '무료 버전은 출생정보를 최대 4개까지 저장할 수 있습니다.';
+    }
+    return message;
   }
 }

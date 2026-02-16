@@ -14,6 +14,7 @@ class BirthProfileListPage extends StatefulWidget {
 }
 
 class _BirthProfileListPageState extends State<BirthProfileListPage> {
+  static const int _maxProfilesForFreeTier = 4;
   late Future<List<Map<String, dynamic>>> _future;
   bool _deletingAll = false;
 
@@ -34,7 +35,7 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
     final rows = await supabase
         .from('birth_profiles')
         .select(
-          'id,birth_datetime_local,birth_timezone,birth_location,calendar_type,is_leap_month,gender,unknown_birth_time,created_at',
+          'id,profile_name,profile_tag,birth_datetime_local,birth_timezone,birth_location,calendar_type,is_leap_month,gender,unknown_birth_time,created_at',
         )
         // Even if RLS is misconfigured, always filter client-side by current user.
         .eq('user_id', userId)
@@ -125,7 +126,17 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
     }
   }
 
-  String _titleFor(Map<String, dynamic> p) {
+  String _profileNameFor(Map<String, dynamic> p) {
+    final raw = (p['profile_name'] as String?)?.trim();
+    if (raw != null && raw.isNotEmpty) return raw;
+    return '출생정보';
+  }
+
+  String _profileTagFor(Map<String, dynamic> p) {
+    return ((p['profile_tag'] as String?) ?? '').trim();
+  }
+
+  String _detailFor(Map<String, dynamic> p) {
     final dt = (p['birth_datetime_local'] as String?) ?? '';
     final location = (p['birth_location'] as String?) ?? '';
     final calendarType = (p['calendar_type'] as String?) ?? 'solar';
@@ -142,7 +153,7 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
       calLabel,
       if (location.isNotEmpty) location,
     ];
-    return parts.join(' · ');
+    return parts.isEmpty ? '정보 없음' : parts.join(' · ');
   }
 
   @override
@@ -162,7 +173,8 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const PageLoading(title: '불러오는 중', message: '출생정보 목록을 불러오고 있어요.');
+            return const PageLoading(
+                title: '불러오는 중', message: '출생정보 목록을 불러오고 있어요.');
           }
 
           if (snapshot.hasError) {
@@ -180,12 +192,14 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
               children: [
                 StatusNotice.error(message: msg, requestId: 'birth-profiles'),
                 const SizedBox(height: 12),
-                FilledButton.tonal(onPressed: _refresh, child: const Text('재시도')),
+                FilledButton.tonal(
+                    onPressed: _refresh, child: const Text('재시도')),
               ],
             );
           }
 
           final profiles = snapshot.data ?? const [];
+          final isFull = profiles.length >= _maxProfilesForFreeTier;
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             children: [
@@ -193,7 +207,7 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                 title: '프로필',
                 subtitle: profiles.isEmpty
                     ? '새로 만들면 대시보드/오늘 운세에서 바로 사용할 수 있습니다.'
-                    : '유저당 1개 프로필만 사용합니다.',
+                    : '무료 버전은 최대 4개(기본 1개 + 추가 3개)까지 저장할 수 있습니다.',
                 child: Column(
                   children: [
                     if (profiles.isEmpty) ...[
@@ -201,18 +215,30 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                         title: '아직 출생 프로필이 없습니다',
                         description: '새 프로필을 만들어 사주 계산을 시작할 수 있습니다.',
                         actionText: '새로 만들기',
-                        onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName).then((_) => _refresh()),
+                        onAction: () => Navigator.pushNamed(
+                                context, BirthInputPage.routeName)
+                            .then((_) => _refresh()),
                         icon: Icons.person_outline,
                         tone: BadgeTone.neutral,
                       ),
                     ] else ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${profiles.length}/$_maxProfilesForFreeTier 사용 중',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       for (final p in profiles) ...[
                         InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => BirthInputPage(initialProfile: p)),
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      BirthInputPage(initialProfile: p)),
                             ).then((_) => _refresh());
                           },
                           child: Padding(
@@ -221,12 +247,29 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        _titleFor(p),
-                                        style: Theme.of(context).textTheme.titleMedium,
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              _profileNameFor(p),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium,
+                                            ),
+                                          ),
+                                          if (_profileTagFor(p).isNotEmpty)
+                                            StatusBadge(
+                                                label: _profileTagFor(p)),
+                                        ],
                                       ),
+                                      const SizedBox(height: 4),
+                                      Text(_detailFor(p),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall),
                                     ],
                                   ),
                                 ),
@@ -239,22 +282,36 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                       ],
                       const SizedBox(height: 12),
                       FilledButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => BirthInputPage(initialProfile: profiles.first)),
-                        ).then((_) => _refresh()),
-                        child: const Text('수정하기'),
+                        onPressed: isFull
+                            ? null
+                            : () => Navigator.pushNamed(
+                                    context, BirthInputPage.routeName)
+                                .then((_) => _refresh()),
+                        child: const Text('새 출생정보 추가'),
                       ),
+                      if (isFull) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '무료 버전 한도(4개)에 도달했습니다. 기존 프로필을 수정하거나 삭제해주세요.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                       if (profiles.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         OutlinedButton(
-                          onPressed: _deletingAll ? null : () => _deleteAllMyProfiles(profiles.length),
+                          onPressed: _deletingAll
+                              ? null
+                              : () => _deleteAllMyProfiles(profiles.length),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF9A3025),
                             side: const BorderSide(color: Color(0xFFF3C4C1)),
                           ),
                           child: _deletingAll
-                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
                               : const Text('내 출생 프로필 전체 삭제'),
                         ),
                       ],
