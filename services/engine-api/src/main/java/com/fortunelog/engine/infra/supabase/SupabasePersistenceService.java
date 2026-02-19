@@ -116,8 +116,10 @@ public class SupabasePersistenceService {
                     List.of("user_id", "report_type", "target_date")
             );
         } catch (IllegalStateException e) {
-            // Backward compatible with schemas that don't have reports.target_date yet.
-            // In that case we can't upsert by date; fall back to inserting a daily report row.
+            // Backward compatibility:
+            // - schemas without reports.target_date
+            // - schemas missing a matching unique constraint for ON CONFLICT(user_id, report_type, target_date)
+            // In both cases we can't upsert by date, so we fall back to inserting a daily report row.
             String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
             // PostgREST error variants we've seen:
             // - "column reports.target_date does not exist"
@@ -129,7 +131,13 @@ public class SupabasePersistenceService {
                                     || msg.contains("schema cache")
                                     || msg.contains("pgrst204")
                     );
-            if (missingTargetDate) {
+            // Postgres variant:
+            // - "42P10 ... there is no unique or exclusion constraint matching the ON CONFLICT specification"
+            boolean missingConflictConstraint =
+                    msg.contains("42p10")
+                            || msg.contains("no unique or exclusion constraint matching the on conflict specification");
+
+            if (missingTargetDate || missingConflictConstraint) {
                 return insertReport(userId, chartId, "daily", content, isPaidContent, visible);
             }
             throw e;

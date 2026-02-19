@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,5 +79,32 @@ class SupabasePersistenceServiceTest {
         assertTrue(request.getPath().contains("/rest/v1/reports"));
         assertTrue(!request.getPath().contains("on_conflict="));
         assertEquals("return=representation", request.getHeader("Prefer"));
+    }
+
+    @Test
+    void shouldFallbackToInsertWhenDailyUpsertConstraintIsMissing() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(400).setBody(
+                "{\"code\":\"42P10\",\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}"
+        ));
+        server.enqueue(new MockResponse().setResponseCode(201).setBody("[{\"id\":\"report-fallback\"}]"));
+
+        String id = service.upsertDailyFortuneReport(
+                "user-1",
+                "chart-1",
+                LocalDate.of(2026, 2, 19),
+                Map.of("score", 74),
+                false,
+                true
+        );
+
+        assertEquals("report-fallback", id);
+
+        RecordedRequest first = server.takeRequest();
+        assertTrue(first.getPath().contains("/rest/v1/reports"));
+        assertTrue(first.getPath().contains("on_conflict=user_id%2Creport_type%2Ctarget_date"));
+
+        RecordedRequest second = server.takeRequest();
+        assertTrue(second.getPath().contains("/rest/v1/reports"));
+        assertTrue(!second.getPath().contains("on_conflict="));
     }
 }
