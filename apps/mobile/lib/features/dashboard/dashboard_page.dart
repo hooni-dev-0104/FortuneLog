@@ -29,8 +29,13 @@ class _DashboardPageState extends State<DashboardPage> {
   String? _error;
   String? _requestId;
 
+  String? _chartId;
   Map<String, String>? _chart;
   Map<String, int>? _fiveElements;
+  Map<String, dynamic>? _aiContent;
+  bool _aiLoading = false;
+  String? _aiError;
+  String? _aiRequestId;
   bool _hasBirthProfile = false;
 
   SupabaseClient _supabase() => Supabase.instance.client;
@@ -54,6 +59,7 @@ class _DashboardPageState extends State<DashboardPage> {
       _loading = true;
       _error = null;
       _requestId = null;
+      _aiError = null;
     });
 
     try {
@@ -81,21 +87,39 @@ class _DashboardPageState extends State<DashboardPage> {
             .limit(1);
         setState(() {
           _loading = false;
+          _chartId = null;
           _chart = null;
           _fiveElements = null;
+          _aiContent = null;
+          _aiLoading = false;
           _hasBirthProfile = (bp as List).isNotEmpty;
         });
         return;
       }
 
       final row = rows.first;
+      final chartId = row['id'] as String;
       final chartJson = row['chart_json'] as Map<String, dynamic>;
       final fiveJson = row['five_elements_json'] as Map<String, dynamic>;
+      final aiRows = await _supabase()
+          .from('reports')
+          .select('content_json, created_at')
+          .eq('user_id', userId)
+          .eq('chart_id', chartId)
+          .eq('report_type', 'ai_interpretation')
+          .order('created_at', ascending: false)
+          .limit(1);
+      final aiContent = (aiRows as List).isEmpty
+          ? null
+          : (aiRows.first['content_json'] as Map).cast<String, dynamic>();
 
       setState(() {
         _loading = false;
+        _chartId = chartId;
         _chart = chartJson.map((k, v) => MapEntry(k, v as String));
         _fiveElements = fiveJson.map((k, v) => MapEntry(k, v as int));
+        _aiContent = aiContent;
+        _aiLoading = false;
         _hasBirthProfile = true;
       });
     } on PostgrestException catch (e) {
@@ -112,6 +136,49 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() {
         _loading = false;
         _error = '대시보드 데이터를 불러오지 못했습니다.';
+      });
+    }
+  }
+
+  Future<void> _generateAiInterpretation() async {
+    final chartId = _chartId;
+    if (chartId == null || chartId.isEmpty) {
+      setState(() {
+        _aiError = '사주 차트가 없어 AI 해석을 생성할 수 없습니다.';
+      });
+      return;
+    }
+
+    setState(() {
+      _aiLoading = true;
+      _aiError = null;
+      _aiRequestId = null;
+    });
+
+    try {
+      final response = await _engineClient().generateAiInterpretation(
+        GenerateAiInterpretationRequestDto(chartId: chartId),
+      );
+      if (!mounted) return;
+      setState(() => _aiRequestId = response.requestId);
+      await _refresh();
+    } on EngineApiException catch (e) {
+      setState(() {
+        _aiLoading = false;
+        _aiError = EngineErrorMapper.userMessage(e);
+        _aiRequestId = e.requestId;
+      });
+    } on FormatException {
+      setState(() {
+        _aiLoading = false;
+        _aiError = kDebugMode
+            ? 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.'
+            : 'AI 해석 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+      });
+    } catch (_) {
+      setState(() {
+        _aiLoading = false;
+        _aiError = 'AI 해석 생성에 실패했습니다.';
       });
     }
   }
@@ -294,6 +361,14 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          _AiInterpretationSection(
+            loading: _aiLoading,
+            error: _aiError,
+            requestId: _aiRequestId,
+            content: _aiContent,
+            onGenerate: _generateAiInterpretation,
+          ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () => Navigator.pushNamed(context, ReportPage.routeName),
@@ -311,6 +386,173 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _AiInterpretationSection extends StatelessWidget {
+  const _AiInterpretationSection({
+    required this.loading,
+    required this.error,
+    required this.requestId,
+    required this.content,
+    required this.onGenerate,
+  });
+
+  final bool loading;
+  final String? error;
+  final String? requestId;
+  final Map<String, dynamic>? content;
+  final VoidCallback onGenerate;
+
+  static List<String> _toStringList(dynamic value) {
+    if (value is! List) return const [];
+    return value.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+  }
+
+  static Map<String, dynamic> _toStringMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return value.cast<String, dynamic>();
+    return const {};
+  }
+
+  Widget _bullets(BuildContext context, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items) ...[
+          Text('• $item', style: Theme.of(context).textTheme.bodyMedium),
+          if (item != items.last) const SizedBox(height: 4),
+        ],
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = content?['summary']?.toString().trim();
+    final traits = _toStringList(content?['coreTraits']);
+    final strengths = _toStringList(content?['strengths']);
+    final cautions = _toStringList(content?['cautions']);
+    final actionTips = _toStringList(content?['actionTips']);
+    final themes = _toStringMap(content?['themes']);
+    final period = _toStringMap(content?['fortuneByPeriod']);
+    final disclaimer = content?['disclaimer']?.toString().trim();
+
+    return PageSection(
+      title: 'AI 사주 해석',
+      subtitle: 'Gemini 기반 상세 해석',
+      trailing: FilledButton.tonal(
+        onPressed: loading ? null : onGenerate,
+        child: Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '다시 생성')),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (error != null) ...[
+            StatusNotice.error(message: error!, requestId: requestId ?? 'ai-interpretation'),
+            const SizedBox(height: 10),
+          ],
+          if (content == null && !loading) ...[
+            const Text('아직 AI 해석이 없습니다. 해석 생성을 눌러 결과를 확인하세요.'),
+            const SizedBox(height: 8),
+            Text(
+              '정식 결제 적용 전까지는 테스트 형태로 동작합니다.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ] else if (loading && content == null) ...[
+            const Text('AI 해석을 생성하고 있어요. 잠시만 기다려주세요.'),
+          ] else ...[
+            if (summary != null && summary.isNotEmpty) ...[
+              Text(summary, style: Theme.of(context).textTheme.bodyLarge),
+              const SizedBox(height: 10),
+            ],
+            if (traits.isNotEmpty) ...[
+              Text('핵심 성향', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              _bullets(context, traits),
+              const SizedBox(height: 10),
+            ],
+            if (strengths.isNotEmpty) ...[
+              Text('강점', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              _bullets(context, strengths),
+              const SizedBox(height: 10),
+            ],
+            if (cautions.isNotEmpty) ...[
+              Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              _bullets(context, cautions),
+              const SizedBox(height: 10),
+            ],
+            if (themes.isNotEmpty) ...[
+              Text('분야별 운세', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              if ((themes['money']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('금전: ${themes['money']}'),
+                ),
+              if ((themes['relationship']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('연애/결혼: ${themes['relationship']}'),
+                ),
+              if ((themes['career']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('직업: ${themes['career']}'),
+                ),
+              if ((themes['health']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('건강: ${themes['health']}'),
+                ),
+              const SizedBox(height: 10),
+            ],
+            if (period.isNotEmpty) ...[
+              Text('기간별 흐름', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              if ((period['year']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('올해: ${period['year']}'),
+                ),
+              if ((period['month']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('이번 달: ${period['month']}'),
+                ),
+              if ((period['week']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('이번 주: ${period['week']}'),
+                ),
+              if ((period['day']?.toString().trim().isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('오늘: ${period['day']}'),
+                ),
+              const SizedBox(height: 10),
+            ],
+            if (actionTips.isNotEmpty) ...[
+              Text('실행 팁', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              for (int i = 0; i < actionTips.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('${i + 1}. ${actionTips[i]}'),
+                ),
+              const SizedBox(height: 8),
+            ],
+            if (disclaimer != null && disclaimer.isNotEmpty)
+              Text(
+                disclaimer,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

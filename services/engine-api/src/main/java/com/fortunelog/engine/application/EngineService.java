@@ -1,15 +1,19 @@
 package com.fortunelog.engine.application;
 
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
+import com.fortunelog.engine.application.dto.GenerateAiInterpretationRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
+import com.fortunelog.engine.common.ApiClientException;
 import com.fortunelog.engine.domain.LunarDateConverter;
 import com.fortunelog.engine.domain.SajuCalculator;
 import com.fortunelog.engine.domain.model.ChartResult;
 import com.fortunelog.engine.domain.model.DailyCategoryDetail;
 import com.fortunelog.engine.domain.model.DailyFortuneResult;
 import com.fortunelog.engine.domain.model.ReportResult;
+import com.fortunelog.engine.infra.llm.GeminiAnalysisClient;
 import com.fortunelog.engine.infra.supabase.SupabasePersistenceService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -29,9 +33,14 @@ public class EngineService {
     private final SajuCalculator sajuCalculator = new SajuCalculator();
     private final LunarDateConverter lunarDateConverter = new LunarDateConverter();
     private final SupabasePersistenceService persistenceService;
+    private final GeminiAnalysisClient geminiAnalysisClient;
 
-    public EngineService(SupabasePersistenceService persistenceService) {
+    public EngineService(
+            SupabasePersistenceService persistenceService,
+            GeminiAnalysisClient geminiAnalysisClient
+    ) {
         this.persistenceService = persistenceService;
+        this.geminiAnalysisClient = geminiAnalysisClient;
     }
 
     public ChartResult calculateChart(String userId, CalculateChartRequest request) {
@@ -176,5 +185,32 @@ public class EngineService {
                 summary,
                 actions
         );
+    }
+
+    public ReportResult generateAiInterpretation(String userId, GenerateAiInterpretationRequest request) {
+        var snapshot = persistenceService.findChartSnapshot(userId, request.chartId());
+        if (snapshot == null) {
+            throw new ApiClientException(
+                    "CHART_NOT_FOUND",
+                    HttpStatus.NOT_FOUND,
+                    "사주 차트를 먼저 계산해주세요."
+            );
+        }
+
+        Map<String, Object> content = geminiAnalysisClient.generateSajuInterpretation(
+                snapshot.chart(),
+                snapshot.fiveElements()
+        );
+
+        persistenceService.upsertNonDailyReport(
+                userId,
+                request.chartId(),
+                "ai_interpretation",
+                content,
+                true,
+                true
+        );
+
+        return new ReportResult(request.chartId(), "ai_interpretation", content);
     }
 }

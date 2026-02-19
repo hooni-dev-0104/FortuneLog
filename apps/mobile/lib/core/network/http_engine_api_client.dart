@@ -35,6 +35,14 @@ class HttpEngineApiClient implements EngineApiClient {
   }
 
   @override
+  Future<ReportResponseDto> generateAiInterpretation(
+    GenerateAiInterpretationRequestDto request,
+  ) async {
+    final jsonMap = await _post('/engine/v1/reports:interpret', request.toJson());
+    return ReportResponseDto.fromJson(jsonMap);
+  }
+
+  @override
   Future<DailyFortuneResponseDto> generateDailyFortune(
     GenerateDailyFortuneRequestDto request,
   ) async {

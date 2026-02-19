@@ -1,6 +1,7 @@
 abstract interface class EngineApiClient {
   Future<ChartResponseDto> calculateChart(CalculateChartRequestDto request);
   Future<ReportResponseDto> generateReport(GenerateReportRequestDto request);
+  Future<ReportResponseDto> generateAiInterpretation(GenerateAiInterpretationRequestDto request);
   Future<DailyFortuneResponseDto> generateDailyFortune(
     GenerateDailyFortuneRequestDto request,
   );
@@ -69,6 +70,18 @@ class GenerateDailyFortuneRequestDto {
   Map<String, dynamic> toJson() => {
     'chartId': chartId,
     'date': date,
+  };
+}
+
+class GenerateAiInterpretationRequestDto {
+  final String chartId;
+
+  const GenerateAiInterpretationRequestDto({
+    required this.chartId,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'chartId': chartId,
   };
 }
 

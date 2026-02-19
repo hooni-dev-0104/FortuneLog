@@ -1,6 +1,7 @@
 package com.fortunelog.engine.infra.supabase;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,12 @@ import java.util.Map;
 
 @Service
 public class SupabasePersistenceService {
+
+    public record ChartSnapshot(
+            Map<String, String> chart,
+            Map<String, Integer> fiveElements
+    ) {
+    }
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -168,6 +175,42 @@ public class SupabasePersistenceService {
         );
     }
 
+    public ChartSnapshot findChartSnapshot(String userId, String chartId) {
+        ensureConfigured();
+        String path = "/rest/v1/saju_charts"
+                + "?select=" + URLEncoder.encode("chart_json,five_elements_json", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + chartId, StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&limit=1";
+        String responseBody = sendGet(path);
+
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray() || node.isEmpty()) {
+                return null;
+            }
+
+            JsonNode row = node.get(0);
+            JsonNode chartNode = row.get("chart_json");
+            JsonNode fiveNode = row.get("five_elements_json");
+            if (chartNode == null || fiveNode == null) {
+                return null;
+            }
+
+            Map<String, String> chart = objectMapper.convertValue(
+                    chartNode,
+                    new TypeReference<>() {}
+            );
+            Map<String, Integer> fiveElements = objectMapper.convertValue(
+                    fiveNode,
+                    new TypeReference<>() {}
+            );
+            return new ChartSnapshot(chart, fiveElements);
+        } catch (IllegalArgumentException | JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse Supabase chart response", e);
+        }
+    }
+
     private String insertReturningId(String table, Map<String, ?> payload) {
         return writeReturningId(table, payload, false, List.of());
     }
@@ -251,6 +294,45 @@ public class SupabasePersistenceService {
         }
 
         throw new IllegalStateException("supabase insert failed after retries");
+    }
+
+    private String sendGet(String path) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(supabaseUrl + path))
+                .timeout(requestTimeout)
+                .header("apikey", serviceRoleKey)
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    return response.body();
+                }
+
+                if (!isRetryableStatus(response.statusCode()) || attempt == maxRetries) {
+                    throw new IllegalStateException("supabase select failed: " + response.statusCode() + " " + response.body());
+                }
+            } catch (HttpConnectTimeoutException e) {
+                if (attempt == maxRetries) {
+                    throw new IllegalStateException("supabase request timeout", e);
+                }
+            } catch (IOException e) {
+                if (attempt == maxRetries) {
+                    throw new IllegalStateException("failed to call Supabase", e);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("supabase call interrupted", e);
+            }
+
+            sleepBackoff(attempt);
+        }
+
+        throw new IllegalStateException("supabase select failed after retries");
     }
 
     private String preferHeader(boolean upsert) {

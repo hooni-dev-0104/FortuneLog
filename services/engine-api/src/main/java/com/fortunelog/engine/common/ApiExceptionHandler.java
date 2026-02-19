@@ -1,6 +1,7 @@
 package com.fortunelog.engine.common;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -17,6 +18,18 @@ import org.slf4j.LoggerFactory;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(ApiClientException.class)
+    public ResponseEntity<Map<String, Object>> handleClientVisible(
+            ApiClientException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(ex.status()).body(Map.of(
+                "requestId", requestId(request),
+                "code", ex.code(),
+                "message", ex.getMessage()
+        ));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

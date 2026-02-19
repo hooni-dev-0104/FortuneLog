@@ -3,6 +3,7 @@ package com.fortunelog.engine.api;
 import com.fortunelog.engine.application.EngineService;
 import com.fortunelog.engine.application.EngineVersion;
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
+import com.fortunelog.engine.application.dto.GenerateAiInterpretationRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
 import jakarta.validation.Valid;
@@ -58,6 +59,22 @@ public class EngineController {
             HttpServletRequest httpRequest
     ) {
         var result = engineService.generateReport(jwt.getSubject(), request);
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "chartId", result.chartId(),
+                "reportType", result.reportType(),
+                "content", result.content()
+        );
+    }
+
+    @PostMapping("/reports:interpret")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, Object> generateAiInterpretation(
+            @Valid @RequestBody GenerateAiInterpretationRequest request,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest httpRequest
+    ) {
+        var result = engineService.generateAiInterpretation(jwt.getSubject(), request);
         return Map.of(
                 "requestId", requestId(httpRequest),
                 "chartId", result.chartId(),

@@ -26,4 +26,5 @@ gradle wrapper
 - `GET /engine/v1/health`
 - `POST /engine/v1/charts:calculate`
 - `POST /engine/v1/reports:generate`
+- `POST /engine/v1/reports:interpret`
 - `POST /engine/v1/fortunes:daily`
