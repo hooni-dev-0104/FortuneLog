@@ -982,14 +982,14 @@ class _AiInterpretationSection extends StatelessWidget {
     final cautions = _toStringList(content?['cautions']);
     final actionTips = _toStringList(content?['actionTips']);
     final themes = _toStringMap(content?['themes']);
-    final period = _toStringMap(content?['fortuneByPeriod']);
     final disclaimer = content?['disclaimer']?.toString().trim();
+    final canGenerate = content == null && !loading;
 
     return PageSection(
       title: 'AI 사주 해석',
       subtitle: 'Gemini 기반 상세 해석',
       trailing: FilledButton.tonal(
-        onPressed: loading ? null : onGenerate,
+        onPressed: canGenerate ? onGenerate : null,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1006,7 +1006,7 @@ class _AiInterpretationSection extends StatelessWidget {
               ),
               const SizedBox(width: 6),
             ],
-            Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '다시 생성')),
+            Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '생성 완료')),
           ],
         ),
       ),
@@ -1096,31 +1096,6 @@ class _AiInterpretationSection extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text('건강: ${themes['health']}'),
-                ),
-              const SizedBox(height: 10),
-            ],
-            if (period.isNotEmpty) ...[
-              Text('기간별 흐름', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 6),
-              if ((period['year']?.toString().trim().isNotEmpty ?? false))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('올해: ${period['year']}'),
-                ),
-              if ((period['month']?.toString().trim().isNotEmpty ?? false))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('이번 달: ${period['month']}'),
-                ),
-              if ((period['week']?.toString().trim().isNotEmpty ?? false))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('이번 주: ${period['week']}'),
-                ),
-              if ((period['day']?.toString().trim().isNotEmpty ?? false))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('오늘: ${period['day']}'),
                 ),
               const SizedBox(height: 10),
             ],

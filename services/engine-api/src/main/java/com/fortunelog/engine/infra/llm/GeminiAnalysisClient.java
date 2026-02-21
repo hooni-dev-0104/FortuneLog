@@ -72,28 +72,7 @@ public class GeminiAnalysisClient {
 
         try {
             CandidatePayload primary = callGemini(buildPrompt(chart, fiveElements, false), false);
-            Map<String, Object> parsed;
-            try {
-                parsed = parseModelJson(primary.text());
-            } catch (ApiClientException ex) {
-                if (!"AI_RESPONSE_INVALID".equals(ex.code())) {
-                    throw ex;
-                }
-                log.warn("gemini json parse failed on first response, retrying in concise mode. finishReason={}", primary.finishReason());
-                CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
-                parsed = parseModelJson(retry.text());
-                return enrichResult(parsed);
-            }
-
-            if ("MAX_TOKENS".equalsIgnoreCase(primary.finishReason())) {
-                try {
-                    CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
-                    parsed = parseModelJson(retry.text());
-                } catch (ApiClientException ex) {
-                    log.warn("gemini concise retry failed after MAX_TOKENS, using primary parsed result: {}", ex.getMessage());
-                }
-            }
-
+            Map<String, Object> parsed = parseModelJson(primary.text());
             return enrichResult(parsed);
         } catch (ApiClientException ex) {
             if (isRecoverableAiFailure(ex.code())) {
@@ -137,16 +116,14 @@ public class GeminiAnalysisClient {
                 "career", dominantKo + " 기운이 실행력을 올립니다. 일주(" + day + ") 흐름상 우선순위 1개 집중이 효과적입니다.",
                 "health", weakKo + " 기운이 약할 수 있어 회복 루틴이 중요합니다. 수면·수분 관리를 먼저 챙겨주세요."
         );
-        Map<String, Object> byPeriod = Map.of(
-                "year", "올해는 기본기를 쌓을수록 안정감이 커지는 흐름입니다.",
-                "month", "이번 달은 무리한 확장보다 현재 루틴 정리가 유리합니다.",
-                "week", "이번 주는 할 일의 순서를 정하면 성과가 빨라집니다.",
-                "day", "오늘은 작은 실행 1개를 확실히 끝내는 것이 핵심입니다."
-        );
-
         return new LinkedHashMap<>(Map.of(
-                "summary", "현재 AI 응답이 불안정해 기본 해석으로 제공됩니다. "
-                        + dominantKo + " 중심 기운이 강하고, " + weakKo + " 기운 보완이 오늘의 균형 포인트입니다.",
+                "summary", "현재 AI 응답이 불안정해 기본 해석으로 제공합니다. "
+                        + dominantKo + " 중심 기운이 강해 핵심 과제에 집중할 때 성과가 잘 나는 편입니다. "
+                        + "반면 " + weakKo + " 기운이 상대적으로 약해 감정 소모와 체력 저하가 누적되기 쉬울 수 있습니다. "
+                        + "관계에서는 속도보다 말의 온도와 표현 순서를 조절하는 것이 안정적입니다. "
+                        + "일/직업 영역은 우선순위를 좁혀 실행하면 강점이 더 또렷하게 드러납니다. "
+                        + "금전은 지출 기준을 먼저 정하면 불필요한 소비를 줄이는 데 도움이 됩니다. "
+                        + "건강은 수면·수분·가벼운 움직임 루틴을 고정하면 전체 흐름이 더 좋아집니다.",
                 "coreTraits", List.of(
                         dominantKo + " 기운 중심의 추진력",
                         "현실적인 판단과 적응력",
@@ -163,7 +140,6 @@ public class GeminiAnalysisClient {
                         "감정 표현이 급해지며 톤이 강해지는 반응"
                 ),
                 "themes", themes,
-                "fortuneByPeriod", byPeriod,
                 "actionTips", List.of(
                         "오늘 가장 중요한 일 1개부터 완료하기",
                         "지출 상한을 먼저 정하고 소비하기",
@@ -303,16 +279,6 @@ public class GeminiAnalysisClient {
                 ),
                 "required", List.of("money", "relationship", "career", "health")
         );
-        Map<String, Object> byPeriod = Map.of(
-                "type", "OBJECT",
-                "properties", Map.of(
-                        "year", Map.of("type", "STRING"),
-                        "month", Map.of("type", "STRING"),
-                        "week", Map.of("type", "STRING"),
-                        "day", Map.of("type", "STRING")
-                ),
-                "required", List.of("year", "month", "week", "day")
-        );
 
         return Map.of(
                 "type", "OBJECT",
@@ -322,7 +288,6 @@ public class GeminiAnalysisClient {
                         "strengths", stringArray,
                         "cautions", stringArray,
                         "themes", themes,
-                        "fortuneByPeriod", byPeriod,
                         "actionTips", stringArray,
                         "disclaimer", Map.of("type", "STRING")
                 ),
@@ -332,7 +297,6 @@ public class GeminiAnalysisClient {
                         "strengths",
                         "cautions",
                         "themes",
-                        "fortuneByPeriod",
                         "actionTips",
                         "disclaimer"
                 )
@@ -369,7 +333,7 @@ public class GeminiAnalysisClient {
                                 
                 아래 JSON 스키마로만 응답하세요. 키 이름은 그대로 유지하고, 값은 한국어로 작성하세요.
                 {
-                  "summary": "한 문단 요약 (2~3문장)",
+                  "summary": "한 문단 요약 (6~8문장, 성향/강점/주의점/금전/관계/일/건강을 자연스럽게 포함)",
                   "coreTraits": ["성향 1", "성향 2", "성향 3"],
                   "strengths": ["강점 1", "강점 2", "강점 3"],
                   "cautions": ["주의점 1", "주의점 2", "주의점 3"],
@@ -378,12 +342,6 @@ public class GeminiAnalysisClient {
                     "relationship": "연애/결혼운 해석",
                     "career": "직업/일운 해석",
                     "health": "건강운 해석"
-                  },
-                  "fortuneByPeriod": {
-                    "year": "올해 운세",
-                    "month": "이번 달 운세",
-                    "week": "이번 주 운세",
-                    "day": "오늘 운세"
                   },
                   "actionTips": ["실행 팁 1", "실행 팁 2", "실행 팁 3"],
                   "disclaimer": "참고용 안내 문구 1문장"
