@@ -34,8 +34,8 @@ app:
     max-retries: ${SUPABASE_MAX_RETRIES:2}
     retry-backoff-ms: ${SUPABASE_RETRY_BACKOFF_MS:300}
     request-timeout-ms: ${SUPABASE_REQUEST_TIMEOUT_MS:5000}
-  gemini:
-    api-key: ${GEMINI_API_KEY:}
-    model: ${GEMINI_MODEL:gemini-2.5-flash}
-    api-base-url: ${GEMINI_API_BASE_URL:https://generativelanguage.googleapis.com}
-    request-timeout-ms: ${GEMINI_REQUEST_TIMEOUT_MS:60000}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5-mini}
+    api-base-url: ${OPENAI_API_BASE_URL:https://api.openai.com}
+    request-timeout-ms: ${OPENAI_REQUEST_TIMEOUT_MS:60000}

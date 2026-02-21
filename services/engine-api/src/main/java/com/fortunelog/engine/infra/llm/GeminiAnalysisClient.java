@@ -13,12 +13,10 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,15 +39,15 @@ public class GeminiAnalysisClient {
 
     public GeminiAnalysisClient(
             ObjectMapper objectMapper,
-            @Value("${app.gemini.api-key:${GEMINI_API_KEY:}}") String apiKey,
-            @Value("${app.gemini.model:${GEMINI_MODEL:gemini-2.5-flash}}") String model,
-            @Value("${app.gemini.api-base-url:${GEMINI_API_BASE_URL:https://generativelanguage.googleapis.com}}") String apiBaseUrl,
-            @Value("${app.gemini.request-timeout-ms:${GEMINI_REQUEST_TIMEOUT_MS:60000}}") long requestTimeoutMs
+            @Value("${app.openai.api-key:${OPENAI_API_KEY:}}") String apiKey,
+            @Value("${app.openai.model:${OPENAI_MODEL:gpt-5-mini}}") String model,
+            @Value("${app.openai.api-base-url:${OPENAI_API_BASE_URL:https://api.openai.com}}") String apiBaseUrl,
+            @Value("${app.openai.request-timeout-ms:${OPENAI_REQUEST_TIMEOUT_MS:60000}}") long requestTimeoutMs
     ) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
         this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.model = model == null || model.isBlank() ? "gemini-2.5-flash" : model.trim();
+        this.model = model == null || model.isBlank() ? "gpt-5-mini" : model.trim();
         this.apiBaseUrl = trimTrailingSlash(apiBaseUrl == null ? "" : apiBaseUrl.trim());
         this.requestTimeout = Duration.ofMillis(Math.max(requestTimeoutMs, 1000L));
     }
@@ -71,12 +69,12 @@ public class GeminiAnalysisClient {
         }
 
         try {
-            CandidatePayload primary = callGemini(buildPrompt(chart, fiveElements, false), false);
+            CandidatePayload primary = callOpenAi(buildPrompt(chart, fiveElements, false), false);
             Map<String, Object> parsed = parseModelJson(primary.text());
             return enrichResult(parsed);
         } catch (ApiClientException ex) {
             if (isRecoverableAiFailure(ex.code())) {
-                log.warn("gemini unavailable/invalid response. falling back to deterministic interpretation. code={}", ex.code());
+                log.warn("openai unavailable/invalid response. falling back to deterministic interpretation. code={}", ex.code());
                 return enrichFallbackResult(buildFallbackInterpretation(chart, fiveElements));
             }
             throw ex;
@@ -86,7 +84,7 @@ public class GeminiAnalysisClient {
     private Map<String, Object> enrichResult(Map<String, Object> parsed) {
         parsed.put("model", model);
         parsed.put("generatedAt", Instant.now().toString());
-        parsed.put("source", "gemini");
+        parsed.put("source", "openai");
         return parsed;
     }
 
@@ -185,13 +183,14 @@ public class GeminiAnalysisClient {
         };
     }
 
-    private CandidatePayload callGemini(String prompt, boolean conciseMode) {
+    private CandidatePayload callOpenAi(String prompt, boolean conciseMode) {
         String requestBody = buildRequestBody(prompt, conciseMode);
-        String path = "/v1beta/models/" + model + ":generateContent?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+        String path = "/v1/chat/completions";
         URI uri = URI.create(apiBaseUrl + path);
 
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(requestTimeout)
+                .header("Authorization", "Bearer " + apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
@@ -200,7 +199,7 @@ public class GeminiAnalysisClient {
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (HttpTimeoutException e) {
-            log.warn("gemini call timeout: {}", e.getMessage());
+            log.warn("openai call timeout: {}", e.getMessage());
             throw new ApiClientException(
                     "AI_GENERATION_TIMEOUT",
                     HttpStatus.BAD_GATEWAY,
@@ -208,14 +207,14 @@ public class GeminiAnalysisClient {
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("gemini call interrupted: {}", e.getMessage());
+            log.warn("openai call interrupted: {}", e.getMessage());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,
                     "AI 해석 생성에 실패했습니다. 잠시 후 다시 시도해주세요."
             );
         } catch (IOException e) {
-            log.warn("gemini call failed before response: {}", e.toString());
+            log.warn("openai call failed before response: {}", e.toString());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,
@@ -224,7 +223,7 @@ public class GeminiAnalysisClient {
         }
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            log.warn("gemini call failed: status={}, body={}", response.statusCode(), response.body());
+            log.warn("openai call failed: status={}, body={}", response.statusCode(), response.body());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,
@@ -236,21 +235,20 @@ public class GeminiAnalysisClient {
     }
 
     private String buildRequestBody(String prompt, boolean conciseMode) {
-        Map<String, Object> payload = new LinkedHashMap<>(Map.of(
-                "contents", List.of(
-                        Map.of(
-                                "role", "user",
-                                "parts", List.of(Map.of("text", prompt))
-                        )
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("model", model);
+        payload.put("messages", List.of(
+                Map.of("role", "user", "content", prompt)
+        ));
+        payload.put("response_format", Map.of(
+                "type", "json_schema",
+                "json_schema", Map.of(
+                        "name", "saju_interpretation",
+                        "strict", true,
+                        "schema", buildResponseSchema()
                 )
         ));
-        payload.put("generationConfig", new LinkedHashMap<>(Map.of(
-                "temperature", conciseMode ? 0.35 : 0.7,
-                "topP", 0.9,
-                "maxOutputTokens", conciseMode ? 1536 : 3072,
-                "responseMimeType", "application/json",
-                "responseSchema", buildResponseSchema()
-        )));
+        payload.put("max_completion_tokens", conciseMode ? 1800 : 3600);
 
         try {
             return objectMapper.writeValueAsString(payload);
@@ -265,30 +263,31 @@ public class GeminiAnalysisClient {
 
     private Map<String, Object> buildResponseSchema() {
         Map<String, Object> stringArray = Map.of(
-                "type", "ARRAY",
-                "items", Map.of("type", "STRING")
+                "type", "array",
+                "items", Map.of("type", "string")
         );
         Map<String, Object> themes = Map.of(
-                "type", "OBJECT",
+                "type", "object",
                 "properties", Map.of(
-                        "money", Map.of("type", "STRING"),
-                        "relationship", Map.of("type", "STRING"),
-                        "career", Map.of("type", "STRING"),
-                        "health", Map.of("type", "STRING")
+                        "money", Map.of("type", "string"),
+                        "relationship", Map.of("type", "string"),
+                        "career", Map.of("type", "string"),
+                        "health", Map.of("type", "string")
                 ),
-                "required", List.of("money", "relationship", "career", "health")
+                "required", List.of("money", "relationship", "career", "health"),
+                "additionalProperties", false
         );
 
         return Map.of(
-                "type", "OBJECT",
+                "type", "object",
                 "properties", Map.of(
-                        "summary", Map.of("type", "STRING"),
+                        "summary", Map.of("type", "string"),
                         "coreTraits", stringArray,
                         "strengths", stringArray,
                         "cautions", stringArray,
                         "themes", themes,
                         "actionTips", stringArray,
-                        "disclaimer", Map.of("type", "STRING")
+                        "disclaimer", Map.of("type", "string")
                 ),
                 "required", List.of(
                         "summary",
@@ -298,7 +297,8 @@ public class GeminiAnalysisClient {
                         "themes",
                         "actionTips",
                         "disclaimer"
-                )
+                ),
+                "additionalProperties", false
         );
     }
 
@@ -369,16 +369,29 @@ public class GeminiAnalysisClient {
     private CandidatePayload extractCandidatePayload(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            JsonNode textNode = root.at("/candidates/0/content/parts/0/text");
-            if (textNode.isMissingNode() || textNode.asText().isBlank()) {
+            JsonNode textNode = root.at("/choices/0/message/content");
+            String text = "";
+            if (textNode.isTextual()) {
+                text = textNode.asText();
+            } else if (textNode.isArray()) {
+                for (JsonNode n : textNode) {
+                    JsonNode partText = n.get("text");
+                    if (partText != null && partText.isTextual()) {
+                        text = partText.asText();
+                        break;
+                    }
+                }
+            }
+
+            if (text == null || text.isBlank()) {
                 throw new ApiClientException(
                         "AI_RESPONSE_INVALID",
                         HttpStatus.BAD_GATEWAY,
                         AI_PARSE_ERROR_MESSAGE
                 );
             }
-            String finishReason = root.at("/candidates/0/finishReason").asText("");
-            return new CandidatePayload(textNode.asText(), finishReason);
+            String finishReason = root.at("/choices/0/finish_reason").asText("");
+            return new CandidatePayload(text, finishReason);
         } catch (JsonProcessingException e) {
             throw new ApiClientException(
                     "AI_RESPONSE_INVALID",
@@ -407,7 +420,7 @@ public class GeminiAnalysisClient {
             }
         }
 
-        log.warn("failed to parse gemini json: {}", normalized);
+        log.warn("failed to parse openai json: {}", normalized);
         throw new ApiClientException(
                 "AI_RESPONSE_INVALID",
                 HttpStatus.BAD_GATEWAY,

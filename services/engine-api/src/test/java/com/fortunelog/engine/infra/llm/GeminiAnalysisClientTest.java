@@ -34,14 +34,11 @@ class GeminiAnalysisClientTest {
     void shouldGenerateInterpretationFromGeminiResponse() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
-                  "candidates": [
+                  "choices": [
                     {
-                      "content": {
-                        "parts": [
-                          {
-                            "text": "{\\"summary\\":\\"요약\\",\\"coreTraits\\":[\\"성향1\\",\\"성향2\\"],\\"actionTips\\":[\\"실행1\\"]}"
-                          }
-                        ]
+                      "finish_reason": "stop",
+                      "message": {
+                        "content": "{\\"summary\\":\\"요약\\",\\"coreTraits\\":[\\"성향1\\",\\"성향2\\"],\\"actionTips\\":[\\"실행1\\"],\\"strengths\\":[\\"강점1\\"],\\"cautions\\":[\\"주의1\\"],\\"themes\\":{\\"money\\":\\"m\\",\\"relationship\\":\\"r\\",\\"career\\":\\"c\\",\\"health\\":\\"h\\"},\\"disclaimer\\":\\"d\\"}"
                       }
                     }
                   ]
@@ -51,7 +48,7 @@ class GeminiAnalysisClientTest {
         GeminiAnalysisClient client = new GeminiAnalysisClient(
                 new ObjectMapper(),
                 "test-key",
-                "gemini-2.5-flash",
+                "gpt-5-mini",
                 server.url("/").toString(),
                 5000
         );
@@ -63,13 +60,15 @@ class GeminiAnalysisClientTest {
 
         assertEquals("요약", result.get("summary"));
         assertTrue(result.containsKey("generatedAt"));
-        assertEquals("gemini-2.5-flash", result.get("model"));
-        assertEquals("gemini", result.get("source"));
+        assertEquals("gpt-5-mini", result.get("model"));
+        assertEquals("openai", result.get("source"));
 
         RecordedRequest request = server.takeRequest();
-        assertTrue(request.getPath().contains("/v1beta/models/gemini-2.5-flash:generateContent"));
-        assertTrue(request.getPath().contains("key=test-key"));
-        assertTrue(request.getBody().readUtf8().contains("\"responseMimeType\":\"application/json\""));
+        assertTrue(request.getPath().contains("/v1/chat/completions"));
+        assertEquals("Bearer test-key", request.getHeader("Authorization"));
+        final var body = request.getBody().readUtf8();
+        assertTrue(body.contains("\"response_format\""));
+        assertTrue(body.contains("\"json_schema\""));
     }
 
     @Test
@@ -77,7 +76,7 @@ class GeminiAnalysisClientTest {
         GeminiAnalysisClient client = new GeminiAnalysisClient(
                 new ObjectMapper(),
                 "",
-                "gemini-2.5-flash",
+                "gpt-5-mini",
                 server.url("/").toString(),
                 5000
         );
@@ -98,15 +97,11 @@ class GeminiAnalysisClientTest {
     void shouldFallbackWhenGeminiResponseIsTruncated() {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
-                  "candidates": [
+                  "choices": [
                     {
-                      "finishReason": "MAX_TOKENS",
-                      "content": {
-                        "parts": [
-                          {
-                            "text": "{\\"summary\\":\\"요약\\",\\"coreTraits\\":[\\"성향1\\",\\"성향2\\"]"
-                          }
-                        ]
+                      "finish_reason": "length",
+                      "message": {
+                        "content": "{\\"summary\\":\\"요약\\",\\"coreTraits\\":[\\"성향1\\",\\"성향2\\"]"
                       }
                     }
                   ]
@@ -116,7 +111,7 @@ class GeminiAnalysisClientTest {
         GeminiAnalysisClient client = new GeminiAnalysisClient(
                 new ObjectMapper(),
                 "test-key",
-                "gemini-2.5-flash",
+                "gpt-5-mini",
                 server.url("/").toString(),
                 5000
         );
@@ -127,7 +122,7 @@ class GeminiAnalysisClientTest {
         );
 
         assertTrue(result.containsKey("summary"));
-        assertEquals("gemini-2.5-flash", result.get("model"));
+        assertEquals("gpt-5-mini", result.get("model"));
         assertEquals("fallback", result.get("source"));
     }
 
@@ -135,13 +130,11 @@ class GeminiAnalysisClientTest {
     void shouldFallbackWhenGeminiReturnsInvalidJsonTwice() {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
-                  "candidates": [
+                  "choices": [
                     {
-                      "finishReason": "STOP",
-                      "content": {
-                        "parts": [
-                          { "text": "{\\"summary\\":\\"broken\\" " }
-                        ]
+                      "finish_reason": "stop",
+                      "message": {
+                        "content": "{\\"summary\\":\\"broken\\" "
                       }
                     }
                   ]
@@ -149,13 +142,11 @@ class GeminiAnalysisClientTest {
                 """));
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
-                  "candidates": [
+                  "choices": [
                     {
-                      "finishReason": "STOP",
-                      "content": {
-                        "parts": [
-                          { "text": "```json\\n{ not-json }\\n```" }
-                        ]
+                      "finish_reason": "stop",
+                      "message": {
+                        "content": "```json\\n{ not-json }\\n```"
                       }
                     }
                   ]
@@ -165,7 +156,7 @@ class GeminiAnalysisClientTest {
         GeminiAnalysisClient client = new GeminiAnalysisClient(
                 new ObjectMapper(),
                 "test-key",
-                "gemini-2.5-flash",
+                "gpt-5-mini",
                 server.url("/").toString(),
                 5000
         );
@@ -176,7 +167,7 @@ class GeminiAnalysisClientTest {
         );
 
         assertEquals("fallback", result.get("source"));
-        assertEquals("gemini-2.5-flash", result.get("model"));
+        assertEquals("gpt-5-mini", result.get("model"));
         assertTrue(result.containsKey("summary"));
         assertTrue(result.containsKey("themes"));
     }

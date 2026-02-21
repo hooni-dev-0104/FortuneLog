@@ -1447,7 +1447,7 @@ class _AiInterpretationSection extends StatelessWidget {
 
     return PageSection(
       title: 'AI 사주 해석',
-      subtitle: 'Gemini 기반 상세 해석',
+      subtitle: 'GPT-5 mini 기반 상세 해석',
       trailing: FilledButton.tonal(
         onPressed: canGenerate ? onGenerate : null,
         child: Row(
