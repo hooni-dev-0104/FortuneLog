@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class GeminiAnalysisClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiAnalysisClient.class);
+    private static final String AI_PARSE_ERROR_MESSAGE = "AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요.";
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -67,8 +69,41 @@ public class GeminiAnalysisClient {
             );
         }
 
-        String prompt = buildPrompt(chart, fiveElements);
-        String requestBody = buildRequestBody(prompt);
+        CandidatePayload primary = callGemini(buildPrompt(chart, fiveElements, false), false);
+        Map<String, Object> parsed;
+        try {
+            parsed = parseModelJson(primary.text());
+        } catch (ApiClientException ex) {
+            if (!"AI_RESPONSE_INVALID".equals(ex.code())) {
+                throw ex;
+            }
+            log.warn("gemini json parse failed on first response, retrying in concise mode. finishReason={}", primary.finishReason());
+            CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
+            parsed = parseModelJson(retry.text());
+            return enrichResult(parsed);
+        }
+
+        if ("MAX_TOKENS".equalsIgnoreCase(primary.finishReason())) {
+            try {
+                CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
+                parsed = parseModelJson(retry.text());
+            } catch (ApiClientException ex) {
+                log.warn("gemini concise retry failed after MAX_TOKENS, using primary parsed result: {}", ex.getMessage());
+            }
+        }
+
+        return enrichResult(parsed);
+    }
+
+    private Map<String, Object> enrichResult(Map<String, Object> parsed) {
+        parsed.put("model", model);
+        parsed.put("generatedAt", Instant.now().toString());
+        parsed.put("source", "gemini");
+        return parsed;
+    }
+
+    private CandidatePayload callGemini(String prompt, boolean conciseMode) {
+        String requestBody = buildRequestBody(prompt, conciseMode);
         String path = "/v1beta/models/" + model + ":generateContent?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
         URI uri = URI.create(apiBaseUrl + path);
 
@@ -101,29 +136,25 @@ public class GeminiAnalysisClient {
             );
         }
 
-        String modelText = extractCandidateText(response.body());
-        Map<String, Object> parsed = parseModelJson(modelText);
-        parsed.put("model", model);
-        parsed.put("generatedAt", Instant.now().toString());
-        parsed.put("source", "gemini");
-        return parsed;
+        return extractCandidatePayload(response.body());
     }
 
-    private String buildRequestBody(String prompt) {
-        Map<String, Object> payload = Map.of(
+    private String buildRequestBody(String prompt, boolean conciseMode) {
+        Map<String, Object> payload = new LinkedHashMap<>(Map.of(
                 "contents", List.of(
                         Map.of(
                                 "role", "user",
                                 "parts", List.of(Map.of("text", prompt))
                         )
-                ),
-                "generationConfig", Map.of(
-                        "temperature", 0.8,
-                        "topP", 0.95,
-                        "maxOutputTokens", 2048,
-                        "responseMimeType", "application/json"
                 )
-        );
+        ));
+        payload.put("generationConfig", new LinkedHashMap<>(Map.of(
+                "temperature", conciseMode ? 0.35 : 0.7,
+                "topP", 0.9,
+                "maxOutputTokens", conciseMode ? 1536 : 3072,
+                "responseMimeType", "application/json",
+                "responseSchema", buildResponseSchema()
+        )));
 
         try {
             return objectMapper.writeValueAsString(payload);
@@ -136,7 +167,58 @@ public class GeminiAnalysisClient {
         }
     }
 
-    private String buildPrompt(Map<String, String> chart, Map<String, Integer> fiveElements) {
+    private Map<String, Object> buildResponseSchema() {
+        Map<String, Object> stringArray = Map.of(
+                "type", "ARRAY",
+                "items", Map.of("type", "STRING")
+        );
+        Map<String, Object> themes = Map.of(
+                "type", "OBJECT",
+                "properties", Map.of(
+                        "money", Map.of("type", "STRING"),
+                        "relationship", Map.of("type", "STRING"),
+                        "career", Map.of("type", "STRING"),
+                        "health", Map.of("type", "STRING")
+                ),
+                "required", List.of("money", "relationship", "career", "health")
+        );
+        Map<String, Object> byPeriod = Map.of(
+                "type", "OBJECT",
+                "properties", Map.of(
+                        "year", Map.of("type", "STRING"),
+                        "month", Map.of("type", "STRING"),
+                        "week", Map.of("type", "STRING"),
+                        "day", Map.of("type", "STRING")
+                ),
+                "required", List.of("year", "month", "week", "day")
+        );
+
+        return Map.of(
+                "type", "OBJECT",
+                "properties", Map.of(
+                        "summary", Map.of("type", "STRING"),
+                        "coreTraits", stringArray,
+                        "strengths", stringArray,
+                        "cautions", stringArray,
+                        "themes", themes,
+                        "fortuneByPeriod", byPeriod,
+                        "actionTips", stringArray,
+                        "disclaimer", Map.of("type", "STRING")
+                ),
+                "required", List.of(
+                        "summary",
+                        "coreTraits",
+                        "strengths",
+                        "cautions",
+                        "themes",
+                        "fortuneByPeriod",
+                        "actionTips",
+                        "disclaimer"
+                )
+        );
+    }
+
+    private String buildPrompt(Map<String, String> chart, Map<String, Integer> fiveElements, boolean conciseMode) {
         String year = valueOrDash(chart.get("year"));
         String month = valueOrDash(chart.get("month"));
         String day = valueOrDash(chart.get("day"));
@@ -147,11 +229,15 @@ public class GeminiAnalysisClient {
         int earth = fiveElements.getOrDefault("earth", 0);
         int metal = fiveElements.getOrDefault("metal", 0);
         int water = fiveElements.getOrDefault("water", 0);
+        String styleRule = conciseMode
+                ? "모든 문장을 짧고 간결하게 작성하고, 각 항목은 1문장 또는 짧은 구문으로 제한하세요."
+                : "초보자도 이해하기 쉬운 문장으로 작성하세요.";
 
         return """
                 당신은 한국어로 설명하는 사주 전문 상담가입니다.
-                입력된 사주팔자와 오행 분포를 바탕으로, 초보자도 이해하기 쉬운 문장으로 해석하세요.
+                입력된 사주팔자와 오행 분포를 바탕으로 해석하세요.
                 단정적인 예언/의학 진단/투자 확언은 피하고, 현실적인 조언 위주로 작성하세요.
+                %s
                                 
                 [입력 데이터]
                 - 년주: %s
@@ -181,10 +267,10 @@ public class GeminiAnalysisClient {
                   "actionTips": ["실행 팁 1", "실행 팁 2", "실행 팁 3"],
                   "disclaimer": "참고용 안내 문구 1문장"
                 }
-                """.formatted(year, month, day, hour, wood, fire, earth, metal, water);
+                """.formatted(styleRule, year, month, day, hour, wood, fire, earth, metal, water);
     }
 
-    private String extractCandidateText(String responseBody) {
+    private CandidatePayload extractCandidatePayload(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
             JsonNode textNode = root.at("/candidates/0/content/parts/0/text");
@@ -192,32 +278,45 @@ public class GeminiAnalysisClient {
                 throw new ApiClientException(
                         "AI_RESPONSE_INVALID",
                         HttpStatus.BAD_GATEWAY,
-                        "AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요."
+                        AI_PARSE_ERROR_MESSAGE
                 );
             }
-            return textNode.asText();
+            String finishReason = root.at("/candidates/0/finishReason").asText("");
+            return new CandidatePayload(textNode.asText(), finishReason);
         } catch (JsonProcessingException e) {
             throw new ApiClientException(
                     "AI_RESPONSE_INVALID",
                     HttpStatus.BAD_GATEWAY,
-                    "AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요."
+                    AI_PARSE_ERROR_MESSAGE
             );
         }
     }
 
     private Map<String, Object> parseModelJson(String text) {
         String normalized = normalizeJsonText(text);
-        try {
-            Map<String, Object> parsed = objectMapper.readValue(normalized, new TypeReference<>() {});
-            return new LinkedHashMap<>(parsed);
-        } catch (JsonProcessingException e) {
-            log.warn("failed to parse gemini json: {}", normalized);
-            throw new ApiClientException(
-                    "AI_RESPONSE_INVALID",
-                    HttpStatus.BAD_GATEWAY,
-                    "AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요."
-            );
+        List<String> candidates = new ArrayList<>();
+        candidates.add(normalized);
+        String extracted = extractOuterJsonObject(normalized);
+        if (extracted != null && !extracted.equals(normalized)) {
+            candidates.add(extracted);
         }
+
+        for (String candidate : candidates) {
+            String sanitized = stripTrailingCommas(candidate);
+            try {
+                Map<String, Object> parsed = objectMapper.readValue(sanitized, new TypeReference<>() {});
+                return new LinkedHashMap<>(parsed);
+            } catch (JsonProcessingException ignored) {
+                // try next candidate
+            }
+        }
+
+        log.warn("failed to parse gemini json: {}", normalized);
+        throw new ApiClientException(
+                "AI_RESPONSE_INVALID",
+                HttpStatus.BAD_GATEWAY,
+                AI_PARSE_ERROR_MESSAGE
+        );
     }
 
     private String normalizeJsonText(String text) {
@@ -227,7 +326,20 @@ public class GeminiAnalysisClient {
             withoutFence = withoutFence.replaceFirst("\\n?```$", "");
             return withoutFence.trim();
         }
-        return trimmed;
+        return trimmed.replace("\uFEFF", "");
+    }
+
+    private String extractOuterJsonObject(String text) {
+        int start = text.indexOf('{');
+        int end = text.lastIndexOf('}');
+        if (start < 0 || end <= start) {
+            return null;
+        }
+        return text.substring(start, end + 1).trim();
+    }
+
+    private String stripTrailingCommas(String text) {
+        return text.replaceAll(",\\s*([}\\]])", "$1");
     }
 
     private String valueOrDash(String value) {
@@ -242,5 +354,8 @@ public class GeminiAnalysisClient {
             return value.substring(0, value.length() - 1);
         }
         return value;
+    }
+
+    private record CandidatePayload(String text, String finishReason) {
     }
 }
