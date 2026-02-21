@@ -1448,27 +1448,40 @@ class _AiInterpretationSection extends StatelessWidget {
     return PageSection(
       title: 'AI 사주 해석',
       subtitle: 'GPT-5 mini 기반 상세 해석',
-      trailing: FilledButton.tonal(
-        onPressed: canGenerate ? onGenerate : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (loading) ...[
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.onSecondaryContainer,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.tonal(
+            onPressed: canGenerate ? onGenerate : null,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (loading) ...[
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.onSecondaryContainer,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '생성 완료')),
+                  const SizedBox(width: 6),
+                ],
+                Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '생성 완료')),
+              ],
+            ),
+          ),
+          if (content != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: '사주풀이 결과 삭제',
+              onPressed: loading ? null : onDelete,
+              icon: const Icon(Icons.delete_outline_rounded),
+            ),
           ],
-        ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1574,15 +1587,6 @@ class _AiInterpretationSection extends StatelessWidget {
                 disclaimer,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: loading ? null : onDelete,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('사주풀이 결과 삭제'),
-              ),
-            ),
           ],
         ],
       ),
