@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class GeminiAnalysisClientTest {
+class OpenAiAnalysisClientTest {
 
     private MockWebServer server;
 
@@ -31,7 +31,7 @@ class GeminiAnalysisClientTest {
     }
 
     @Test
-    void shouldGenerateInterpretationFromGeminiResponse() throws Exception {
+    void shouldGenerateInterpretationFromOpenAiResponse() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
                   "choices": [
@@ -45,7 +45,7 @@ class GeminiAnalysisClientTest {
                 }
                 """));
 
-        GeminiAnalysisClient client = new GeminiAnalysisClient(
+        OpenAiAnalysisClient client = new OpenAiAnalysisClient(
                 new ObjectMapper(),
                 "test-key",
                 "gpt-5-mini",
@@ -73,7 +73,7 @@ class GeminiAnalysisClientTest {
 
     @Test
     void shouldThrowWhenApiKeyIsMissing() {
-        GeminiAnalysisClient client = new GeminiAnalysisClient(
+        OpenAiAnalysisClient client = new OpenAiAnalysisClient(
                 new ObjectMapper(),
                 "",
                 "gpt-5-mini",
@@ -94,7 +94,7 @@ class GeminiAnalysisClientTest {
     }
 
     @Test
-    void shouldFallbackWhenGeminiResponseIsTruncated() {
+    void shouldFallbackWhenOpenAiResponseIsTruncated() {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
                   "choices": [
@@ -108,7 +108,7 @@ class GeminiAnalysisClientTest {
                 }
                 """));
 
-        GeminiAnalysisClient client = new GeminiAnalysisClient(
+        OpenAiAnalysisClient client = new OpenAiAnalysisClient(
                 new ObjectMapper(),
                 "test-key",
                 "gpt-5-mini",
@@ -127,7 +127,7 @@ class GeminiAnalysisClientTest {
     }
 
     @Test
-    void shouldFallbackWhenGeminiReturnsInvalidJsonTwice() {
+    void shouldFallbackWhenOpenAiReturnsInvalidJsonTwice() {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
                 {
                   "choices": [
@@ -153,7 +153,7 @@ class GeminiAnalysisClientTest {
                 }
                 """));
 
-        GeminiAnalysisClient client = new GeminiAnalysisClient(
+        OpenAiAnalysisClient client = new OpenAiAnalysisClient(
                 new ObjectMapper(),
                 "test-key",
                 "gpt-5-mini",

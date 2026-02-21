@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class GeminiAnalysisClient {
+public class OpenAiAnalysisClient {
 
-    private static final Logger log = LoggerFactory.getLogger(GeminiAnalysisClient.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenAiAnalysisClient.class);
     private static final String AI_PARSE_ERROR_MESSAGE = "AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요.";
 
     private final ObjectMapper objectMapper;
@@ -37,7 +37,7 @@ public class GeminiAnalysisClient {
     private final String apiBaseUrl;
     private final Duration requestTimeout;
 
-    public GeminiAnalysisClient(
+    public OpenAiAnalysisClient(
             ObjectMapper objectMapper,
             @Value("${app.openai.api-key:${OPENAI_API_KEY:}}") String apiKey,
             @Value("${app.openai.model:${OPENAI_MODEL:gpt-5-mini}}") String model,

@@ -11,7 +11,7 @@ import com.fortunelog.engine.domain.model.ChartResult;
 import com.fortunelog.engine.domain.model.DailyCategoryDetail;
 import com.fortunelog.engine.domain.model.DailyFortuneResult;
 import com.fortunelog.engine.domain.model.ReportResult;
-import com.fortunelog.engine.infra.llm.GeminiAnalysisClient;
+import com.fortunelog.engine.infra.llm.OpenAiAnalysisClient;
 import com.fortunelog.engine.infra.supabase.SupabasePersistenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,14 +37,14 @@ public class EngineService {
     private final SajuCalculator sajuCalculator = new SajuCalculator();
     private final LunarDateConverter lunarDateConverter = new LunarDateConverter();
     private final SupabasePersistenceService persistenceService;
-    private final GeminiAnalysisClient geminiAnalysisClient;
+    private final OpenAiAnalysisClient openAiAnalysisClient;
 
     public EngineService(
             SupabasePersistenceService persistenceService,
-            GeminiAnalysisClient geminiAnalysisClient
+            OpenAiAnalysisClient openAiAnalysisClient
     ) {
         this.persistenceService = persistenceService;
-        this.geminiAnalysisClient = geminiAnalysisClient;
+        this.openAiAnalysisClient = openAiAnalysisClient;
     }
 
     public ChartResult calculateChart(String userId, CalculateChartRequest request) {
@@ -467,7 +467,7 @@ public class EngineService {
             );
         }
 
-        Map<String, Object> content = geminiAnalysisClient.generateSajuInterpretation(
+        Map<String, Object> content = openAiAnalysisClient.generateSajuInterpretation(
                 snapshot.chart(),
                 snapshot.fiveElements()
         );
