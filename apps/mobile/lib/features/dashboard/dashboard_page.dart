@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/ui/app_widgets.dart';
 import '../../core/saju/saju_stars.dart';
+import '../../core/saju/saju_manseoryeok.dart';
 import '../../core/saju/saju_chart_persistence.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
@@ -99,6 +100,24 @@ class _DashboardPageState extends State<DashboardPage> {
       return _birthProfileLabel(_birthProfiles.first);
     }
     return _birthProfileLabel(selected.first);
+  }
+
+  int? _selectedBirthYear() {
+    if (_birthProfiles.isEmpty) return null;
+    final selectedId = _selectedBirthProfileId;
+    Map<String, dynamic>? selected;
+    for (final p in _birthProfiles) {
+      if (p['id'] == selectedId) {
+        selected = p;
+        break;
+      }
+    }
+    selected ??= _birthProfiles.first;
+    final dt = (selected['birth_datetime_local'] as String?)?.trim();
+    if (dt == null || dt.isEmpty) return null;
+    final datePart = dt.contains('T') ? dt.split('T').first : dt;
+    final yearText = datePart.length >= 4 ? datePart.substring(0, 4) : '';
+    return int.tryParse(yearText);
   }
 
   String _todayDateString() {
@@ -713,6 +732,11 @@ class _DashboardPageState extends State<DashboardPage> {
               child: _MansePillars(chart: _chart!),
             ),
             const SizedBox(height: 10),
+            _LuckFlowSection(
+              chart: _chart!,
+              birthYear: _selectedBirthYear(),
+            ),
+            const SizedBox(height: 10),
             _AuspiciousStarsSection(chart: _chart!),
             const SizedBox(height: 10),
             _InauspiciousStarsSection(chart: _chart!),
@@ -1040,6 +1064,322 @@ class _DailyActionList extends StatelessWidget {
             child: Text('${i + 1}. ${list[i]}'),
           ),
       ],
+    );
+  }
+}
+
+class _LuckFlowSection extends StatelessWidget {
+  const _LuckFlowSection({
+    required this.chart,
+    required this.birthYear,
+  });
+
+  final Map<String, String> chart;
+  final int? birthYear;
+
+  static const _stems = <String>['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
+  static const _branches = <String>['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+
+  int? _ganjiIndexOf(String pillar) {
+    final stem = SajuStars.stemOf(pillar);
+    final branch = SajuStars.branchOf(pillar);
+    if (stem == null || branch == null) return null;
+    final stemIdx = _stems.indexOf(stem);
+    final branchIdx = _branches.indexOf(branch);
+    if (stemIdx < 0 || branchIdx < 0) return null;
+    for (int i = 0; i < 60; i++) {
+      if (i % 10 == stemIdx && i % 12 == branchIdx) return i;
+    }
+    return null;
+  }
+
+  String _pillarAt(int index) {
+    final i = index % 60;
+    return '${_stems[i % 10]}${_branches[i % 12]}';
+  }
+
+  String? _tenGod(String? dayStem, String pillar) {
+    if (dayStem == null) return null;
+    final targetStem = SajuStars.stemOf(pillar);
+    if (targetStem == null) return null;
+    return SajuManseoryeok.tenGod(dayStem: dayStem, targetStem: targetStem);
+  }
+
+  DateTime _kstNow() => DateTime.now().toUtc().add(const Duration(hours: 9));
+
+  List<_LuckItemData> _buildBigLuck(String? dayStem) {
+    final monthPillar = chart['month'] ?? '';
+    final monthIndex = _ganjiIndexOf(monthPillar);
+    if (monthIndex == null) return const [];
+
+    final items = <_LuckItemData>[];
+    for (int i = 0; i < 8; i++) {
+      final pillar = _pillarAt(monthIndex + i);
+      items.add(
+        _LuckItemData(
+          title: '${10 + i * 10}세',
+          subtitle: i == 0 ? '초기 대운' : '대운 ${i + 1}',
+          pillar: pillar,
+          tenGod: _tenGod(dayStem, pillar),
+        ),
+      );
+    }
+    return items;
+  }
+
+  List<_LuckItemData> _buildYearLuck(String? dayStem) {
+    final yearPillar = chart['year'] ?? '';
+    final yearIndex = _ganjiIndexOf(yearPillar);
+    if (yearIndex == null) return const [];
+
+    final now = _kstNow();
+    final currentYear = now.year;
+    final baseYear = birthYear ?? currentYear;
+    final currentYearIndex = yearIndex + (currentYear - baseYear);
+
+    final items = <_LuckItemData>[];
+    for (int offset = -3; offset <= 4; offset++) {
+      final year = currentYear + offset;
+      final pillar = _pillarAt(currentYearIndex + offset);
+      final ageText = birthYear == null ? '' : '${(year - birthYear!) + 1}세';
+      items.add(
+        _LuckItemData(
+          title: '$year년',
+          subtitle: ageText,
+          pillar: pillar,
+          tenGod: _tenGod(dayStem, pillar),
+        ),
+      );
+    }
+    return items;
+  }
+
+  List<_LuckItemData> _buildMonthLuck(String? dayStem) {
+    final yearPillar = chart['year'] ?? '';
+    final yearIndex = _ganjiIndexOf(yearPillar);
+    if (yearIndex == null) return const [];
+
+    final now = _kstNow();
+    final currentYear = now.year;
+    final baseYear = birthYear ?? currentYear;
+    final currentYearIndex = yearIndex + (currentYear - baseYear);
+    final thisMonth = now.month;
+
+    final items = <_LuckItemData>[];
+    for (int month = 1; month <= 12; month++) {
+      final pillar = _pillarAt(currentYearIndex + month - 1);
+      items.add(
+        _LuckItemData(
+          title: '$month월',
+          subtitle: month == thisMonth ? '이번 달' : '',
+          pillar: pillar,
+          tenGod: _tenGod(dayStem, pillar),
+        ),
+      );
+    }
+    return items;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dayStem = SajuStars.stemOf(chart['day'] ?? '');
+    final bigLuck = _buildBigLuck(dayStem);
+    final yearLuck = _buildYearLuck(dayStem);
+    final monthLuck = _buildMonthLuck(dayStem);
+
+    return Column(
+      children: [
+        PageSection(
+          title: '대운항목',
+          subtitle: '10년 단위 흐름 (참고용)',
+          child: _LuckHorizontalList(
+            items: bigLuck,
+            emptyText: '대운 데이터를 계산할 수 없습니다.',
+          ),
+        ),
+        const SizedBox(height: 10),
+        PageSection(
+          title: '세운항목',
+          subtitle: '기준 연도 전후 흐름',
+          child: _LuckHorizontalList(
+            items: yearLuck,
+            emptyText: '세운 데이터를 계산할 수 없습니다.',
+          ),
+        ),
+        const SizedBox(height: 10),
+        PageSection(
+          title: '월운항목',
+          subtitle: '올해 월별 흐름 (좌우 스크롤)',
+          child: _LuckHorizontalList(
+            items: monthLuck,
+            emptyText: '월운 데이터를 계산할 수 없습니다.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LuckItemData {
+  const _LuckItemData({
+    required this.title,
+    required this.subtitle,
+    required this.pillar,
+    required this.tenGod,
+  });
+
+  final String title;
+  final String subtitle;
+  final String pillar;
+  final String? tenGod;
+}
+
+class _LuckHorizontalList extends StatelessWidget {
+  const _LuckHorizontalList({
+    required this.items,
+    required this.emptyText,
+  });
+
+  final List<_LuckItemData> items;
+  final String emptyText;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Text(emptyText, style: Theme.of(context).textTheme.bodySmall);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final item in items) ...[
+                _LuckCard(item: item),
+                if (item != items.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '좌우 스크롤로 숨겨진 항목을 확인할 수 있습니다.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _LuckCard extends StatelessWidget {
+  const _LuckCard({required this.item});
+
+  final _LuckItemData item;
+
+  @override
+  Widget build(BuildContext context) {
+    final stem = SajuStars.stemOf(item.pillar);
+    final branch = SajuStars.branchOf(item.pillar);
+    final stemHanja = stem == null ? '-' : (SajuStars.stemHanja(stem) ?? '-');
+    final branchHanja = branch == null ? '-' : (SajuStars.branchHanja(branch) ?? '-');
+    final stemElement = stem == null ? null : SajuStars.stemElementKey(stem);
+    final branchElement = branch == null ? null : SajuStars.branchElementKey(branch);
+
+    return Container(
+      width: 108,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD7DFDB)),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          if (item.subtitle.trim().isNotEmpty)
+            Text(
+              item.subtitle,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          const SizedBox(height: 6),
+          if (item.tenGod != null && item.tenGod!.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                item.tenGod!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          _LuckGlyphBox(
+            hanja: stemHanja,
+            hangul: stem ?? '-',
+            elementKey: stemElement,
+          ),
+          const SizedBox(height: 6),
+          _LuckGlyphBox(
+            hanja: branchHanja,
+            hangul: branch ?? '-',
+            elementKey: branchElement,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LuckGlyphBox extends StatelessWidget {
+  const _LuckGlyphBox({
+    required this.hanja,
+    required this.hangul,
+    required this.elementKey,
+  });
+
+  final String hanja;
+  final String hangul;
+  final String? elementKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = elementKey == null ? const Color(0xFFF3F4F6) : SajuManseoryeok.elementColor(elementKey!);
+    final border = elementKey == null ? const Color(0xFFE5E7EB) : Colors.transparent;
+    final fg = ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF111827);
+    return Container(
+      height: 44,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              hanja,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: fg,
+                  ),
+            ),
+          ),
+          Positioned(
+            right: 6,
+            bottom: 4,
+            child: Text(
+              hangul,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

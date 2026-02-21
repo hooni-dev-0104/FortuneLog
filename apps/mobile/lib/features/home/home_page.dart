@@ -18,12 +18,23 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final titles = const ['결과 대시보드', 'AI 사주풀이', '마이페이지'];
+    final titles = const ['만세력', '오늘의 운세', '프리미엄 사주풀이', '내정보'];
 
     final pages = [
       DashboardPage(
-        key: const ValueKey('dashboard-main'),
+        key: const ValueKey('tab-manseoryeok'),
         showMainSections: true,
+        showDailySection: false,
+        showAiSection: false,
+        selectedBirthProfileId: _selectedBirthProfileId,
+        onSelectedBirthProfileChanged: (id) {
+          if (_selectedBirthProfileId == id) return;
+          setState(() => _selectedBirthProfileId = id);
+        },
+      ),
+      DashboardPage(
+        key: const ValueKey('tab-daily'),
+        showMainSections: false,
         showDailySection: true,
         showAiSection: false,
         selectedBirthProfileId: _selectedBirthProfileId,
@@ -33,7 +44,7 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       DashboardPage(
-        key: const ValueKey('dashboard-ai'),
+        key: const ValueKey('tab-premium-ai'),
         showMainSections: false,
         showDailySection: false,
         showAiSection: true,
@@ -56,9 +67,10 @@ class _HomePageState extends State<HomePage> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: '대시보드'),
-          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'AI 사주풀이'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: '마이'),
+          NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: '만세력'),
+          NavigationDestination(icon: Icon(Icons.today_outlined), label: '오늘 운세'),
+          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: '프리미엄'),
+          NavigationDestination(icon: Icon(Icons.person_outline), label: '내정보'),
         ],
       ),
     );
