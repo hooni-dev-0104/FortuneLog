@@ -36,6 +36,8 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _aiLoading = false;
   String? _aiError;
   String? _aiRequestId;
+  List<Map<String, dynamic>> _birthProfiles = const [];
+  String? _selectedBirthProfileId;
   bool _hasBirthProfile = false;
 
   SupabaseClient _supabase() => Supabase.instance.client;
@@ -54,6 +56,14 @@ class _DashboardPageState extends State<DashboardPage> {
     _refresh();
   }
 
+  String _birthProfileLabel(Map<String, dynamic> profile) {
+    final name = (profile['profile_name'] as String?)?.trim() ?? '';
+    final tag = (profile['profile_tag'] as String?)?.trim() ?? '';
+    final base = name.isEmpty ? '출생정보' : name;
+    if (tag.isEmpty) return base;
+    return '$base · $tag';
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _loading = true;
@@ -69,30 +79,39 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final userId = session.user.id;
-      final rows = await _supabase()
+      final profileRows = await _supabase()
+          .from('birth_profiles')
+          .select('id, profile_name, profile_tag, birth_datetime_local, created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      final profiles = (profileRows as List).cast<Map<String, dynamic>>();
+      String? selectedId = _selectedBirthProfileId;
+      if (selectedId == null ||
+          !profiles.any((p) => (p['id'] as String?) == selectedId)) {
+        selectedId = profiles.isEmpty ? null : (profiles.first['id'] as String);
+      }
+
+      PostgrestFilterBuilder<dynamic> chartQuery = _supabase()
           .from('saju_charts')
           .select('id, chart_json, five_elements_json, created_at')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false)
-          .limit(1);
+          .eq('user_id', userId);
+      if (selectedId != null && selectedId.isNotEmpty) {
+        chartQuery = chartQuery.eq('birth_profile_id', selectedId);
+      }
+      final rows = await chartQuery.order('created_at', ascending: false).limit(1);
 
       if (rows.isEmpty) {
-        // Used for UX: if birth profile exists but chart doesn't, we should guide to "사주 계산하기"
-        // instead of "출생정보 입력".
-        final bp = await _supabase()
-            .from('birth_profiles')
-            .select('id')
-            .eq('user_id', userId)
-            .order('created_at', ascending: false)
-            .limit(1);
         setState(() {
           _loading = false;
+          _birthProfiles = profiles;
+          _selectedBirthProfileId = selectedId;
           _chartId = null;
           _chart = null;
           _fiveElements = null;
           _aiContent = null;
           _aiLoading = false;
-          _hasBirthProfile = (bp as List).isNotEmpty;
+          _hasBirthProfile = profiles.isNotEmpty;
         });
         return;
       }
@@ -127,12 +146,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
       setState(() {
         _loading = false;
+        _birthProfiles = profiles;
+        _selectedBirthProfileId = selectedId;
         _chartId = chartId;
         _chart = chartJson.map((k, v) => MapEntry(k, v as String));
         _fiveElements = fiveJson.map((k, v) => MapEntry(k, v as int));
         _aiContent = aiContent;
         _aiLoading = false;
-        _hasBirthProfile = true;
+        _hasBirthProfile = profiles.isNotEmpty;
       });
     } on PostgrestException catch (e) {
       setState(() {
@@ -195,7 +216,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _recalculateFromLatestBirthProfile() async {
+  Future<void> _recalculateFromSelectedBirthProfile() async {
     setState(() {
       _loading = true;
       _error = null;
@@ -209,12 +230,14 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final userId = session.user.id;
-      final rows = await _supabase()
+      PostgrestFilterBuilder<dynamic> profileQuery = _supabase()
           .from('birth_profiles')
           .select('id, birth_datetime_local, birth_timezone, birth_location, calendar_type, is_leap_month, gender, unknown_birth_time, created_at')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false)
-          .limit(1);
+          .eq('user_id', userId);
+      if (_selectedBirthProfileId != null && _selectedBirthProfileId!.isNotEmpty) {
+        profileQuery = profileQuery.eq('id', _selectedBirthProfileId!);
+      }
+      final rows = await profileQuery.order('created_at', ascending: false).limit(1);
 
       if (rows.isEmpty) {
         throw StateError('출생정보가 없습니다. 출생정보를 먼저 입력해주세요.');
@@ -300,6 +323,34 @@ class _DashboardPageState extends State<DashboardPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
+        if (_birthProfiles.isNotEmpty) ...[
+          PageSection(
+            title: '출생 프로필 선택',
+            subtitle: '선택한 프로필 기준으로 대시보드가 표시됩니다.',
+            trailing: TextButton(
+              onPressed: () => Navigator.pushNamed(context, BirthProfileListPage.routeName)
+                  .then((_) => _refresh()),
+              child: const Text('관리'),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedBirthProfileId,
+              items: _birthProfiles
+                  .map(
+                    (p) => DropdownMenuItem<String>(
+                      value: p['id'] as String,
+                      child: Text(_birthProfileLabel(p)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null || value == _selectedBirthProfileId) return;
+                setState(() => _selectedBirthProfileId = value);
+                _refresh();
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         if (_error != null) ...[
           StatusNotice.error(message: _error!, requestId: _requestId ?? 'dashboard'),
           const SizedBox(height: 10),
@@ -314,7 +365,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 : '출생정보로 사주 계산을 완료하면 대시보드에 표시됩니다.',
             actionText: _hasBirthProfile ? '사주 계산하기' : '출생정보 입력',
             onAction: _hasBirthProfile
-                ? _recalculateFromLatestBirthProfile
+                ? _recalculateFromSelectedBirthProfile
                 : () => Navigator.pushNamed(context, BirthInputPage.routeName),
             icon: Icons.auto_graph_outlined,
             tone: _hasBirthProfile ? BadgeTone.warning : BadgeTone.neutral,
@@ -327,7 +378,7 @@ class _DashboardPageState extends State<DashboardPage> {
             )
           else
             OutlinedButton(
-              onPressed: _recalculateFromLatestBirthProfile,
+              onPressed: _recalculateFromSelectedBirthProfile,
               child: const Text('사주 계산하기'),
             ),
           const SizedBox(height: 10),
