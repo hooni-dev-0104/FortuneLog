@@ -1512,16 +1512,6 @@ class _AiInterpretationSection extends StatelessWidget {
               ),
             ),
           ] else ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  tooltip: '사주풀이 결과 삭제',
-                  onPressed: loading ? null : onDelete,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                ),
-              ],
-            ),
             if (summary.isNotEmpty) ...[
               Text(summary, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 10),
@@ -1584,6 +1574,15 @@ class _AiInterpretationSection extends StatelessWidget {
                 disclaimer,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: loading ? null : onDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('사주풀이 결과 삭제'),
+              ),
+            ),
           ],
         ],
       ),
