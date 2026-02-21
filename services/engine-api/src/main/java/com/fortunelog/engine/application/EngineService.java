@@ -128,12 +128,21 @@ public class EngineService {
         String dominant = dominantElement(fiveElements);
         String weak = weakestElement(fiveElements);
         String dayPillar = snapshot.chart().getOrDefault("day", "-");
+        String chartSignature = String.join("|",
+                snapshot.chart().getOrDefault("year", "-"),
+                snapshot.chart().getOrDefault("month", "-"),
+                snapshot.chart().getOrDefault("day", "-"),
+                snapshot.chart().getOrDefault("hour", "-")
+        );
+        int variationNonce = (int) (System.nanoTime() & 0x7fffffff);
 
-        int baseSeed = (request.chartId() + "|" + targetDate).hashCode();
+        int dayFactor = targetDate.getDayOfWeek().getValue() - 4; // -3 ~ +3
+        int baseSeed = (request.chartId() + "|" + chartSignature + "|" + targetDate + "|" + variationNonce).hashCode();
         int baseScore = clamp(
                 62
                         + fiveElements.getOrDefault(dominant, 0) * 3
                         - fiveElements.getOrDefault(weak, 0) * 2
+                        + dayFactor
                         + jitter(baseSeed, -4, 4),
                 48,
                 92
@@ -159,8 +168,15 @@ public class EngineService {
         );
 
         int totalScore = clamp((moneyScore + loveScore + workScore + healthScore) / 4, 45, 95);
-        String summary = "오늘은 " + elementKo(dominant) + " 기운이 중심이 되는 날입니다. "
-                + "일주(" + dayPillar + ") 흐름상 " + elementKo(weak) + " 기운을 보완하면 균형이 좋아집니다.";
+        String summaryLead = pickOne(List.of(
+                "오늘은 흐름을 빠르게 타는 날입니다.",
+                "오늘은 균형을 잡으면 성과가 커지는 날입니다.",
+                "오늘은 선택과 집중이 잘 맞는 날입니다.",
+                "오늘은 리듬을 정리할수록 운이 붙는 날입니다."
+        ), baseSeed ^ 0x77A);
+        String summary = summaryLead + " "
+                + elementKo(dominant) + " 기운이 중심이 되고, "
+                + "일주(" + dayPillar + ") 흐름상 " + elementKo(weak) + " 기운 보완이 포인트입니다.";
         List<String> actions = List.of(
                 details.get("money").actions().get(0),
                 details.get("love").actions().get(0),
@@ -268,10 +284,26 @@ public class EngineService {
         String dominantKo = elementKo(dominant);
         String weakKo = elementKo(weak);
         String summary = switch (category) {
-            case "money" -> dominantKo + " 기운이 자금 흐름을 움직입니다. " + weakKo + " 기운 보완이 지출 안정에 도움이 됩니다.";
-            case "love" -> dominantKo + " 기운이 대화의 온도를 높입니다. 감정 표현은 부드럽게 조절하는 편이 좋습니다.";
-            case "work" -> dominantKo + " 기운으로 실행력이 살아납니다. 일주(" + dayPillar + ") 흐름상 우선순위 정리가 성과를 키웁니다.";
-            case "health" -> dominantKo + " 기운이 활력을 주지만, " + weakKo + " 기운이 약하면 회복 루틴이 더 중요해집니다.";
+            case "money" -> pickOne(List.of(
+                    dominantKo + " 기운이 자금 흐름을 움직입니다. " + weakKo + " 기운 보완이 지출 안정에 도움이 됩니다.",
+                    dominantKo + " 기운이 수입/지출 판단을 빠르게 만듭니다. 무리한 지출만 피하면 안정적입니다.",
+                    dominantKo + " 기운이 재무 결정의 속도를 올립니다. 작은 절약 습관이 특히 효과적입니다."
+            ), seed ^ 0x701);
+            case "love" -> pickOne(List.of(
+                    dominantKo + " 기운이 대화의 온도를 높입니다. 감정 표현은 부드럽게 조절하는 편이 좋습니다.",
+                    dominantKo + " 기운으로 관계 반응이 빨라집니다. 말의 톤을 한 단계 낮추면 더 좋습니다.",
+                    dominantKo + " 기운이 관계 주도권을 줍니다. 상대 속도를 존중하면 흐름이 안정됩니다."
+            ), seed ^ 0x702);
+            case "work" -> pickOne(List.of(
+                    dominantKo + " 기운으로 실행력이 살아납니다. 일주(" + dayPillar + ") 흐름상 우선순위 정리가 성과를 키웁니다.",
+                    dominantKo + " 기운이 업무 추진력을 올립니다. 일주(" + dayPillar + ") 기준으론 멀티태스킹보다 단일 집중이 유리합니다.",
+                    dominantKo + " 기운이 실행 속도를 밀어줍니다. 핵심 1개 과업부터 처리하면 효율이 좋습니다."
+            ), seed ^ 0x703);
+            case "health" -> pickOne(List.of(
+                    dominantKo + " 기운이 활력을 주지만, " + weakKo + " 기운이 약하면 회복 루틴이 더 중요해집니다.",
+                    dominantKo + " 기운으로 체력 반응이 빠릅니다. " + weakKo + " 기운 보완을 위해 수면·수분 관리가 핵심입니다.",
+                    dominantKo + " 기운이 활동성을 높입니다. 과로를 막는 휴식 타이밍을 미리 잡아두세요."
+            ), seed ^ 0x704);
             default -> "오늘의 흐름을 참고해 균형 있게 움직여보세요.";
         };
 
@@ -279,22 +311,30 @@ public class EngineService {
             case "money" -> List.of(
                     "고정 지출을 정리하면 체감 여유가 생깁니다.",
                     "소액 절약이 누적 성과로 이어집니다.",
-                    "수입/지출을 한 번에 보는 습관이 유리합니다."
+                    "수입/지출을 한 번에 보는 습관이 유리합니다.",
+                    "가격 비교 후 하루 뒤 결제하면 실수가 줄어듭니다.",
+                    "예산을 먼저 정하면 소비 만족도가 높아집니다."
             );
             case "love" -> List.of(
                     "짧고 따뜻한 표현이 관계를 안정시킵니다.",
                     "상대의 입장을 먼저 요약하면 오해가 줄어듭니다.",
-                    "연락 리듬을 일정하게 가져가면 신뢰가 높아집니다."
+                    "연락 리듬을 일정하게 가져가면 신뢰가 높아집니다.",
+                    "즉답보다 맥락 설명이 관계를 부드럽게 만듭니다.",
+                    "기대치를 짧게 공유하면 갈등이 줄어듭니다."
             );
             case "work" -> List.of(
                     "중요도 높은 1개 과업에 집중하면 성과가 빠릅니다.",
                     "오전 집중 블록이 생산성을 끌어올립니다.",
-                    "핵심 결정은 근거를 짧게 정리해 공유하면 좋습니다."
+                    "핵심 결정은 근거를 짧게 정리해 공유하면 좋습니다.",
+                    "반복 업무를 먼저 끝내면 오후 효율이 좋아집니다.",
+                    "완벽함보다 완료 기준을 정하면 속도가 붙습니다."
             );
             case "health" -> List.of(
                     "가벼운 걷기와 스트레칭이 컨디션을 살립니다.",
                     "수분 섭취를 먼저 챙기면 피로가 완만해집니다.",
-                    "식사 리듬을 일정하게 유지하면 집중력이 좋아집니다."
+                    "식사 리듬을 일정하게 유지하면 집중력이 좋아집니다.",
+                    "잠깐의 햇빛 노출이 생체 리듬을 돕습니다.",
+                    "짧은 호흡 정리가 긴장 완화에 유리합니다."
             );
             default -> List.of("기본 루틴을 지키면 흐름이 안정됩니다.");
         };
@@ -303,22 +343,30 @@ public class EngineService {
             case "money" -> List.of(
                     "계획 없는 소액 결제 반복",
                     "즉흥적인 비교·추가 구매",
-                    "구독/자동결제 점검 누락"
+                    "구독/자동결제 점검 누락",
+                    "할인 문구에 급히 반응하는 소비",
+                    "단기 기분전환성 지출 누적"
             );
             case "love" -> List.of(
                     "단정적인 표현으로 말끝이 강해지는 것",
                     "감정 누적 후 한 번에 폭발하는 반응",
-                    "상대 확인 없이 결론을 먼저 내리는 습관"
+                    "상대 확인 없이 결론을 먼저 내리는 습관",
+                    "대화 타이밍을 놓친 뒤 장기 침묵",
+                    "상대의 표현을 빠르게 오해하는 반응"
             );
             case "work" -> List.of(
                     "동시다발 작업으로 집중 분산",
                     "마감 직전 급한 의사결정",
-                    "우선순위 없이 할 일을 늘리는 것"
+                    "우선순위 없이 할 일을 늘리는 것",
+                    "회의가 길어져 실행 시간이 줄어드는 것",
+                    "검토 없이 바로 배포/제출하는 습관"
             );
             case "health" -> List.of(
                     "수면 시간 불규칙",
                     "카페인·당류 과다 섭취",
-                    "오랜 시간 같은 자세 유지"
+                    "오랜 시간 같은 자세 유지",
+                    "식사 간격이 지나치게 길어지는 것",
+                    "회복 시간 없이 연속 일정 소화"
             );
             default -> List.of("과한 무리와 급한 결정");
         };
@@ -327,22 +375,30 @@ public class EngineService {
             case "money" -> List.of(
                     "오늘 지출 상한 1개만 먼저 정하기",
                     "자동결제 목록 1개 점검하기",
-                    "불필요한 소비 1건만 미루기"
+                    "불필요한 소비 1건만 미루기",
+                    "결제 전 장바구니에서 1개 빼보기",
+                    "현금흐름 메모 3줄 작성하기"
             );
             case "love" -> List.of(
                     "요청은 한 문장으로 부드럽게 전달하기",
                     "중요 대화 전 10초 멈추고 톤 점검하기",
-                    "감사/칭찬 메시지 1회 먼저 보내기"
+                    "감사/칭찬 메시지 1회 먼저 보내기",
+                    "오해 가능 문장을 질문형으로 바꾸기",
+                    "오늘 연락 리듬(시간대) 하나 정하기"
             );
             case "work" -> List.of(
                     "오늘 Top 3 중 1순위부터 90분 집중하기",
                     "회의 전 결정 항목 3개 미리 적기",
-                    "오후에는 정리·마감 작업으로 전환하기"
+                    "오후에는 정리·마감 작업으로 전환하기",
+                    "메신저 확인 시간을 2회로 제한하기",
+                    "완료 기준을 먼저 정의하고 시작하기"
             );
             case "health" -> List.of(
                     "물 2잔 먼저 마시기",
                     "저녁 20분 가볍게 걷기",
-                    "잠들기 1시간 전 화면 사용 줄이기"
+                    "잠들기 1시간 전 화면 사용 줄이기",
+                    "오전/오후 1회씩 목·어깨 스트레칭",
+                    "카페인 컵 수를 하루 1잔 줄이기"
             );
             default -> List.of("작은 실행 1개부터 시작하기");
         };
@@ -367,6 +423,14 @@ public class EngineService {
             out.add(source.get((start + i) % source.size()));
         }
         return out;
+    }
+
+    private String pickOne(List<String> source, int seed) {
+        if (source == null || source.isEmpty()) {
+            return "";
+        }
+        int idx = Math.floorMod(seed, source.size());
+        return source.get(idx);
     }
 
     private int jitter(int seed, int min, int max) {
