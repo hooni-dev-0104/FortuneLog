@@ -342,6 +342,14 @@ class _DashboardPageState extends State<DashboardPage> {
             child: _MansePillars(chart: _chart!),
           ),
           const SizedBox(height: 10),
+          _AiInterpretationSection(
+            loading: _aiLoading,
+            error: _aiError,
+            requestId: _aiRequestId,
+            content: _aiContent,
+            onGenerate: _generateAiInterpretation,
+          ),
+          const SizedBox(height: 10),
           _AuspiciousStarsSection(chart: _chart!),
           const SizedBox(height: 10),
           _InauspiciousStarsSection(chart: _chart!),
@@ -360,14 +368,6 @@ class _DashboardPageState extends State<DashboardPage> {
                 const Text('오행 분포는 참고용이며 해석은 리포트에서 제공합니다.'),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          _AiInterpretationSection(
-            loading: _aiLoading,
-            error: _aiError,
-            requestId: _aiRequestId,
-            content: _aiContent,
-            onGenerate: _generateAiInterpretation,
           ),
           const SizedBox(height: 16),
           FilledButton(
@@ -459,6 +459,14 @@ class _AiInterpretationSection extends StatelessWidget {
             Text(
               '정식 결제 적용 전까지는 테스트 형태로 동작합니다.',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onGenerate,
+                child: const Text('AI 사주풀이 생성하기'),
+              ),
             ),
           ] else if (loading && content == null) ...[
             const Text('AI 해석을 생성하고 있어요. 잠시만 기다려주세요.'),
