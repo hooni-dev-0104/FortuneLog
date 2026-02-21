@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../daily/daily_fortune_page.dart';
 import '../dashboard/dashboard_page.dart';
 import '../mypage/my_page.dart';
 
@@ -18,11 +17,19 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final titles = const ['결과 대시보드', '오늘 운세', '마이페이지'];
+    final titles = const ['결과 대시보드', 'AI 사주 해석', '마이페이지'];
 
     final pages = [
-      DashboardPage(onTapDaily: () => setState(() => _index = 1)),
-      const DailyFortunePage(),
+      const DashboardPage(
+        showMainSections: true,
+        showDailySection: true,
+        showAiSection: false,
+      ),
+      const DashboardPage(
+        showMainSections: false,
+        showDailySection: false,
+        showAiSection: true,
+      ),
       const MyPage(),
     ];
 
@@ -37,7 +44,7 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: '대시보드'),
-          NavigationDestination(icon: Icon(Icons.wb_sunny_outlined), label: '오늘 운세'),
+          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'AI 해석'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '마이'),
         ],
       ),

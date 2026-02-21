@@ -16,9 +16,16 @@ import '../saju/manseoryeok_detail_page.dart';
 import '../saju/saju_guide_page.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key, required this.onTapDaily});
+  const DashboardPage({
+    super.key,
+    this.showMainSections = true,
+    this.showDailySection = true,
+    this.showAiSection = true,
+  });
 
-  final VoidCallback onTapDaily;
+  final bool showMainSections;
+  final bool showDailySection;
+  final bool showAiSection;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -36,6 +43,11 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _aiLoading = false;
   String? _aiError;
   String? _aiRequestId;
+  Map<String, dynamic>? _dailyContent;
+  bool _dailyLoading = false;
+  String? _dailyError;
+  String? _dailyRequestId;
+  bool _dailyMissingChart = false;
   List<Map<String, dynamic>> _birthProfiles = const [];
   String? _selectedBirthProfileId;
   bool _hasBirthProfile = false;
@@ -64,12 +76,169 @@ class _DashboardPageState extends State<DashboardPage> {
     return '$base · $tag';
   }
 
+  String _selectedBirthProfileLabel() {
+    if (_birthProfiles.isEmpty) return '등록된 프로필 없음';
+    final selectedId = _selectedBirthProfileId;
+    final selected = _birthProfiles.where((p) => p['id'] == selectedId).toList();
+    if (selected.isEmpty) {
+      return _birthProfileLabel(_birthProfiles.first);
+    }
+    return _birthProfileLabel(selected.first);
+  }
+
+  String _todayDateString() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _showBirthProfilePicker() async {
+    if (_birthProfiles.isEmpty) {
+      await Navigator.pushNamed(context, BirthInputPage.routeName);
+      if (!mounted) return;
+      await _refresh();
+      return;
+    }
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Text(
+                  '출생 프로필 선택',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              for (final p in _birthProfiles)
+                RadioListTile<String>(
+                  value: p['id'] as String,
+                  groupValue: _selectedBirthProfileId,
+                  onChanged: (value) => Navigator.pop(context, value),
+                  title: Text(_birthProfileLabel(p)),
+                ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.manage_accounts_outlined),
+                title: const Text('출생정보 관리'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, BirthProfileListPage.routeName)
+                      .then((_) => _refresh());
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (selected == null || selected == _selectedBirthProfileId) return;
+    setState(() => _selectedBirthProfileId = selected);
+    await _refresh();
+  }
+
+  Future<Map<String, dynamic>?> _fetchDailyContentForChart(String userId, String chartId) async {
+    final today = _todayDateString();
+    List<dynamic> rows;
+    try {
+      rows = await _supabase()
+          .from('reports')
+          .select('id, content_json, target_date, created_at')
+          .eq('user_id', userId)
+          .eq('chart_id', chartId)
+          .eq('report_type', 'daily')
+          .eq('target_date', today)
+          .order('created_at', ascending: false)
+          .limit(1);
+    } on PostgrestException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (!msg.contains('target_date') || !msg.contains('does not exist')) rethrow;
+
+      rows = await _supabase()
+          .from('reports')
+          .select('id, content_json, created_at')
+          .eq('user_id', userId)
+          .eq('chart_id', chartId)
+          .eq('report_type', 'daily')
+          .order('created_at', ascending: false)
+          .limit(1);
+    }
+
+    if (rows.isEmpty) return null;
+    final row = rows.first as Map<String, dynamic>;
+    final content = (row['content_json'] as Map).cast<String, dynamic>();
+    final contentDate = content['date']?.toString();
+    if (contentDate != null && contentDate.isNotEmpty && contentDate != today) {
+      return null;
+    }
+    return content;
+  }
+
+  Future<void> _generateTodayFortune() async {
+    final chartId = _chartId;
+    if (chartId == null || chartId.isEmpty) {
+      setState(() {
+        _dailyMissingChart = true;
+        _dailyError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _dailyLoading = true;
+      _dailyError = null;
+      _dailyRequestId = null;
+      _dailyMissingChart = false;
+    });
+
+    try {
+      final response = await _engineClient().generateDailyFortune(
+        GenerateDailyFortuneRequestDto(
+          chartId: chartId,
+          date: _todayDateString(),
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _dailyRequestId = response.requestId);
+      await _refresh();
+    } on EngineApiException catch (e) {
+      setState(() {
+        _dailyLoading = false;
+        _dailyError = EngineErrorMapper.userMessage(e);
+        _dailyRequestId = e.requestId;
+      });
+    } on FormatException {
+      setState(() {
+        _dailyLoading = false;
+        _dailyError = kDebugMode
+            ? 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.'
+            : '운세 생성 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+      });
+    } catch (_) {
+      setState(() {
+        _dailyLoading = false;
+        _dailyError = '오늘 운세 생성에 실패했습니다.';
+      });
+    }
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _loading = true;
       _error = null;
       _requestId = null;
       _aiError = null;
+      _dailyError = null;
+      _dailyRequestId = null;
+      _dailyMissingChart = false;
     });
 
     try {
@@ -111,6 +280,8 @@ class _DashboardPageState extends State<DashboardPage> {
           _fiveElements = null;
           _aiContent = null;
           _aiLoading = false;
+          _dailyContent = null;
+          _dailyLoading = false;
           _hasBirthProfile = profiles.isNotEmpty;
         });
         return;
@@ -144,6 +315,14 @@ class _DashboardPageState extends State<DashboardPage> {
           ? null
           : (aiRows.first['content_json'] as Map).cast<String, dynamic>();
 
+      Map<String, dynamic>? dailyContent;
+      String? dailyError;
+      try {
+        dailyContent = await _fetchDailyContentForChart(userId, chartId);
+      } on PostgrestException catch (e) {
+        dailyError = e.message;
+      }
+
       setState(() {
         _loading = false;
         _birthProfiles = profiles;
@@ -153,6 +332,9 @@ class _DashboardPageState extends State<DashboardPage> {
         _fiveElements = fiveJson.map((k, v) => MapEntry(k, v as int));
         _aiContent = aiContent;
         _aiLoading = false;
+        _dailyContent = dailyContent;
+        _dailyLoading = false;
+        _dailyError = dailyError;
         _hasBirthProfile = profiles.isNotEmpty;
       });
     } on PostgrestException catch (e) {
@@ -323,41 +505,39 @@ class _DashboardPageState extends State<DashboardPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
-        PageSection(
-          title: '출생 프로필 선택',
-          subtitle: _birthProfiles.isEmpty
-              ? '등록된 출생 프로필이 없습니다. 먼저 프로필을 추가해주세요.'
-              : '선택한 프로필 기준으로 대시보드가 표시됩니다.',
-          trailing: TextButton(
-            onPressed: () => Navigator.pushNamed(context, BirthProfileListPage.routeName)
-                .then((_) => _refresh()),
-            child: const Text('관리'),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFD7DFDB)),
           ),
-          child: _birthProfiles.isEmpty
-              ? SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.tonal(
-                    onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName)
-                        .then((_) => _refresh()),
-                    child: const Text('출생 프로필 추가'),
-                  ),
-                )
-              : DropdownButtonFormField<String>(
-                  value: _selectedBirthProfileId,
-                  items: _birthProfiles
-                      .map(
-                        (p) => DropdownMenuItem<String>(
-                          value: p['id'] as String,
-                          child: Text(_birthProfileLabel(p)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null || value == _selectedBirthProfileId) return;
-                    setState(() => _selectedBirthProfileId = value);
-                    _refresh();
-                  },
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '현재 선택 프로필',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _selectedBirthProfileLabel(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
                 ),
+              ),
+              TextButton(
+                onPressed: _showBirthProfilePicker,
+                child: Text(_birthProfiles.isEmpty ? '추가' : '변경'),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 10),
         if (_error != null) ...[
@@ -392,95 +572,357 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           const SizedBox(height: 10),
         ] else ...[
-          const PageSection(
-            title: '오늘의 요약 결론',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('실행력은 강하지만 과부하 관리가 핵심입니다.'),
-                SizedBox(height: 6),
-                Text('중요 의사결정은 오후에, 반복 업무는 오전에 배치하세요.'),
-              ],
+          if (widget.showDailySection) ...[
+            _DailyFortuneSection(
+              loading: _dailyLoading,
+              error: _dailyError,
+              requestId: _dailyRequestId,
+              missingChart: _dailyMissingChart,
+              content: _dailyContent,
+              onGenerate: _generateTodayFortune,
+              onRefresh: _refresh,
             ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _aiLoading ? null : _generateAiInterpretation,
-              icon: _aiLoading
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      ),
-                    )
-                  : const Icon(Icons.auto_awesome_outlined),
-              label: Text(
-                _aiLoading
-                    ? 'AI 사주풀이 생성 중...'
-                    : (_aiContent == null ? 'AI 사주풀이 생성' : 'AI 사주풀이 다시 생성'),
+            const SizedBox(height: 10),
+          ],
+          if (widget.showAiSection) ...[
+            _AiInterpretationSection(
+              loading: _aiLoading,
+              error: _aiError,
+              requestId: _aiRequestId,
+              content: _aiContent,
+              onGenerate: _generateAiInterpretation,
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (widget.showMainSections) ...[
+            PageSection(
+              title: '만세력(사주팔자)',
+              subtitle: '천간/지지 한문(漢字) 표기 + 오행 색상',
+              trailing: TextButton(
+                onPressed: () => Navigator.pushNamed(context, ManseoryeokDetailPage.routeName, arguments: _chart),
+                child: const Text('상세보기'),
+              ),
+              child: _MansePillars(chart: _chart!),
+            ),
+            const SizedBox(height: 10),
+            _AuspiciousStarsSection(chart: _chart!),
+            const SizedBox(height: 10),
+            _InauspiciousStarsSection(chart: _chart!),
+            const SizedBox(height: 10),
+            PageSection(
+              title: '오행 분포',
+              subtitle: '시각 요소와 수치를 함께 제공합니다.',
+              child: Column(
+                children: [
+                  _ElementRow(name: '목', value: _fiveElements!['wood'] ?? 0),
+                  _ElementRow(name: '화', value: _fiveElements!['fire'] ?? 0),
+                  _ElementRow(name: '토', value: _fiveElements!['earth'] ?? 0),
+                  _ElementRow(name: '금', value: _fiveElements!['metal'] ?? 0),
+                  _ElementRow(name: '수', value: _fiveElements!['water'] ?? 0),
+                  const SizedBox(height: 8),
+                  const Text('오행 분포는 참고용이며 해석은 리포트에서 제공합니다.'),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          PageSection(
-            title: '만세력(사주팔자)',
-            subtitle: '천간/지지 한문(漢字) 표기 + 오행 색상',
-            trailing: TextButton(
-              onPressed: () => Navigator.pushNamed(context, ManseoryeokDetailPage.routeName, arguments: _chart),
-              child: const Text('상세보기'),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => Navigator.pushNamed(context, ReportPage.routeName),
+              child: const Text('상세 리포트 보기'),
             ),
-            child: _MansePillars(chart: _chart!),
-          ),
-          const SizedBox(height: 10),
-          _AiInterpretationSection(
-            loading: _aiLoading,
-            error: _aiError,
-            requestId: _aiRequestId,
-            content: _aiContent,
-            onGenerate: _generateAiInterpretation,
-          ),
-          const SizedBox(height: 10),
-          _AuspiciousStarsSection(chart: _chart!),
-          const SizedBox(height: 10),
-          _InauspiciousStarsSection(chart: _chart!),
-          const SizedBox(height: 10),
-          PageSection(
-            title: '오행 분포',
-            subtitle: '시각 요소와 수치를 함께 제공합니다.',
-            child: Column(
-              children: [
-                _ElementRow(name: '목', value: _fiveElements!['wood'] ?? 0),
-                _ElementRow(name: '화', value: _fiveElements!['fire'] ?? 0),
-                _ElementRow(name: '토', value: _fiveElements!['earth'] ?? 0),
-                _ElementRow(name: '금', value: _fiveElements!['metal'] ?? 0),
-                _ElementRow(name: '수', value: _fiveElements!['water'] ?? 0),
-                const SizedBox(height: 8),
-                const Text('오행 분포는 참고용이며 해석은 리포트에서 제공합니다.'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => Navigator.pushNamed(context, ReportPage.routeName),
-            child: const Text('상세 리포트 보기'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: widget.onTapDaily,
-            child: const Text('오늘 운세 보기'),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           OutlinedButton(
             onPressed: _refresh,
             child: const Text('새로고침'),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _DailyFortuneSection extends StatelessWidget {
+  const _DailyFortuneSection({
+    required this.loading,
+    required this.error,
+    required this.requestId,
+    required this.missingChart,
+    required this.content,
+    required this.onGenerate,
+    required this.onRefresh,
+  });
+
+  final bool loading;
+  final String? error;
+  final String? requestId;
+  final bool missingChart;
+  final Map<String, dynamic>? content;
+  final VoidCallback onGenerate;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const PageSection(
+        title: '오늘 운세',
+        child: Row(
+          children: [
+            SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)),
+            SizedBox(width: 10),
+            Expanded(child: Text('오늘 운세를 준비하고 있어요.')),
+          ],
+        ),
+      );
+    }
+
+    if (content == null) {
+      return PageSection(
+        title: '오늘 운세',
+        subtitle: missingChart ? '먼저 사주 계산이 필요합니다.' : '아직 생성된 오늘 운세가 없습니다.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (error != null) ...[
+              StatusNotice.error(message: error!, requestId: requestId ?? 'daily'),
+              const SizedBox(height: 10),
+            ],
+            Text(missingChart ? '선택한 출생 프로필의 사주를 먼저 계산해주세요.' : '오늘 운세를 생성하면 금전/연애/직업/건강 흐름이 표시됩니다.'),
+            const SizedBox(height: 10),
+            FilledButton(
+              onPressed: onGenerate,
+              child: const Text('오늘 운세 생성'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final summary = content!['summary']?.toString().trim();
+    final showSummary = summary != null && summary.isNotEmpty;
+    final hasCategories = _DailyCategoryList.hasCategory(content);
+
+    return Column(
+      children: [
+        PageSection(
+          title: '오늘 점수 ${content!['score'] ?? '-'}점',
+          subtitle: '기준일: ${content!['date'] ?? '-'} (Asia/Seoul)',
+          trailing: FilledButton.tonal(onPressed: onRefresh, child: const Text('새로고침')),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (showSummary) Text('총평: $summary'),
+              if (!showSummary) const Text('오늘 액션을 확인해보세요.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (hasCategories) ...[
+          PageSection(
+            title: '카테고리',
+            child: _DailyCategoryList(category: content),
+          ),
+          const SizedBox(height: 10),
+        ],
+        PageSection(
+          title: '오늘 액션',
+          child: _DailyActionList(actions: content!['actions'] as List<dynamic>?),
+        ),
+      ],
+    );
+  }
+}
+
+class _DailyCategoryList extends StatelessWidget {
+  const _DailyCategoryList({required this.category});
+
+  final Map<String, dynamic>? category;
+
+  static bool hasCategory(Map<String, dynamic>? c) {
+    if (c == null || c.isEmpty) return false;
+    final details = _extractDetails(c);
+    if (details != null && details.isNotEmpty) return true;
+    final legacy = _extractLegacy(c);
+    if (legacy != null && legacy.isNotEmpty) return true;
+    return false;
+  }
+
+  static Map<String, dynamic>? _extractDetails(Map<String, dynamic> c) {
+    final details = c['categoryDetails'] ?? c['category_details'];
+    if (details is Map<String, dynamic>) return details;
+    if (details is Map) return details.cast<String, dynamic>();
+    return null;
+  }
+
+  static Map<String, dynamic>? _extractLegacy(Map<String, dynamic> c) {
+    final legacy = c['category'] ?? c['categories'];
+    if (legacy is Map<String, dynamic>) return legacy;
+    if (legacy is Map) return legacy.cast<String, dynamic>();
+    return null;
+  }
+
+  static String _labelForLegacyKey(String k) {
+    switch (k) {
+      case 'money':
+        return '금전';
+      case 'love':
+        return '연애/결혼';
+      case 'work':
+        return '직업';
+      case 'health':
+        return '건강';
+      default:
+        return k;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = category;
+    if (c == null || c.isEmpty) {
+      return const Text('카테고리 정보가 없습니다.');
+    }
+
+    final details = _extractDetails(c);
+    if (details != null && details.isNotEmpty) {
+      return Column(
+        children: [
+          _DailyCategoryCard(label: '금전', icon: Icons.payments_outlined, data: details['money'] as Map<String, dynamic>?),
+          const SizedBox(height: 10),
+          _DailyCategoryCard(label: '연애/결혼', icon: Icons.favorite_border, data: details['love'] as Map<String, dynamic>?),
+          const SizedBox(height: 10),
+          _DailyCategoryCard(label: '직업', icon: Icons.work_outline, data: details['work'] as Map<String, dynamic>?),
+          const SizedBox(height: 10),
+          _DailyCategoryCard(label: '건강', icon: Icons.health_and_safety_outlined, data: details['health'] as Map<String, dynamic>?),
+        ],
+      );
+    }
+
+    final legacy = _extractLegacy(c);
+    if (legacy == null || legacy.isEmpty) {
+      return const Text('카테고리 정보가 없습니다.');
+    }
+
+    final preferred = const ['money', 'love', 'work', 'health'];
+    final orderedKeys = <String>[
+      for (final k in preferred)
+        if (legacy[k] != null) k,
+      for (final k in legacy.keys)
+        if (!preferred.contains(k)) k,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final k in orderedKeys)
+          if (legacy[k] != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_labelForLegacyKey(k), style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(legacy[k].toString(), style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+      ],
+    );
+  }
+}
+
+class _DailyCategoryCard extends StatelessWidget {
+  const _DailyCategoryCard({required this.label, required this.icon, required this.data});
+
+  final String label;
+  final IconData icon;
+  final Map<String, dynamic>? data;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data ?? const <String, dynamic>{};
+    final score = d['score'];
+    final summary = d['summary']?.toString().trim();
+    final good = (d['good'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final cautions = (d['cautions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final actions = (d['actions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+
+    return PageSection(
+      title: label,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          StatusBadge(
+            label: score is int ? '$score점' : '-',
+            tone: BadgeTone.neutral,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (summary != null && summary.isNotEmpty) ...[
+            Text(summary, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 10),
+          ],
+          if (good.isNotEmpty) ...[
+            Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            for (final g in good) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $g')),
+            const SizedBox(height: 10),
+          ],
+          if (cautions.isNotEmpty) ...[
+            Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            for (final w in cautions) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $w')),
+            const SizedBox(height: 10),
+          ],
+          if (actions.isNotEmpty) ...[
+            Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            for (final a in actions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Icon(Icons.check_circle_outline, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(a)),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyActionList extends StatelessWidget {
+  const _DailyActionList({required this.actions});
+
+  final List<dynamic>? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final list = actions;
+    if (list == null || list.isEmpty) {
+      return const Text('액션 정보가 없습니다.');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < list.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('${i + 1}. ${list[i]}'),
+          ),
       ],
     );
   }
