@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="fortune_log_mobile"
+        android:label="포츈로그"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

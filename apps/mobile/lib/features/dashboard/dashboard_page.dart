@@ -332,6 +332,19 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _aiLoading ? null : _generateAiInterpretation,
+              icon: const Icon(Icons.auto_awesome_outlined),
+              label: Text(
+                _aiLoading
+                    ? 'AI 사주풀이 생성 중...'
+                    : (_aiContent == null ? 'AI 사주풀이 생성' : 'AI 사주풀이 다시 생성'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           PageSection(
             title: '만세력(사주팔자)',
             subtitle: '천간/지지 한문(漢字) 표기 + 오행 색상',
