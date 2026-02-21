@@ -21,11 +21,15 @@ class DashboardPage extends StatefulWidget {
     this.showMainSections = true,
     this.showDailySection = true,
     this.showAiSection = true,
+    this.selectedBirthProfileId,
+    this.onSelectedBirthProfileChanged,
   });
 
   final bool showMainSections;
   final bool showDailySection;
   final bool showAiSection;
+  final String? selectedBirthProfileId;
+  final ValueChanged<String?>? onSelectedBirthProfileChanged;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -65,7 +69,18 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    _selectedBirthProfileId = widget.selectedBirthProfileId;
     _refresh();
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedBirthProfileId != oldWidget.selectedBirthProfileId &&
+        widget.selectedBirthProfileId != _selectedBirthProfileId) {
+      _selectedBirthProfileId = widget.selectedBirthProfileId;
+      _refresh();
+    }
   }
 
   String _birthProfileLabel(Map<String, dynamic> profile) {
@@ -142,6 +157,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (!mounted) return;
     if (selected == null || selected == _selectedBirthProfileId) return;
     setState(() => _selectedBirthProfileId = selected);
+    widget.onSelectedBirthProfileChanged?.call(selected);
     await _refresh();
   }
 
@@ -259,6 +275,9 @@ class _DashboardPageState extends State<DashboardPage> {
       if (selectedId == null ||
           !profiles.any((p) => (p['id'] as String?) == selectedId)) {
         selectedId = profiles.isEmpty ? null : (profiles.first['id'] as String);
+      }
+      if (selectedId != _selectedBirthProfileId) {
+        widget.onSelectedBirthProfileChanged?.call(selectedId);
       }
 
       PostgrestFilterBuilder<dynamic> chartQuery = _supabase()

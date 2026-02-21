@@ -14,21 +14,34 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _index = 0;
+  String? _selectedBirthProfileId;
 
   @override
   Widget build(BuildContext context) {
     final titles = const ['결과 대시보드', 'AI 사주풀이', '마이페이지'];
 
     final pages = [
-      const DashboardPage(
+      DashboardPage(
+        key: const ValueKey('dashboard-main'),
         showMainSections: true,
         showDailySection: true,
         showAiSection: false,
+        selectedBirthProfileId: _selectedBirthProfileId,
+        onSelectedBirthProfileChanged: (id) {
+          if (_selectedBirthProfileId == id) return;
+          setState(() => _selectedBirthProfileId = id);
+        },
       ),
-      const DashboardPage(
+      DashboardPage(
+        key: const ValueKey('dashboard-ai'),
         showMainSections: false,
         showDailySection: false,
         showAiSection: true,
+        selectedBirthProfileId: _selectedBirthProfileId,
+        onSelectedBirthProfileChanged: (id) {
+          if (_selectedBirthProfileId == id) return;
+          setState(() => _selectedBirthProfileId = id);
+        },
       ),
       const MyPage(),
     ];
