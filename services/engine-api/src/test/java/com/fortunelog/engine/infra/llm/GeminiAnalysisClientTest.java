@@ -146,4 +146,54 @@ class GeminiAnalysisClientTest {
         assertEquals("gemini-2.5-flash", result.get("model"));
         assertEquals("gemini", result.get("source"));
     }
+
+    @Test
+    void shouldFallbackWhenGeminiReturnsInvalidJsonTwice() {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("""
+                {
+                  "candidates": [
+                    {
+                      "finishReason": "STOP",
+                      "content": {
+                        "parts": [
+                          { "text": "{\\"summary\\":\\"broken\\" " }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """));
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("""
+                {
+                  "candidates": [
+                    {
+                      "finishReason": "STOP",
+                      "content": {
+                        "parts": [
+                          { "text": "```json\\n{ not-json }\\n```" }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """));
+
+        GeminiAnalysisClient client = new GeminiAnalysisClient(
+                new ObjectMapper(),
+                "test-key",
+                "gemini-2.5-flash",
+                server.url("/").toString(),
+                5000
+        );
+
+        Map<String, Object> result = client.generateSajuInterpretation(
+                Map.of("year", "갑자", "month", "을축", "day", "병인", "hour", "정묘"),
+                Map.of("wood", 2, "fire", 1, "earth", 2, "metal", 1, "water", 2)
+        );
+
+        assertEquals("fallback", result.get("source"));
+        assertEquals("gemini-2.5-flash", result.get("model"));
+        assertTrue(result.containsKey("summary"));
+        assertTrue(result.containsKey("themes"));
+    }
 }

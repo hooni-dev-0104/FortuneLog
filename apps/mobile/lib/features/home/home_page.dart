@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final titles = const ['결과 대시보드', 'AI 사주 해석', '마이페이지'];
+    final titles = const ['결과 대시보드', 'AI 사주풀이', '마이페이지'];
 
     final pages = [
       const DashboardPage(
@@ -44,7 +44,7 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: '대시보드'),
-          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'AI 해석'),
+          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'AI 사주풀이'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '마이'),
         ],
       ),

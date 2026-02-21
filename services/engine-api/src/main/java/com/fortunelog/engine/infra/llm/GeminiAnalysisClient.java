@@ -70,30 +70,38 @@ public class GeminiAnalysisClient {
             );
         }
 
-        CandidatePayload primary = callGemini(buildPrompt(chart, fiveElements, false), false);
-        Map<String, Object> parsed;
         try {
-            parsed = parseModelJson(primary.text());
-        } catch (ApiClientException ex) {
-            if (!"AI_RESPONSE_INVALID".equals(ex.code())) {
-                throw ex;
-            }
-            log.warn("gemini json parse failed on first response, retrying in concise mode. finishReason={}", primary.finishReason());
-            CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
-            parsed = parseModelJson(retry.text());
-            return enrichResult(parsed);
-        }
-
-        if ("MAX_TOKENS".equalsIgnoreCase(primary.finishReason())) {
+            CandidatePayload primary = callGemini(buildPrompt(chart, fiveElements, false), false);
+            Map<String, Object> parsed;
             try {
+                parsed = parseModelJson(primary.text());
+            } catch (ApiClientException ex) {
+                if (!"AI_RESPONSE_INVALID".equals(ex.code())) {
+                    throw ex;
+                }
+                log.warn("gemini json parse failed on first response, retrying in concise mode. finishReason={}", primary.finishReason());
                 CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
                 parsed = parseModelJson(retry.text());
-            } catch (ApiClientException ex) {
-                log.warn("gemini concise retry failed after MAX_TOKENS, using primary parsed result: {}", ex.getMessage());
+                return enrichResult(parsed);
             }
-        }
 
-        return enrichResult(parsed);
+            if ("MAX_TOKENS".equalsIgnoreCase(primary.finishReason())) {
+                try {
+                    CandidatePayload retry = callGemini(buildPrompt(chart, fiveElements, true), true);
+                    parsed = parseModelJson(retry.text());
+                } catch (ApiClientException ex) {
+                    log.warn("gemini concise retry failed after MAX_TOKENS, using primary parsed result: {}", ex.getMessage());
+                }
+            }
+
+            return enrichResult(parsed);
+        } catch (ApiClientException ex) {
+            if (isRecoverableAiFailure(ex.code())) {
+                log.warn("gemini unavailable/invalid response. falling back to deterministic interpretation. code={}", ex.code());
+                return enrichFallbackResult(buildFallbackInterpretation(chart, fiveElements));
+            }
+            throw ex;
+        }
     }
 
     private Map<String, Object> enrichResult(Map<String, Object> parsed) {
@@ -101,6 +109,105 @@ public class GeminiAnalysisClient {
         parsed.put("generatedAt", Instant.now().toString());
         parsed.put("source", "gemini");
         return parsed;
+    }
+
+    private Map<String, Object> enrichFallbackResult(Map<String, Object> parsed) {
+        parsed.put("model", model);
+        parsed.put("generatedAt", Instant.now().toString());
+        parsed.put("source", "fallback");
+        return parsed;
+    }
+
+    private boolean isRecoverableAiFailure(String code) {
+        return "AI_GENERATION_FAILED".equals(code)
+                || "AI_GENERATION_TIMEOUT".equals(code)
+                || "AI_RESPONSE_INVALID".equals(code);
+    }
+
+    private Map<String, Object> buildFallbackInterpretation(Map<String, String> chart, Map<String, Integer> fiveElements) {
+        String day = valueOrDash(chart.get("day"));
+        String dominant = dominantElement(fiveElements);
+        String weak = weakestElement(fiveElements);
+        String dominantKo = elementKo(dominant);
+        String weakKo = elementKo(weak);
+
+        Map<String, Object> themes = Map.of(
+                "money", dominantKo + " 기운이 금전 감각을 살립니다. " + weakKo + " 기운 보완을 위해 지출 기준을 먼저 정해보세요.",
+                "relationship", dominantKo + " 기운으로 표현력이 살아납니다. 관계에서는 속도보다 톤 조절이 유리합니다.",
+                "career", dominantKo + " 기운이 실행력을 올립니다. 일주(" + day + ") 흐름상 우선순위 1개 집중이 효과적입니다.",
+                "health", weakKo + " 기운이 약할 수 있어 회복 루틴이 중요합니다. 수면·수분 관리를 먼저 챙겨주세요."
+        );
+        Map<String, Object> byPeriod = Map.of(
+                "year", "올해는 기본기를 쌓을수록 안정감이 커지는 흐름입니다.",
+                "month", "이번 달은 무리한 확장보다 현재 루틴 정리가 유리합니다.",
+                "week", "이번 주는 할 일의 순서를 정하면 성과가 빨라집니다.",
+                "day", "오늘은 작은 실행 1개를 확실히 끝내는 것이 핵심입니다."
+        );
+
+        return new LinkedHashMap<>(Map.of(
+                "summary", "현재 AI 응답이 불안정해 기본 해석으로 제공됩니다. "
+                        + dominantKo + " 중심 기운이 강하고, " + weakKo + " 기운 보완이 오늘의 균형 포인트입니다.",
+                "coreTraits", List.of(
+                        dominantKo + " 기운 중심의 추진력",
+                        "현실적인 판단과 적응력",
+                        "흐름을 읽고 속도를 조절하는 성향"
+                ),
+                "strengths", List.of(
+                        "핵심 과제에 빠르게 집중",
+                        "상황 변화에 맞춘 실행력",
+                        "반복 루틴을 통한 안정적인 성과"
+                ),
+                "cautions", List.of(
+                        weakKo + " 기운 부족으로 인한 피로 누적",
+                        "동시에 많은 일을 벌여 집중이 분산되는 흐름",
+                        "감정 표현이 급해지며 톤이 강해지는 반응"
+                ),
+                "themes", themes,
+                "fortuneByPeriod", byPeriod,
+                "actionTips", List.of(
+                        "오늘 가장 중요한 일 1개부터 완료하기",
+                        "지출 상한을 먼저 정하고 소비하기",
+                        "저녁에는 20분 회복 시간 확보하기"
+                ),
+                "disclaimer", "본 해석은 참고용이며, 중요한 결정은 전문가 상담과 함께 판단해주세요."
+        ));
+    }
+
+    private String dominantElement(Map<String, Integer> fiveElements) {
+        String dominant = "earth";
+        int max = Integer.MIN_VALUE;
+        for (var e : fiveElements.entrySet()) {
+            int value = e.getValue() == null ? 0 : e.getValue();
+            if (value > max) {
+                max = value;
+                dominant = e.getKey();
+            }
+        }
+        return dominant;
+    }
+
+    private String weakestElement(Map<String, Integer> fiveElements) {
+        String weak = "fire";
+        int min = Integer.MAX_VALUE;
+        for (var e : fiveElements.entrySet()) {
+            int value = e.getValue() == null ? 0 : e.getValue();
+            if (value < min) {
+                min = value;
+                weak = e.getKey();
+            }
+        }
+        return weak;
+    }
+
+    private String elementKo(String element) {
+        return switch (element) {
+            case "wood" -> "목";
+            case "fire" -> "화";
+            case "earth" -> "토";
+            case "metal" -> "금";
+            case "water" -> "수";
+            default -> "-";
+        };
     }
 
     private CandidatePayload callGemini(String prompt, boolean conciseMode) {
