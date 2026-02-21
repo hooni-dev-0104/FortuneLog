@@ -317,29 +317,73 @@ public class GeminiAnalysisClient {
         String month = valueOrDash(chart.get("month"));
         String day = valueOrDash(chart.get("day"));
         String hour = valueOrDash(chart.get("hour"));
+        String gender = valueOrDefault(
+                firstNonBlank(chart.get("gender"), chart.get("sex")),
+                "미제공"
+        );
+        String nameRaw = firstNonBlank(
+                chart.get("name"),
+                chart.get("profile_name"),
+                chart.get("profileName")
+        );
+        String ageRaw = firstNonBlank(
+                chart.get("age"),
+                chart.get("profile_age"),
+                chart.get("profileAge")
+        );
+        String nameWithAge;
+        if (nameRaw != null && ageRaw != null) {
+            nameWithAge = nameRaw + " (" + ageRaw + "세)";
+        } else if (nameRaw != null) {
+            nameWithAge = nameRaw;
+        } else {
+            nameWithAge = "미제공";
+        }
+        String birthDateTime = valueOrDefault(
+                firstNonBlank(
+                        chart.get("birth_datetime_local"),
+                        chart.get("birthDatetimeLocal"),
+                        chart.get("birth_datetime"),
+                        chart.get("birthDateTime"),
+                        chart.get("birth_text"),
+                        chart.get("birthText")
+                ),
+                "미제공"
+        );
+        String tenGodStems = valueOrDefault(
+                firstNonBlank(chart.get("ten_god_stems"), chart.get("tenGodStems")),
+                "미제공"
+        );
+        String tenGodBranches = valueOrDefault(
+                firstNonBlank(chart.get("ten_god_branches"), chart.get("tenGodBranches")),
+                "미제공"
+        );
+        String twelveStates = valueOrDefault(
+                firstNonBlank(chart.get("twelve_states"), chart.get("twelveStates")),
+                "미제공"
+        );
 
         int wood = fiveElements.getOrDefault("wood", 0);
         int fire = fiveElements.getOrDefault("fire", 0);
         int earth = fiveElements.getOrDefault("earth", 0);
         int metal = fiveElements.getOrDefault("metal", 0);
         int water = fiveElements.getOrDefault("water", 0);
-        String styleRule = conciseMode
-                ? "모든 문장을 짧고 간결하게 작성하고, 각 항목은 1문장 또는 짧은 구문으로 제한하세요."
-                : "초보자도 이해하기 쉬운 문장으로 작성하세요.";
 
         return """
-                당신은 한국어로 설명하는 사주 전문 상담가입니다.
-                입력된 사주팔자와 오행 분포를 바탕으로 해석하세요.
-                단정적인 예언/의학 진단/투자 확언은 피하고, 현실적인 조언 위주로 작성하세요.
-                %s
+                [시스템 가이드: FortuneLog]
+                1. 본 분석은 'FortuneLog'의 정밀한 로직으로 산출된 데이터를 바탕으로 합니다.
+                2. 제공된 사주 정보는 검증된 값이므로 다시 계산하지 말고, 이 데이터를 절대적 기준으로 해석하십시오.
+                3. 답변 시작 시 'FortuneLog'앱의 데이터를 바탕으로 해석함을 가볍게 언급하며, 전문가의 품격에 맞는 존댓말로 답변해 주십시오.
 
-                [입력 데이터]
-                - 년주: %s
-                - 월주: %s
-                - 일주: %s
-                - 시주: %s
-                - 오행: 목=%d, 화=%d, 토=%d, 금=%d, 수=%d
-                - 해석 규칙: 일간=일주의 천간, 월지=월주의 지지
+                [사주 정보] - 프로필 설정자의 사주 정보
+                -성별 : %s
+                -성함 : %s
+                -생년월일시 : %s
+                -사주팔자 : 년주(%s), 월주(%s), 일주(%s), 시주(%s)
+                -십성(천간) : %s
+                -십성(지지) : %s
+                -십이운성 : %s
+                -오행 분포 : 木 %d , 火 %d , 土 %d , 金 %d , 水 %d
 
                 [질문 사항]
                 위 데이터를 바탕으로 명리학 전문가의 관점에서 다음 사항을 상세히 분석해 주십시오.
@@ -349,31 +393,16 @@ public class GeminiAnalysisClient {
                 4. 제공된 오행 분포 수치를 절대적 기준으로 삼아, 부족하거나 과한 기운을 조절할 수 있는 실생활의 보완책(색상, 습관 등)을 제안해 주십시오.
                 5. 재물운, 연애·결혼운, 직업 적성, 건강운 등 주요 영역을 주어진 데이터를 근거로 종합 해석해 주십시오.
                 6. 전체적인 사주 구성의 균형을 맞추기 위해 이 사주가 지향해야 할 삶의 태도와 핵심적인 조언을 들려주십시오.
-
-                [출력 작성 가이드]
-                - 반드시 입력 데이터 근거를 포함해 설명하세요(일간/일주/월지/오행 수치 반영).
-                - 너무 일반적인 운세 문구를 피하고, 조건과 맥락을 분명하게 제시하세요.
-                - summary는 2~3개 문단으로 충분히 상세하게 작성하세요.
-                - coreTraits/strengths/cautions/actionTips는 각각 최소 5개 항목으로 작성하세요.
-                - themes의 money/relationship/career/health는 각각 3~5문장으로 작성하세요.
-                - actionTips에는 색상, 생활습관, 루틴, 환경 정리 등 실천 가능한 보완책을 포함하세요.
-
-                아래 JSON 스키마로만 응답하세요. 키 이름은 그대로 유지하고, 값은 한국어로 작성하세요.
-                {
-                  "summary": "종합 요약 (2~3개 문단, 질문 1~3·6을 중심으로 상세히)",
-                  "coreTraits": ["기질/성격 포인트 1", "기질/성격 포인트 2", "기질/성격 포인트 3", "기질/성격 포인트 4", "기질/성격 포인트 5"],
-                  "strengths": ["강점/발휘 조건 1", "강점/발휘 조건 2", "강점/발휘 조건 3", "강점/발휘 조건 4", "강점/발휘 조건 5"],
-                  "cautions": ["약점/리스크 1", "약점/리스크 2", "약점/리스크 3", "약점/리스크 4", "약점/리스크 5"],
-                  "themes": {
-                    "money": "재물운 상세 해석 (근거 포함)",
-                    "relationship": "연애/결혼운 상세 해석 (근거 포함)",
-                    "career": "직업 적성/일운 상세 해석 (근거 포함)",
-                    "health": "건강운 상세 해석 (근거 포함)"
-                  },
-                  "actionTips": ["보완 실천 팁 1", "보완 실천 팁 2", "보완 실천 팁 3", "보완 실천 팁 4", "보완 실천 팁 5"],
-                  "disclaimer": "참고용 안내 문구 1문장"
-                }
-                """.formatted(styleRule, year, month, day, hour, wood, fire, earth, metal, water);
+                """.formatted(
+                gender,
+                nameWithAge,
+                birthDateTime,
+                year, month, day, hour,
+                tenGodStems,
+                tenGodBranches,
+                twelveStates,
+                wood, fire, earth, metal, water
+        );
     }
 
     private CandidatePayload extractCandidatePayload(String responseBody) {
@@ -466,6 +495,25 @@ public class GeminiAnalysisClient {
             return "-";
         }
         return value.trim();
+    }
+
+    private String valueOrDefault(String value, String fallback) {
+        if (value == null || value.trim().isEmpty()) {
+            return fallback;
+        }
+        return value.trim();
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null || values.length == 0) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private String trimTrailingSlash(String value) {

@@ -24,6 +24,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -470,6 +471,9 @@ public class EngineService {
                 snapshot.chart(),
                 snapshot.fiveElements()
         );
+        content = new LinkedHashMap<>(content);
+        content.put("analysisInput", buildAiAnalysisInput(snapshot.chart(), snapshot.fiveElements()));
+        content.put("analysisInputText", buildAiAnalysisInputText(snapshot.chart(), snapshot.fiveElements()));
 
         try {
             persistenceService.upsertNonDailyReport(
@@ -487,5 +491,150 @@ public class EngineService {
         }
 
         return new ReportResult(request.chartId(), "ai_interpretation", content);
+    }
+
+    private Map<String, Object> buildAiAnalysisInput(Map<String, String> chart, Map<String, Integer> fiveElements) {
+        String year = valueOrDash(chart.get("year"));
+        String month = valueOrDash(chart.get("month"));
+        String day = valueOrDash(chart.get("day"));
+        String hour = valueOrDash(chart.get("hour"));
+
+        String gender = firstNonBlank(chart.get("gender"), "미제공");
+        String name = firstNonBlank(chart.get("name"), chart.get("profileName"), "미제공");
+        String age = firstNonBlank(chart.get("age"), "미제공");
+        String birthDateTime = firstNonBlank(
+                chart.get("birthDatetimeLocal"),
+                chart.get("birth_datetime_local"),
+                chart.get("birthDateTime"),
+                chart.get("birth_datetime"),
+                "미제공"
+        );
+        String tenGodStem = firstNonBlank(chart.get("tenGodStems"), chart.get("ten_god_stems"), "미제공");
+        String tenGodBranch = firstNonBlank(chart.get("tenGodBranches"), chart.get("ten_god_branches"), "미제공");
+        String twelveStates = firstNonBlank(chart.get("twelveStates"), chart.get("twelve_states"), "미제공");
+
+        Map<String, Object> systemGuide = new LinkedHashMap<>();
+        systemGuide.put("title", "시스템 가이드: FortuneLog");
+        systemGuide.put("items", List.of(
+                "본 분석은 'FortuneLog'의 정밀한 로직으로 산출된 데이터를 바탕으로 합니다.",
+                "제공된 사주 정보는 검증된 값이므로 다시 계산하지 말고, 이 데이터를 절대적 기준으로 해석하십시오.",
+                "답변 시작 시 'FortuneLog'앱의 데이터를 바탕으로 해석함을 가볍게 언급하며, 전문가의 품격에 맞는 존댓말로 답변해 주십시오."
+        ));
+
+        Map<String, Object> sajuInfo = new LinkedHashMap<>();
+        sajuInfo.put("gender", gender);
+        sajuInfo.put("name", name);
+        sajuInfo.put("age", age);
+        sajuInfo.put("birthDateTime", birthDateTime);
+        sajuInfo.put("pillars", Map.of(
+                "year", year,
+                "month", month,
+                "day", day,
+                "hour", hour
+        ));
+        sajuInfo.put("tenGodStem", tenGodStem);
+        sajuInfo.put("tenGodBranch", tenGodBranch);
+        sajuInfo.put("twelveStates", twelveStates);
+        sajuInfo.put("fiveElements", Map.of(
+                "wood", fiveElements.getOrDefault("wood", 0),
+                "fire", fiveElements.getOrDefault("fire", 0),
+                "earth", fiveElements.getOrDefault("earth", 0),
+                "metal", fiveElements.getOrDefault("metal", 0),
+                "water", fiveElements.getOrDefault("water", 0)
+        ));
+
+        Map<String, Object> questions = new LinkedHashMap<>();
+        questions.put("title", "질문 사항");
+        questions.put("items", List.of(
+                "일간과 일주를 중심으로 본연의 기질과 중심 성격을 설명해 주십시오.",
+                "월지에 배정된 기운과 전체적인 십성의 흐름을 바탕으로, 이 사주가 사회에서 어떤 환경에 놓이기 쉬우며 어떤 방식으로 역량을 발휘하는지 분석해 주십시오.",
+                "주어진 십성 구성에서 나타나는 특징적인 장단점과 그에 따른 인생 흐름의 특성을 분석해 주십시오.",
+                "제공된 오행 분포 수치를 절대적 기준으로 삼아, 부족하거나 과한 기운을 조절할 수 있는 실생활의 보완책(색상, 습관 등)을 제안해 주십시오.",
+                "재물운, 연애·결혼운, 직업 적성, 건강운 등 주요 영역을 주어진 데이터를 근거로 종합 해석해 주십시오.",
+                "전체적인 사주 구성의 균형을 맞추기 위해 이 사주가 지향해야 할 삶의 태도와 핵심적인 조언을 들려주십시오."
+        ));
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("version", "fortune-log-ai-input-v1");
+        payload.put("systemGuide", systemGuide);
+        payload.put("sajuInfo", sajuInfo);
+        payload.put("questions", questions);
+        return payload;
+    }
+
+    private String buildAiAnalysisInputText(Map<String, String> chart, Map<String, Integer> fiveElements) {
+        String year = valueOrDash(chart.get("year"));
+        String month = valueOrDash(chart.get("month"));
+        String day = valueOrDash(chart.get("day"));
+        String hour = valueOrDash(chart.get("hour"));
+
+        String gender = firstNonBlank(chart.get("gender"), "미제공");
+        String name = firstNonBlank(chart.get("name"), chart.get("profileName"), "미제공");
+        String age = firstNonBlank(chart.get("age"), "미제공");
+        String birthDateTime = firstNonBlank(
+                chart.get("birthDatetimeLocal"),
+                chart.get("birth_datetime_local"),
+                chart.get("birthDateTime"),
+                chart.get("birth_datetime"),
+                "미제공"
+        );
+        String tenGodStem = firstNonBlank(chart.get("tenGodStems"), chart.get("ten_god_stems"), "미제공");
+        String tenGodBranch = firstNonBlank(chart.get("tenGodBranches"), chart.get("ten_god_branches"), "미제공");
+        String twelveStates = firstNonBlank(chart.get("twelveStates"), chart.get("twelve_states"), "미제공");
+
+        int wood = fiveElements.getOrDefault("wood", 0);
+        int fire = fiveElements.getOrDefault("fire", 0);
+        int earth = fiveElements.getOrDefault("earth", 0);
+        int metal = fiveElements.getOrDefault("metal", 0);
+        int water = fiveElements.getOrDefault("water", 0);
+
+        return """
+                [시스템 가이드: FortuneLog]
+                1. 본 분석은 'FortuneLog'의 정밀한 로직으로 산출된 데이터를 바탕으로 합니다.
+                2. 제공된 사주 정보는 검증된 값이므로 다시 계산하지 말고, 이 데이터를 절대적 기준으로 해석하십시오.
+                3. 답변 시작 시 'FortuneLog'앱의 데이터를 바탕으로 해석함을 가볍게 언급하며, 전문가의 품격에 맞는 존댓말로 답변해 주십시오.
+                
+                [사주 정보] - 프로필 설정자의 사주 정보
+                -성별 : %s
+                -성함 : %s
+                -나이 : %s
+                -생년월일시 : %s
+                -사주팔자 : 년주(%s), 월주(%s), 일주(%s), 시주(%s)
+                -십성(천간) : %s
+                -십성(지지) : %s
+                -십이운성 : %s
+                -오행 분포 : 木 %d , 火 %d , 土 %d , 金 %d , 水 %d
+                
+                [질문 사항]
+                위 데이터를 바탕으로 명리학 전문가의 관점에서 다음 사항을 상세히 분석해 주십시오.
+                1. 일간과 일주를 중심으로 본연의 기질과 중심 성격을 설명해 주십시오.
+                2. 월지에 배정된 기운과 전체적인 십성의 흐름을 바탕으로, 이 사주가 사회에서 어떤 환경에 놓이기 쉬우며 어떤 방식으로 역량을 발휘하는지 분석해 주십시오.
+                3. 주어진 십성 구성에서 나타나는 특징적인 장단점과 그에 따른 인생 흐름의 특성을 분석해 주십시오.
+                4. 제공된 오행 분포 수치를 절대적 기준으로 삼아, 부족하거나 과한 기운을 조절할 수 있는 실생활의 보완책(색상, 습관 등)을 제안해 주십시오.
+                5. 재물운, 연애·결혼운, 직업 적성, 건강운 등 주요 영역을 주어진 데이터를 근거로 종합 해석해 주십시오.
+                6. 전체적인 사주 구성의 균형을 맞추기 위해 이 사주가 지향해야 할 삶의 태도와 핵심적인 조언을 들려주십시오.
+                """.formatted(
+                gender, name, age, birthDateTime, year, month, day, hour, tenGodStem, tenGodBranch, twelveStates,
+                wood, fire, earth, metal, water
+        );
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null || values.length == 0) {
+            return "-";
+        }
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "-";
+    }
+
+    private String valueOrDash(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "-";
+        }
+        return value.trim();
     }
 }
