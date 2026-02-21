@@ -114,59 +114,67 @@ public class EngineService {
     }
 
     public DailyFortuneResult generateDailyFortune(String userId, GenerateDailyFortuneRequest request) {
-        // MVP: canned content. Next iteration should use chart/five-elements + target date.
-        Map<String, String> category = Map.of(
-                "money", "지출 관리가 성과로 이어지는 하루입니다.",
-                "love", "관계는 속도보다 톤 조절이 중요합니다.",
-                "work", "오전 집중, 오후 정리가 유리합니다.",
-                "health", "컨디션은 수면/수분이 좌우합니다."
+        LocalDate targetDate = LocalDate.parse(request.date());
+        var snapshot = persistenceService.findChartSnapshot(userId, request.chartId());
+        if (snapshot == null) {
+            throw new ApiClientException(
+                    "CHART_NOT_FOUND",
+                    HttpStatus.NOT_FOUND,
+                    "사주 차트를 먼저 계산해주세요."
+            );
+        }
+
+        var fiveElements = snapshot.fiveElements();
+        String dominant = dominantElement(fiveElements);
+        String weak = weakestElement(fiveElements);
+        String dayPillar = snapshot.chart().getOrDefault("day", "-");
+
+        int baseSeed = (request.chartId() + "|" + targetDate).hashCode();
+        int baseScore = clamp(
+                62
+                        + fiveElements.getOrDefault(dominant, 0) * 3
+                        - fiveElements.getOrDefault(weak, 0) * 2
+                        + jitter(baseSeed, -4, 4),
+                48,
+                92
         );
+
+        int moneyScore = clamp(baseScore + categoryOffset(dominant, "money") + jitter(baseSeed ^ 0x11A, -5, 5), 45, 95);
+        int loveScore = clamp(baseScore + categoryOffset(dominant, "love") + jitter(baseSeed ^ 0x22B, -5, 5), 45, 95);
+        int workScore = clamp(baseScore + categoryOffset(dominant, "work") + jitter(baseSeed ^ 0x33C, -5, 5), 45, 95);
+        int healthScore = clamp(baseScore + categoryOffset(dominant, "health") + jitter(baseSeed ^ 0x44D, -5, 5), 45, 95);
 
         Map<String, DailyCategoryDetail> details = Map.of(
-                "money", new DailyCategoryDetail(
-                        72,
-                        "소액 반복 지출이 누적되기 쉬워요.",
-                        List.of("필수 지출만 남기면 마음이 편해집니다.", "작은 절약이 하루의 주도권을 줍니다."),
-                        List.of("충동 구매", "구독/배달 같은 자동 지출"),
-                        List.of("오늘 예산 상한 1개 정하기", "구독 1개 점검하기")
-                ),
-                "love", new DailyCategoryDetail(
-                        70,
-                        "연애/결혼 모두 '말투'가 핵심입니다.",
-                        List.of("상대 입장을 요약해 주면 갈등이 줄어듭니다.", "연락 타이밍은 '짧게, 자주'가 좋아요."),
-                        List.of("단정적인 표현", "감정 누적 후 폭발"),
-                        List.of("요청은 한 문장으로", "대화 전 10초 멈춤")
-                ),
-                "work", new DailyCategoryDetail(
-                        78,
-                        "가장 잘 풀리는 시간대를 선점하세요.",
-                        List.of("짧은 집중 블록이 성과를 만듭니다.", "정리 시간이 있으면 피로가 줄어요."),
-                        List.of("멀티태스킹", "오후에 중요한 의사결정"),
-                        List.of("오전 90분 집중 블록", "오늘 Top3만 완료")
-                ),
-                "health", new DailyCategoryDetail(
-                        68,
-                        "회복이 곧 생산성입니다.",
-                        List.of("가벼운 움직임이 머리를 맑게 해요.", "수분을 챙기면 피로가 덜합니다."),
-                        List.of("수면 부족", "카페인 과다"),
-                        List.of("물 2잔 먼저", "저녁 20분 산책")
-                )
+                "money", buildDailyCategoryDetail("money", moneyScore, dominant, weak, dayPillar, baseSeed ^ 0x101),
+                "love", buildDailyCategoryDetail("love", loveScore, dominant, weak, dayPillar, baseSeed ^ 0x202),
+                "work", buildDailyCategoryDetail("work", workScore, dominant, weak, dayPillar, baseSeed ^ 0x303),
+                "health", buildDailyCategoryDetail("health", healthScore, dominant, weak, dayPillar, baseSeed ^ 0x404)
         );
 
-        String summary = "실행력은 좋지만, 컨디션과 지출 관리가 관건입니다.";
+        Map<String, String> category = Map.of(
+                "money", details.get("money").summary(),
+                "love", details.get("love").summary(),
+                "work", details.get("work").summary(),
+                "health", details.get("health").summary()
+        );
+
+        int totalScore = clamp((moneyScore + loveScore + workScore + healthScore) / 4, 45, 95);
+        String summary = "오늘은 " + elementKo(dominant) + " 기운이 중심이 되는 날입니다. "
+                + "일주(" + dayPillar + ") 흐름상 " + elementKo(weak) + " 기운을 보완하면 균형이 좋아집니다.";
         List<String> actions = List.of(
-                "오늘 예산 상한 정하기",
-                "오전 90분 집중 블록 만들기",
-                "저녁 20분 산책"
+                details.get("money").actions().get(0),
+                details.get("love").actions().get(0),
+                details.get("work").actions().get(0),
+                details.get("health").actions().get(0)
         );
 
         persistenceService.upsertDailyFortuneReport(
                 userId,
                 request.chartId(),
-                LocalDate.parse(request.date()),
+                targetDate,
                 Map.of(
                         "date", request.date(),
-                        "score", 74,
+                        "score", totalScore,
                         "summary", summary,
                         "category", category,
                         "categoryDetails", details,
@@ -178,13 +186,207 @@ public class EngineService {
 
         return new DailyFortuneResult(
                 userId,
-                LocalDate.parse(request.date()),
-                74,
+                targetDate,
+                totalScore,
                 category,
                 details,
                 summary,
                 actions
         );
+    }
+
+    private String dominantElement(Map<String, Integer> fiveElements) {
+        String dominant = "earth";
+        int max = Integer.MIN_VALUE;
+        for (var e : fiveElements.entrySet()) {
+            int value = e.getValue() == null ? 0 : e.getValue();
+            if (value > max) {
+                max = value;
+                dominant = e.getKey();
+            }
+        }
+        return dominant;
+    }
+
+    private String weakestElement(Map<String, Integer> fiveElements) {
+        String weak = "fire";
+        int min = Integer.MAX_VALUE;
+        for (var e : fiveElements.entrySet()) {
+            int value = e.getValue() == null ? 0 : e.getValue();
+            if (value < min) {
+                min = value;
+                weak = e.getKey();
+            }
+        }
+        return weak;
+    }
+
+    private int categoryOffset(String dominantElement, String category) {
+        return switch (dominantElement) {
+            case "wood" -> switch (category) {
+                case "work" -> 3;
+                case "health" -> 2;
+                case "love" -> 1;
+                default -> 0;
+            };
+            case "fire" -> switch (category) {
+                case "love" -> 3;
+                case "money" -> 2;
+                case "work" -> 1;
+                default -> -1;
+            };
+            case "earth" -> switch (category) {
+                case "money" -> 3;
+                case "health" -> 2;
+                case "work" -> 1;
+                default -> 0;
+            };
+            case "metal" -> switch (category) {
+                case "money" -> 2;
+                case "work" -> 2;
+                case "health" -> 1;
+                default -> 0;
+            };
+            case "water" -> switch (category) {
+                case "work" -> 3;
+                case "love" -> 2;
+                case "money" -> 1;
+                default -> 0;
+            };
+            default -> 0;
+        };
+    }
+
+    private DailyCategoryDetail buildDailyCategoryDetail(
+            String category,
+            int score,
+            String dominant,
+            String weak,
+            String dayPillar,
+            int seed
+    ) {
+        String dominantKo = elementKo(dominant);
+        String weakKo = elementKo(weak);
+        String summary = switch (category) {
+            case "money" -> dominantKo + " 기운이 자금 흐름을 움직입니다. " + weakKo + " 기운 보완이 지출 안정에 도움이 됩니다.";
+            case "love" -> dominantKo + " 기운이 대화의 온도를 높입니다. 감정 표현은 부드럽게 조절하는 편이 좋습니다.";
+            case "work" -> dominantKo + " 기운으로 실행력이 살아납니다. 일주(" + dayPillar + ") 흐름상 우선순위 정리가 성과를 키웁니다.";
+            case "health" -> dominantKo + " 기운이 활력을 주지만, " + weakKo + " 기운이 약하면 회복 루틴이 더 중요해집니다.";
+            default -> "오늘의 흐름을 참고해 균형 있게 움직여보세요.";
+        };
+
+        List<String> goodPool = switch (category) {
+            case "money" -> List.of(
+                    "고정 지출을 정리하면 체감 여유가 생깁니다.",
+                    "소액 절약이 누적 성과로 이어집니다.",
+                    "수입/지출을 한 번에 보는 습관이 유리합니다."
+            );
+            case "love" -> List.of(
+                    "짧고 따뜻한 표현이 관계를 안정시킵니다.",
+                    "상대의 입장을 먼저 요약하면 오해가 줄어듭니다.",
+                    "연락 리듬을 일정하게 가져가면 신뢰가 높아집니다."
+            );
+            case "work" -> List.of(
+                    "중요도 높은 1개 과업에 집중하면 성과가 빠릅니다.",
+                    "오전 집중 블록이 생산성을 끌어올립니다.",
+                    "핵심 결정은 근거를 짧게 정리해 공유하면 좋습니다."
+            );
+            case "health" -> List.of(
+                    "가벼운 걷기와 스트레칭이 컨디션을 살립니다.",
+                    "수분 섭취를 먼저 챙기면 피로가 완만해집니다.",
+                    "식사 리듬을 일정하게 유지하면 집중력이 좋아집니다."
+            );
+            default -> List.of("기본 루틴을 지키면 흐름이 안정됩니다.");
+        };
+
+        List<String> cautionPool = switch (category) {
+            case "money" -> List.of(
+                    "계획 없는 소액 결제 반복",
+                    "즉흥적인 비교·추가 구매",
+                    "구독/자동결제 점검 누락"
+            );
+            case "love" -> List.of(
+                    "단정적인 표현으로 말끝이 강해지는 것",
+                    "감정 누적 후 한 번에 폭발하는 반응",
+                    "상대 확인 없이 결론을 먼저 내리는 습관"
+            );
+            case "work" -> List.of(
+                    "동시다발 작업으로 집중 분산",
+                    "마감 직전 급한 의사결정",
+                    "우선순위 없이 할 일을 늘리는 것"
+            );
+            case "health" -> List.of(
+                    "수면 시간 불규칙",
+                    "카페인·당류 과다 섭취",
+                    "오랜 시간 같은 자세 유지"
+            );
+            default -> List.of("과한 무리와 급한 결정");
+        };
+
+        List<String> actionPool = switch (category) {
+            case "money" -> List.of(
+                    "오늘 지출 상한 1개만 먼저 정하기",
+                    "자동결제 목록 1개 점검하기",
+                    "불필요한 소비 1건만 미루기"
+            );
+            case "love" -> List.of(
+                    "요청은 한 문장으로 부드럽게 전달하기",
+                    "중요 대화 전 10초 멈추고 톤 점검하기",
+                    "감사/칭찬 메시지 1회 먼저 보내기"
+            );
+            case "work" -> List.of(
+                    "오늘 Top 3 중 1순위부터 90분 집중하기",
+                    "회의 전 결정 항목 3개 미리 적기",
+                    "오후에는 정리·마감 작업으로 전환하기"
+            );
+            case "health" -> List.of(
+                    "물 2잔 먼저 마시기",
+                    "저녁 20분 가볍게 걷기",
+                    "잠들기 1시간 전 화면 사용 줄이기"
+            );
+            default -> List.of("작은 실행 1개부터 시작하기");
+        };
+
+        return new DailyCategoryDetail(
+                score,
+                summary,
+                pickN(goodPool, seed ^ 0x51, 2),
+                pickN(cautionPool, seed ^ 0x52, 2),
+                pickN(actionPool, seed ^ 0x53, 2)
+        );
+    }
+
+    private List<String> pickN(List<String> source, int seed, int count) {
+        if (source == null || source.isEmpty() || count <= 0) {
+            return List.of();
+        }
+        int limit = Math.min(count, source.size());
+        int start = Math.floorMod(seed, source.size());
+        List<String> out = new java.util.ArrayList<>(limit);
+        for (int i = 0; i < limit; i++) {
+            out.add(source.get((start + i) % source.size()));
+        }
+        return out;
+    }
+
+    private int jitter(int seed, int min, int max) {
+        int width = max - min + 1;
+        return min + Math.floorMod(seed, width);
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private String elementKo(String element) {
+        return switch (element) {
+            case "wood" -> "목";
+            case "fire" -> "화";
+            case "earth" -> "토";
+            case "metal" -> "금";
+            case "water" -> "수";
+            default -> "-";
+        };
     }
 
     public ReportResult generateAiInterpretation(String userId, GenerateAiInterpretationRequest request) {

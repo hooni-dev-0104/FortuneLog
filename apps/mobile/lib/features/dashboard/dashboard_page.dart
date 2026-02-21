@@ -87,10 +87,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   String _todayDateString() {
-    final now = DateTime.now();
-    return '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
+    final kstNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+    return '${kstNow.year.toString().padLeft(4, '0')}-'
+        '${kstNow.month.toString().padLeft(2, '0')}-'
+        '${kstNow.day.toString().padLeft(2, '0')}';
   }
 
   Future<void> _showBirthProfilePicker() async {
@@ -726,6 +726,14 @@ class _DailyFortuneSection extends StatelessWidget {
         PageSection(
           title: '오늘 액션',
           child: _DailyActionList(actions: content!['actions'] as List<dynamic>?),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonal(
+            onPressed: onGenerate,
+            child: const Text('오늘 운세 다시 생성'),
+          ),
         ),
       ],
     );

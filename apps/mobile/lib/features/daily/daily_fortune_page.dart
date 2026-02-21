@@ -34,10 +34,10 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
   }
 
   String _todayDateString() {
-    final now = DateTime.now();
-    return '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
+    final kstNow = DateTime.now().toUtc().add(const Duration(hours: 9));
+    return '${kstNow.year.toString().padLeft(4, '0')}-'
+        '${kstNow.month.toString().padLeft(2, '0')}-'
+        '${kstNow.day.toString().padLeft(2, '0')}';
   }
 
   Future<void> _refresh() async {
