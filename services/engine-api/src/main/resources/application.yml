@@ -38,4 +38,4 @@ app:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-2.5-flash}
     api-base-url: ${GEMINI_API_BASE_URL:https://generativelanguage.googleapis.com}
-    request-timeout-ms: ${GEMINI_REQUEST_TIMEOUT_MS:15000}
+    request-timeout-ms: ${GEMINI_REQUEST_TIMEOUT_MS:60000}

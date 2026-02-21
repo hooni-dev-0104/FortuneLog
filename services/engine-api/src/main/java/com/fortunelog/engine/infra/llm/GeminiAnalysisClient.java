@@ -17,6 +17,7 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -43,7 +44,7 @@ public class GeminiAnalysisClient {
             @Value("${app.gemini.api-key:${GEMINI_API_KEY:}}") String apiKey,
             @Value("${app.gemini.model:${GEMINI_MODEL:gemini-2.5-flash}}") String model,
             @Value("${app.gemini.api-base-url:${GEMINI_API_BASE_URL:https://generativelanguage.googleapis.com}}") String apiBaseUrl,
-            @Value("${app.gemini.request-timeout-ms:${GEMINI_REQUEST_TIMEOUT_MS:15000}}") long requestTimeoutMs
+            @Value("${app.gemini.request-timeout-ms:${GEMINI_REQUEST_TIMEOUT_MS:60000}}") long requestTimeoutMs
     ) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
@@ -116,10 +117,23 @@ public class GeminiAnalysisClient {
         HttpResponse<String> response;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
+        } catch (HttpTimeoutException e) {
+            log.warn("gemini call timeout: {}", e.getMessage());
+            throw new ApiClientException(
+                    "AI_GENERATION_TIMEOUT",
+                    HttpStatus.BAD_GATEWAY,
+                    "AI 해석 생성 시간이 초과되었습니다. 잠시 후 다시 시도해주세요."
+            );
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("gemini call interrupted: {}", e.getMessage());
+            throw new ApiClientException(
+                    "AI_GENERATION_FAILED",
+                    HttpStatus.BAD_GATEWAY,
+                    "AI 해석 생성에 실패했습니다. 잠시 후 다시 시도해주세요."
+            );
+        } catch (IOException e) {
+            log.warn("gemini call failed before response: {}", e.toString());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,

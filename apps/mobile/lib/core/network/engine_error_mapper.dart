@@ -23,6 +23,8 @@ class EngineErrorMapper {
         return 'AI 해석 기능이 아직 준비 중입니다. 잠시 후 다시 시도해주세요.';
       case 'AI_GENERATION_FAILED':
         return 'AI 해석 생성에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      case 'AI_GENERATION_TIMEOUT':
+        return 'AI 해석 생성이 지연되고 있습니다. 잠시 후 다시 시도해주세요.';
       case 'AI_RESPONSE_INVALID':
         return 'AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요.';
       default:
