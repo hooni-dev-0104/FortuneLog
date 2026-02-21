@@ -348,7 +348,18 @@ class _DashboardPageState extends State<DashboardPage> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: _aiLoading ? null : _generateAiInterpretation,
-              icon: const Icon(Icons.auto_awesome_outlined),
+              icon: _aiLoading
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                    )
+                  : const Icon(Icons.auto_awesome_outlined),
               label: Text(
                 _aiLoading
                     ? 'AI 사주풀이 생성 중...'
@@ -469,13 +480,50 @@ class _AiInterpretationSection extends StatelessWidget {
       subtitle: 'Gemini 기반 상세 해석',
       trailing: FilledButton.tonal(
         onPressed: loading ? null : onGenerate,
-        child: Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '다시 생성')),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading) ...[
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '다시 생성')),
+          ],
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (error != null) ...[
             StatusNotice.error(message: error!, requestId: requestId ?? 'ai-interpretation'),
+            const SizedBox(height: 10),
+          ],
+          if (loading) ...[
+            Row(
+              children: [
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'AI 해석을 생성하고 있어요. 잠시만 기다려주세요.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
           ],
           if (content == null && !loading) ...[
@@ -493,8 +541,6 @@ class _AiInterpretationSection extends StatelessWidget {
                 child: const Text('AI 사주풀이 생성하기'),
               ),
             ),
-          ] else if (loading && content == null) ...[
-            const Text('AI 해석을 생성하고 있어요. 잠시만 기다려주세요.'),
           ] else ...[
             if (summary != null && summary.isNotEmpty) ...[
               Text(summary, style: Theme.of(context).textTheme.bodyLarge),
