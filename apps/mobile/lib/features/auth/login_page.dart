@@ -28,7 +28,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   final _passwordController = TextEditingController();
 
   StreamSubscription<AuthState>? _authSubscription;
-  Timer? _oauthWatchdog;
   bool _oauthInFlight = false;
   bool _loading = false;
   String? _error;
@@ -78,7 +77,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         if (!mounted) return;
         if (event.event == AuthChangeEvent.signedIn) {
           _oauthInFlight = false;
-          _oauthWatchdog?.cancel();
           setState(() {
             _loading = false;
             _error = null;
@@ -103,27 +101,38 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     if (state != AppLifecycleState.resumed) return;
     if (!_oauthInFlight) return;
 
-    Future<void>.delayed(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      final session = _supabase().auth.currentSession;
-      if (session != null) return;
-
-      _oauthInFlight = false;
-      _oauthWatchdog?.cancel();
-      setState(() => _loading = false);
-      // Don't show as an "error" box. Cancellation is a normal path.
-      _showSnack('로그인이 취소되었습니다.');
-    });
+    _resolveOAuthResultAfterResume();
   }
 
   @override
   void dispose() {
     _authSubscription?.cancel();
-    _oauthWatchdog?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _resolveOAuthResultAfterResume() async {
+    // OAuth redirect/session restore can be slightly delayed after app resume.
+    // Poll briefly to avoid showing a false "cancelled" message.
+    const maxChecks = 20; // 20 * 250ms = up to ~5s grace period.
+    for (int i = 0; i < maxChecks; i++) {
+      if (!mounted) return;
+      if (!_oauthInFlight) return;
+      final session = _supabase().auth.currentSession;
+      if (session != null) return;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    if (!mounted) return;
+    if (!_oauthInFlight) return;
+    final session = _supabase().auth.currentSession;
+    if (session != null) return;
+
+    _oauthInFlight = false;
+    setState(() => _loading = false);
+    // Don't show as an "error" box. Cancellation is a normal path.
+    _showSnack('로그인이 취소되었습니다.');
   }
 
   void _showSnack(String message) {
@@ -211,18 +220,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     });
     _oauthInFlight = true;
     await AppPrefs.setKeepSignedIn(_keepSignedIn);
-    _oauthWatchdog?.cancel();
-    _oauthWatchdog = Timer(const Duration(seconds: 30), () {
-      if (!mounted) return;
-      if (!_oauthInFlight) return;
-
-      final session = _supabase().auth.currentSession;
-      if (session != null) return;
-
-      _oauthInFlight = false;
-      setState(() => _loading = false);
-      _showSnack('로그인이 완료되지 않았습니다. 다시 시도해주세요.');
-    });
 
     try {
       final kakaoScopes =
@@ -249,7 +246,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     } on AuthException catch (e) {
       if (!mounted) return;
       _oauthInFlight = false;
-      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.socialLogin);
@@ -257,7 +253,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     } on FormatException {
       if (!mounted) return;
       _oauthInFlight = false;
-      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = _authRedirectMissingMessage();
@@ -265,7 +260,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     } on StateError catch (e) {
       if (!mounted) return;
       _oauthInFlight = false;
-      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = e.message;
@@ -273,7 +267,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     } catch (_) {
       if (!mounted) return;
       _oauthInFlight = false;
-      _oauthWatchdog?.cancel();
       setState(() {
         _loading = false;
         _error = '소셜 로그인 시작에 실패했습니다.';
