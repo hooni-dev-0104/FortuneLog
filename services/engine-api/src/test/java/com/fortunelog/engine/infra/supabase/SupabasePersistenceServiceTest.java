@@ -107,4 +107,31 @@ class SupabasePersistenceServiceTest {
         assertTrue(second.getPath().contains("/rest/v1/reports"));
         assertTrue(!second.getPath().contains("on_conflict="));
     }
+
+    @Test
+    void shouldFallbackToInsertWhenNonDailyUpsertConstraintIsMissing() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(400).setBody(
+                "{\"code\":\"42P10\",\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}"
+        ));
+        server.enqueue(new MockResponse().setResponseCode(201).setBody("[{\"id\":\"report-non-daily-fallback\"}]"));
+
+        String id = service.upsertNonDailyReport(
+                "user-1",
+                "chart-1",
+                "ai_interpretation",
+                Map.of("summary", "ok"),
+                true,
+                true
+        );
+
+        assertEquals("report-non-daily-fallback", id);
+
+        RecordedRequest first = server.takeRequest();
+        assertTrue(first.getPath().contains("/rest/v1/reports"));
+        assertTrue(first.getPath().contains("on_conflict=user_id%2Cchart_id%2Creport_type"));
+
+        RecordedRequest second = server.takeRequest();
+        assertTrue(second.getPath().contains("/rest/v1/reports"));
+        assertTrue(!second.getPath().contains("on_conflict="));
+    }
 }

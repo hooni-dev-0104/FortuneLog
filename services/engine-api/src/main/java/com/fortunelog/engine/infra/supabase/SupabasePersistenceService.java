@@ -140,9 +140,7 @@ public class SupabasePersistenceService {
                     );
             // Postgres variant:
             // - "42P10 ... there is no unique or exclusion constraint matching the ON CONFLICT specification"
-            boolean missingConflictConstraint =
-                    msg.contains("42p10")
-                            || msg.contains("no unique or exclusion constraint matching the on conflict specification");
+            boolean missingConflictConstraint = isMissingConflictConstraint(msg);
 
             if (missingTargetDate || missingConflictConstraint) {
                 return insertReport(userId, chartId, "daily", content, isPaidContent, visible);
@@ -168,11 +166,26 @@ public class SupabasePersistenceService {
                 "visible", visible
         );
 
-        return upsertReturningId(
-                "reports",
-                payload,
-                List.of("user_id", "chart_id", "report_type")
-        );
+        try {
+            return upsertReturningId(
+                    "reports",
+                    payload,
+                    List.of("user_id", "chart_id", "report_type")
+            );
+        } catch (IllegalStateException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (isMissingConflictConstraint(msg)) {
+                // Some DBs don't have a matching non-partial unique index for
+                // ON CONFLICT(user_id, chart_id, report_type). Fallback to insert.
+                return insertReport(userId, chartId, reportType, content, isPaidContent, visible);
+            }
+            throw e;
+        }
+    }
+
+    private boolean isMissingConflictConstraint(String errorMessageLowerCase) {
+        return errorMessageLowerCase.contains("42p10")
+                || errorMessageLowerCase.contains("no unique or exclusion constraint matching the on conflict specification");
     }
 
     public ChartSnapshot findChartSnapshot(String userId, String chartId) {
