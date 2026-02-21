@@ -101,7 +101,7 @@ class SupabasePersistenceServiceTest {
 
         RecordedRequest first = server.takeRequest();
         assertTrue(first.getPath().contains("/rest/v1/reports"));
-        assertTrue(first.getPath().contains("on_conflict=user_id%2Creport_type%2Ctarget_date"));
+        assertTrue(first.getPath().contains("on_conflict=user_id%2Cchart_id%2Creport_type%2Ctarget_date"));
 
         RecordedRequest second = server.takeRequest();
         assertTrue(second.getPath().contains("/rest/v1/reports"));

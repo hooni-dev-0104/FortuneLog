@@ -13,6 +13,8 @@ import com.fortunelog.engine.domain.model.DailyFortuneResult;
 import com.fortunelog.engine.domain.model.ReportResult;
 import com.fortunelog.engine.infra.llm.GeminiAnalysisClient;
 import com.fortunelog.engine.infra.supabase.SupabasePersistenceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,7 @@ import java.util.Map;
 
 @Service
 public class EngineService {
+    private static final Logger log = LoggerFactory.getLogger(EngineService.class);
 
     private static final DateTimeFormatter BIRTH_TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm");
 
@@ -468,14 +471,20 @@ public class EngineService {
                 snapshot.fiveElements()
         );
 
-        persistenceService.upsertNonDailyReport(
-                userId,
-                request.chartId(),
-                "ai_interpretation",
-                content,
-                true,
-                true
-        );
+        try {
+            persistenceService.upsertNonDailyReport(
+                    userId,
+                    request.chartId(),
+                    "ai_interpretation",
+                    content,
+                    true,
+                    true
+            );
+        } catch (IllegalStateException e) {
+            // Do not fail user-facing generation when persistence schema is behind (e.g. enum/index mismatch).
+            // Client can still render the returned content immediately.
+            log.warn("ai interpretation persistence skipped due to storage error: {}", e.getMessage());
+        }
 
         return new ReportResult(request.chartId(), "ai_interpretation", content);
     }

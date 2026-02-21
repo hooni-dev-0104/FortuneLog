@@ -120,12 +120,12 @@ public class SupabasePersistenceService {
             return upsertReturningId(
                     "reports",
                     payload,
-                    List.of("user_id", "report_type", "target_date")
+                    List.of("user_id", "chart_id", "report_type", "target_date")
             );
         } catch (IllegalStateException e) {
             // Backward compatibility:
             // - schemas without reports.target_date
-            // - schemas missing a matching unique constraint for ON CONFLICT(user_id, report_type, target_date)
+            // - schemas missing a matching unique constraint for ON CONFLICT(user_id, chart_id, report_type, target_date)
             // In both cases we can't upsert by date, so we fall back to inserting a daily report row.
             String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
             // PostgREST error variants we've seen:

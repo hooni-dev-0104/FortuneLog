@@ -375,8 +375,12 @@ class _DashboardPageState extends State<DashboardPage> {
         GenerateAiInterpretationRequestDto(chartId: chartId),
       );
       if (!mounted) return;
-      setState(() => _aiRequestId = response.requestId);
-      await _refresh();
+      setState(() {
+        _aiRequestId = response.requestId;
+        _aiContent = response.content;
+        _aiLoading = false;
+        _aiError = null;
+      });
     } on EngineApiException catch (e) {
       setState(() {
         _aiLoading = false;
