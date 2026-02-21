@@ -227,18 +227,25 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     try {
       final kakaoScopes =
           provider == OAuthProvider.kakao ? 'profile_nickname profile_image' : null;
-      final launchMode = (provider == OAuthProvider.kakao && !kIsWeb)
-          // Kakao auth page can hang on a white in-app browser screen on some devices.
-          // Launching externally (browser/KakaoTalk app) is more stable.
-          ? LaunchMode.externalApplication
-          : LaunchMode.inAppBrowserView;
+      final queryParams = <String, String>{
+        if (provider == OAuthProvider.kakao) 'lang': 'ko',
+        if (provider == OAuthProvider.google) 'hl': 'ko',
+      };
 
-      await _supabase().auth.signInWithOAuth(
-            provider,
+      final oauthUrl = await _supabase().auth.getOAuthSignInUrl(
+            provider: provider,
             redirectTo: _redirectToForMobile(),
             scopes: kakaoScopes,
-            authScreenLaunchMode: launchMode,
+            queryParams: queryParams.isEmpty ? null : queryParams,
           );
+      final launched = await launchUrl(
+        Uri.parse(oauthUrl.url),
+        mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView,
+        webOnlyWindowName: '_self',
+      );
+      if (!launched) {
+        throw StateError('소셜 로그인 화면을 열지 못했습니다.');
+      }
     } on AuthException catch (e) {
       if (!mounted) return;
       _oauthInFlight = false;

@@ -101,15 +101,27 @@ class _DashboardPageState extends State<DashboardPage> {
       final chartId = row['id'] as String;
       final chartJson = row['chart_json'] as Map<String, dynamic>;
       final fiveJson = row['five_elements_json'] as Map<String, dynamic>;
-      final aiRows = await _supabase()
-          .from('reports')
-          .select('content_json, created_at')
-          .eq('user_id', userId)
-          .eq('chart_id', chartId)
-          .eq('report_type', 'ai_interpretation')
-          .order('created_at', ascending: false)
-          .limit(1);
-      final aiContent = (aiRows as List).isEmpty
+      List<dynamic> aiRows = const [];
+      try {
+        aiRows = await _supabase()
+            .from('reports')
+            .select('content_json, created_at')
+            .eq('user_id', userId)
+            .eq('chart_id', chartId)
+            .eq('report_type', 'ai_interpretation')
+            .order('created_at', ascending: false)
+            .limit(1);
+      } on PostgrestException catch (e) {
+        // Backward compatibility: some DBs may not have enum value yet.
+        // In that case, treat it as "no AI report yet" instead of failing the whole dashboard.
+        final msg = e.message.toLowerCase();
+        if (!(msg.contains('invalid input value for enum report_type') &&
+            msg.contains('ai_interpretation'))) {
+          rethrow;
+        }
+        aiRows = const [];
+      }
+      final aiContent = aiRows.isEmpty
           ? null
           : (aiRows.first['content_json'] as Map).cast<String, dynamic>();
 
