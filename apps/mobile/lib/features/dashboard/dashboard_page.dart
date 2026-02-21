@@ -421,6 +421,90 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _deleteAiInterpretation() async {
+    final chartId = _chartId;
+    if (chartId == null || chartId.isEmpty) {
+      setState(() {
+        _aiError = '삭제할 AI 해석이 없습니다.';
+      });
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('AI 사주풀이 삭제'),
+        content: const Text('현재 프로필의 AI 사주풀이 결과를 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() {
+      _aiLoading = true;
+      _aiError = null;
+      _aiRequestId = null;
+    });
+
+    try {
+      final session = _supabase().auth.currentSession;
+      if (session == null) {
+        throw StateError('로그인이 필요합니다.');
+      }
+      final userId = session.user.id;
+      await _supabase()
+          .from('reports')
+          .delete()
+          .eq('user_id', userId)
+          .eq('chart_id', chartId)
+          .eq('report_type', 'ai_interpretation');
+
+      if (!mounted) return;
+      setState(() {
+        _aiLoading = false;
+        _aiContent = null;
+        _aiError = null;
+        _aiRequestId = null;
+      });
+    } on PostgrestException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('invalid input value for enum report_type') &&
+          msg.contains('ai_interpretation')) {
+        if (!mounted) return;
+        setState(() {
+          _aiLoading = false;
+          _aiContent = null;
+          _aiError = null;
+          _aiRequestId = null;
+        });
+        return;
+      }
+      setState(() {
+        _aiLoading = false;
+        _aiError = e.message;
+      });
+    } on StateError catch (e) {
+      setState(() {
+        _aiLoading = false;
+        _aiError = e.message;
+      });
+    } catch (_) {
+      setState(() {
+        _aiLoading = false;
+        _aiError = 'AI 사주풀이 삭제에 실패했습니다.';
+      });
+    }
+  }
+
   Future<void> _recalculateFromSelectedBirthProfile() async {
     setState(() {
       _loading = true;
@@ -614,6 +698,7 @@ class _DashboardPageState extends State<DashboardPage> {
               requestId: _aiRequestId,
               content: _aiContent,
               onGenerate: _generateAiInterpretation,
+              onDelete: _deleteAiInterpretation,
             ),
             const SizedBox(height: 10),
           ],
@@ -966,6 +1051,7 @@ class _AiInterpretationSection extends StatelessWidget {
     required this.requestId,
     required this.content,
     required this.onGenerate,
+    required this.onDelete,
   });
 
   final bool loading;
@@ -973,6 +1059,7 @@ class _AiInterpretationSection extends StatelessWidget {
   final String? requestId;
   final Map<String, dynamic>? content;
   final VoidCallback onGenerate;
+  final VoidCallback onDelete;
 
   static List<String> _toStringList(dynamic value) {
     if (value is! List) return const [];
@@ -997,9 +1084,19 @@ class _AiInterpretationSection extends StatelessWidget {
     );
   }
 
+  String _sanitizeSummary(String? value) {
+    if (value == null) return '';
+    final normalized = value.trim();
+    const legacyPrefix = '현재 AI 응답이 불안정해 기본 해석으로 제공합니다.';
+    if (normalized.startsWith(legacyPrefix)) {
+      return normalized.substring(legacyPrefix.length).trim();
+    }
+    return normalized;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final summary = content?['summary']?.toString().trim();
+    final summary = _sanitizeSummary(content?['summary']?.toString());
     final traits = _toStringList(content?['coreTraits']);
     final strengths = _toStringList(content?['strengths']);
     final cautions = _toStringList(content?['cautions']);
@@ -1075,7 +1172,7 @@ class _AiInterpretationSection extends StatelessWidget {
               ),
             ),
           ] else ...[
-            if (summary != null && summary.isNotEmpty) ...[
+            if (summary.isNotEmpty) ...[
               Text(summary, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 10),
             ],
@@ -1137,6 +1234,15 @@ class _AiInterpretationSection extends StatelessWidget {
                 disclaimer,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: loading ? null : onDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('사주풀이 결과 삭제'),
+              ),
+            ),
           ],
         ],
       ),
