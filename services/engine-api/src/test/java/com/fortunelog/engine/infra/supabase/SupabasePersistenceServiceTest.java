@@ -134,4 +134,41 @@ class SupabasePersistenceServiceTest {
         assertTrue(second.getPath().contains("/rest/v1/reports"));
         assertTrue(!second.getPath().contains("on_conflict="));
     }
+
+    @Test
+    void shouldUpdateExistingNonDailyReportWhenFallbackInsertHitsDuplicate() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(400).setBody(
+                "{\"code\":\"42P10\",\"message\":\"there is no unique or exclusion constraint matching the ON CONFLICT specification\"}"
+        ));
+        server.enqueue(new MockResponse().setResponseCode(409).setBody(
+                "{\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"reports_user_chart_type_unique\\\"\"}"
+        ));
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"report-existing\"}]"));
+
+        String id = service.upsertNonDailyReport(
+                "user-1",
+                "chart-1",
+                "ai_interpretation",
+                Map.of("summary", "updated"),
+                true,
+                true
+        );
+
+        assertEquals("report-existing", id);
+
+        RecordedRequest first = server.takeRequest();
+        assertTrue(first.getPath().contains("/rest/v1/reports"));
+        assertTrue(first.getPath().contains("on_conflict=user_id%2Cchart_id%2Creport_type"));
+
+        RecordedRequest second = server.takeRequest();
+        assertTrue(second.getPath().contains("/rest/v1/reports"));
+        assertTrue(!second.getPath().contains("on_conflict="));
+
+        RecordedRequest third = server.takeRequest();
+        assertEquals("PATCH", third.getMethod());
+        assertTrue(third.getPath().contains("/rest/v1/reports"));
+        assertTrue(third.getPath().contains("user_id=eq.user-1"));
+        assertTrue(third.getPath().contains("chart_id=eq.chart-1"));
+        assertTrue(third.getPath().contains("report_type=eq.ai_interpretation"));
+    }
 }

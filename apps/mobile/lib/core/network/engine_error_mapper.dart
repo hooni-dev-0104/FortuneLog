@@ -27,6 +27,8 @@ class EngineErrorMapper {
         return 'AI 해석 생성이 지연되고 있습니다. 잠시 후 다시 시도해주세요.';
       case 'AI_RESPONSE_INVALID':
         return 'AI 해석 결과를 읽지 못했습니다. 잠시 후 다시 시도해주세요.';
+      case 'INTERNAL_ERROR':
+        return '서버 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       default:
         // Avoid leaking internal phrasing like "request validation failed" to users.
         final msg = e.message.trim();
