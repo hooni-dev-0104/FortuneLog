@@ -323,34 +323,43 @@ class _DashboardPageState extends State<DashboardPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
-        if (_birthProfiles.isNotEmpty) ...[
-          PageSection(
-            title: '출생 프로필 선택',
-            subtitle: '선택한 프로필 기준으로 대시보드가 표시됩니다.',
-            trailing: TextButton(
-              onPressed: () => Navigator.pushNamed(context, BirthProfileListPage.routeName)
-                  .then((_) => _refresh()),
-              child: const Text('관리'),
-            ),
-            child: DropdownButtonFormField<String>(
-              value: _selectedBirthProfileId,
-              items: _birthProfiles
-                  .map(
-                    (p) => DropdownMenuItem<String>(
-                      value: p['id'] as String,
-                      child: Text(_birthProfileLabel(p)),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value == null || value == _selectedBirthProfileId) return;
-                setState(() => _selectedBirthProfileId = value);
-                _refresh();
-              },
-            ),
+        PageSection(
+          title: '출생 프로필 선택',
+          subtitle: _birthProfiles.isEmpty
+              ? '등록된 출생 프로필이 없습니다. 먼저 프로필을 추가해주세요.'
+              : '선택한 프로필 기준으로 대시보드가 표시됩니다.',
+          trailing: TextButton(
+            onPressed: () => Navigator.pushNamed(context, BirthProfileListPage.routeName)
+                .then((_) => _refresh()),
+            child: const Text('관리'),
           ),
-          const SizedBox(height: 10),
-        ],
+          child: _birthProfiles.isEmpty
+              ? SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonal(
+                    onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName)
+                        .then((_) => _refresh()),
+                    child: const Text('출생 프로필 추가'),
+                  ),
+                )
+              : DropdownButtonFormField<String>(
+                  value: _selectedBirthProfileId,
+                  items: _birthProfiles
+                      .map(
+                        (p) => DropdownMenuItem<String>(
+                          value: p['id'] as String,
+                          child: Text(_birthProfileLabel(p)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null || value == _selectedBirthProfileId) return;
+                    setState(() => _selectedBirthProfileId = value);
+                    _refresh();
+                  },
+                ),
+        ),
+        const SizedBox(height: 10),
         if (_error != null) ...[
           StatusNotice.error(message: _error!, requestId: _requestId ?? 'dashboard'),
           const SizedBox(height: 10),
