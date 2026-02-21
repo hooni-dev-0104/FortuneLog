@@ -196,10 +196,20 @@ public class GeminiAnalysisClient {
                 .build();
 
         HttpResponse<String> response;
+        long startedAt = System.currentTimeMillis();
         try {
+            log.info("outgoing request: target=openai method=POST url={} model={}", uri, model);
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            long elapsedMs = System.currentTimeMillis() - startedAt;
+            log.info(
+                    "outgoing response: target=openai method=POST url={} status={} elapsedMs={} model={}",
+                    uri,
+                    response.statusCode(),
+                    elapsedMs,
+                    model
+            );
         } catch (HttpTimeoutException e) {
-            log.warn("openai call timeout: {}", e.getMessage());
+            log.warn("openai call timeout: url={} model={} message={}", uri, model, e.getMessage());
             throw new ApiClientException(
                     "AI_GENERATION_TIMEOUT",
                     HttpStatus.BAD_GATEWAY,
@@ -207,14 +217,14 @@ public class GeminiAnalysisClient {
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("openai call interrupted: {}", e.getMessage());
+            log.warn("openai call interrupted: url={} model={} message={}", uri, model, e.getMessage());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,
                     "AI 해석 생성에 실패했습니다. 잠시 후 다시 시도해주세요."
             );
         } catch (IOException e) {
-            log.warn("openai call failed before response: {}", e.toString());
+            log.warn("openai call failed before response: url={} model={} message={}", uri, model, e.toString());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,
@@ -223,7 +233,7 @@ public class GeminiAnalysisClient {
         }
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            log.warn("openai call failed: status={}, body={}", response.statusCode(), response.body());
+            log.warn("openai call failed: url={} model={} status={}, body={}", uri, model, response.statusCode(), response.body());
             throw new ApiClientException(
                     "AI_GENERATION_FAILED",
                     HttpStatus.BAD_GATEWAY,

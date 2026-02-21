@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,7 @@ import java.util.Map;
 
 @Service
 public class SupabasePersistenceService {
+    private static final Logger log = LoggerFactory.getLogger(SupabasePersistenceService.class);
 
     public record ChartSnapshot(
             Map<String, String> chart,
@@ -325,8 +328,9 @@ public class SupabasePersistenceService {
             throw new IllegalStateException("failed to serialize request body", e);
         }
 
+        URI uri = URI.create(supabaseUrl + path);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(supabaseUrl + path))
+                .uri(uri)
                 .timeout(requestTimeout)
                 .header("apikey", serviceRoleKey)
                 .header("Authorization", "Bearer " + serviceRoleKey)
@@ -336,8 +340,18 @@ public class SupabasePersistenceService {
                 .build();
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            long startedAt = System.currentTimeMillis();
             try {
+                log.info("outgoing request: target=supabase method=POST url={} attempt={}", uri, attempt + 1);
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                long elapsedMs = System.currentTimeMillis() - startedAt;
+                log.info(
+                        "outgoing response: target=supabase method=POST url={} attempt={} status={} elapsedMs={}",
+                        uri,
+                        attempt + 1,
+                        response.statusCode(),
+                        elapsedMs
+                );
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
                     return response.body();
                 }
@@ -346,10 +360,22 @@ public class SupabasePersistenceService {
                     throw new IllegalStateException("supabase insert failed: " + response.statusCode() + " " + response.body());
                 }
             } catch (HttpConnectTimeoutException e) {
+                log.warn(
+                        "outgoing timeout: target=supabase method=POST url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.getMessage()
+                );
                 if (attempt == maxRetries) {
                     throw new IllegalStateException("supabase request timeout", e);
                 }
             } catch (IOException e) {
+                log.warn(
+                        "outgoing io error: target=supabase method=POST url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.toString()
+                );
                 if (attempt == maxRetries) {
                     throw new IllegalStateException("failed to call Supabase", e);
                 }
@@ -365,8 +391,9 @@ public class SupabasePersistenceService {
     }
 
     private String sendGet(String path) {
+        URI uri = URI.create(supabaseUrl + path);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(supabaseUrl + path))
+                .uri(uri)
                 .timeout(requestTimeout)
                 .header("apikey", serviceRoleKey)
                 .header("Authorization", "Bearer " + serviceRoleKey)
@@ -375,8 +402,18 @@ public class SupabasePersistenceService {
                 .build();
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            long startedAt = System.currentTimeMillis();
             try {
+                log.info("outgoing request: target=supabase method=GET url={} attempt={}", uri, attempt + 1);
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                long elapsedMs = System.currentTimeMillis() - startedAt;
+                log.info(
+                        "outgoing response: target=supabase method=GET url={} attempt={} status={} elapsedMs={}",
+                        uri,
+                        attempt + 1,
+                        response.statusCode(),
+                        elapsedMs
+                );
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
                     return response.body();
                 }
@@ -385,10 +422,22 @@ public class SupabasePersistenceService {
                     throw new IllegalStateException("supabase select failed: " + response.statusCode() + " " + response.body());
                 }
             } catch (HttpConnectTimeoutException e) {
+                log.warn(
+                        "outgoing timeout: target=supabase method=GET url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.getMessage()
+                );
                 if (attempt == maxRetries) {
                     throw new IllegalStateException("supabase request timeout", e);
                 }
             } catch (IOException e) {
+                log.warn(
+                        "outgoing io error: target=supabase method=GET url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.toString()
+                );
                 if (attempt == maxRetries) {
                     throw new IllegalStateException("failed to call Supabase", e);
                 }
@@ -411,8 +460,9 @@ public class SupabasePersistenceService {
             throw new IllegalStateException("failed to serialize request body", e);
         }
 
+        URI uri = URI.create(supabaseUrl + path);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(supabaseUrl + path))
+                .uri(uri)
                 .timeout(requestTimeout)
                 .header("apikey", serviceRoleKey)
                 .header("Authorization", "Bearer " + serviceRoleKey)
@@ -422,8 +472,18 @@ public class SupabasePersistenceService {
                 .build();
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            long startedAt = System.currentTimeMillis();
             try {
+                log.info("outgoing request: target=supabase method=PATCH url={} attempt={}", uri, attempt + 1);
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                long elapsedMs = System.currentTimeMillis() - startedAt;
+                log.info(
+                        "outgoing response: target=supabase method=PATCH url={} attempt={} status={} elapsedMs={}",
+                        uri,
+                        attempt + 1,
+                        response.statusCode(),
+                        elapsedMs
+                );
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
                     return response.body();
                 }
@@ -432,10 +492,22 @@ public class SupabasePersistenceService {
                     throw new IllegalStateException("supabase update failed: " + response.statusCode() + " " + response.body());
                 }
             } catch (HttpConnectTimeoutException e) {
+                log.warn(
+                        "outgoing timeout: target=supabase method=PATCH url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.getMessage()
+                );
                 if (attempt == maxRetries) {
                     throw new IllegalStateException("supabase request timeout", e);
                 }
             } catch (IOException e) {
+                log.warn(
+                        "outgoing io error: target=supabase method=PATCH url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.toString()
+                );
                 if (attempt == maxRetries) {
                     throw new IllegalStateException("failed to call Supabase", e);
                 }

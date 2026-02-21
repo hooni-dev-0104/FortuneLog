@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -12,6 +14,7 @@ import java.util.UUID;
 
 public class RequestIdFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(RequestIdFilter.class);
     public static final String REQUEST_ID_KEY = "requestId";
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
 
@@ -22,12 +25,23 @@ public class RequestIdFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String requestId = resolveIncomingRequestId(request);
+        long startedAt = System.currentTimeMillis();
+        String requestUrl = buildRequestUrl(request);
         request.setAttribute(REQUEST_ID_KEY, requestId);
         response.setHeader(REQUEST_ID_HEADER, requestId);
         MDC.put(REQUEST_ID_KEY, requestId);
         try {
             filterChain.doFilter(request, response);
         } finally {
+            long elapsedMs = System.currentTimeMillis() - startedAt;
+            log.info(
+                    "incoming request: id={}, method={}, url={}, status={}, elapsedMs={}",
+                    requestId,
+                    request.getMethod(),
+                    requestUrl,
+                    response.getStatus(),
+                    elapsedMs
+            );
             MDC.remove(REQUEST_ID_KEY);
         }
     }
@@ -42,5 +56,14 @@ public class RequestIdFilter extends OncePerRequestFilter {
             return UUID.randomUUID().toString();
         }
         return trimmed;
+    }
+
+    private String buildRequestUrl(HttpServletRequest request) {
+        StringBuilder url = new StringBuilder(request.getRequestURL());
+        String queryString = request.getQueryString();
+        if (queryString != null && !queryString.isBlank()) {
+            url.append('?').append(queryString);
+        }
+        return url.toString();
     }
 }
