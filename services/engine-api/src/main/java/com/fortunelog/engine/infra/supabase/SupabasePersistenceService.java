@@ -18,8 +18,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -279,6 +282,170 @@ public class SupabasePersistenceService {
             return new ChartSnapshot(chart, fiveElements);
         } catch (IllegalArgumentException | JsonProcessingException e) {
             throw new IllegalStateException("failed to parse Supabase chart response", e);
+        }
+    }
+
+    public boolean registerPaymentWebhookEvent(
+            String provider,
+            String providerOrderId,
+            String eventId,
+            String userId,
+            JsonNode payload
+    ) {
+        Map<String, Object> body = Map.of(
+                "idempotency_key", provider + ":" + providerOrderId + ":" + eventId,
+                "provider", provider,
+                "provider_order_id", providerOrderId,
+                "event_id", eventId,
+                "user_id", userId,
+                "payload", payload
+        );
+
+        try {
+            insertReturningId("payment_webhook_events", body);
+            return false;
+        } catch (IllegalStateException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (isUniqueViolation(msg)) {
+                return true;
+            }
+            throw e;
+        }
+    }
+
+    public boolean updateOrderStatus(String provider, String providerOrderId, String status) {
+        ensureConfigured();
+        String path = "/rest/v1/orders"
+                + "?select=" + URLEncoder.encode("id,status", StandardCharsets.UTF_8)
+                + "&provider=" + URLEncoder.encode("eq." + provider, StandardCharsets.UTF_8)
+                + "&provider_order_id=" + URLEncoder.encode("eq." + providerOrderId, StandardCharsets.UTF_8);
+        String responseBody = sendPatch(path, Map.of("status", status));
+        return parseArraySize(responseBody) > 0;
+    }
+
+    public boolean upsertSubscriptionSnapshot(
+            String userId,
+            String planCode,
+            String status,
+            String startedAtIso,
+            String expiresAtIso
+    ) {
+        ensureConfigured();
+        String findPath = "/rest/v1/subscriptions"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&plan_code=" + URLEncoder.encode("eq." + planCode, StandardCharsets.UTF_8)
+                + "&order=" + URLEncoder.encode("created_at.desc", StandardCharsets.UTF_8)
+                + "&limit=1";
+
+        String findResponse = sendGet(findPath);
+        String existingId = parseFirstStringField(findResponse, "id");
+        if (existingId != null) {
+            Map<String, Object> patch = new HashMap<>();
+            patch.put("status", status);
+            if (startedAtIso != null) {
+                patch.put("started_at", startedAtIso);
+            }
+            patch.put("expires_at", expiresAtIso);
+
+            String patchPath = "/rest/v1/subscriptions"
+                    + "?select=" + URLEncoder.encode("id,status", StandardCharsets.UTF_8)
+                    + "&id=" + URLEncoder.encode("eq." + existingId, StandardCharsets.UTF_8);
+            String responseBody = sendPatch(patchPath, patch);
+            return parseArraySize(responseBody) > 0;
+        }
+
+        Map<String, Object> insert = new HashMap<>();
+        insert.put("user_id", userId);
+        insert.put("plan_code", planCode);
+        insert.put("status", status);
+        insert.put("started_at", startedAtIso == null ? Instant.now().toString() : startedAtIso);
+        insert.put("expires_at", expiresAtIso);
+        insertReturningId("subscriptions", insert);
+        return true;
+    }
+
+    public boolean hasActiveEntitlement(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/subscriptions"
+                + "?select=" + URLEncoder.encode("status,expires_at", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&status=" + URLEncoder.encode("in.(active,grace)", StandardCharsets.UTF_8);
+        String responseBody = sendGet(path);
+
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray() || node.isEmpty()) {
+                return false;
+            }
+
+            Instant now = Instant.now();
+            for (JsonNode row : node) {
+                JsonNode expiresNode = row.get("expires_at");
+                if (expiresNode == null || expiresNode.isNull() || expiresNode.asText().isBlank()) {
+                    return true;
+                }
+                try {
+                    Instant expiresAt = Instant.parse(expiresNode.asText());
+                    if (!expiresAt.isBefore(now)) {
+                        return true;
+                    }
+                } catch (DateTimeParseException ignored) {
+                    // Ignore malformed rows and continue checking others.
+                }
+            }
+            return false;
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse entitlement response", e);
+        }
+    }
+
+    public boolean hasPaidOrder(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/orders"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&status=" + URLEncoder.encode("eq.paid", StandardCharsets.UTF_8)
+                + "&limit=1";
+        String responseBody = sendGet(path);
+        return parseArraySize(responseBody) > 0;
+    }
+
+    public int updatePaidReportVisibility(String userId, boolean visible) {
+        ensureConfigured();
+        String path = "/rest/v1/reports"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&is_paid_content=is.true";
+        String responseBody = sendPatch(path, Map.of("visible", visible));
+        return parseArraySize(responseBody);
+    }
+
+    private int parseArraySize(String responseBody) {
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray()) {
+                throw new IllegalStateException("response is not an array");
+            }
+            return node.size();
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse Supabase response", e);
+        }
+    }
+
+    private String parseFirstStringField(String responseBody, String fieldName) {
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray() || node.isEmpty()) {
+                return null;
+            }
+            JsonNode value = node.get(0).get(fieldName);
+            if (value == null || value.isNull()) {
+                return null;
+            }
+            return value.asText();
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse Supabase response", e);
         }
     }
 

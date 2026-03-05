@@ -93,6 +93,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/engine/v1/health").permitAll()
+                        .requestMatchers("/engine/v1/payments:webhook").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> {

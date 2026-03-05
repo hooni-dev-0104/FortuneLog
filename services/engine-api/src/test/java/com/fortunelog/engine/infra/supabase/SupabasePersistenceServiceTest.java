@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SupabasePersistenceServiceTest {
@@ -170,5 +171,113 @@ class SupabasePersistenceServiceTest {
         assertTrue(third.getPath().contains("user_id=eq.user-1"));
         assertTrue(third.getPath().contains("chart_id=eq.chart-1"));
         assertTrue(third.getPath().contains("report_type=eq.ai_interpretation"));
+    }
+
+    @Test
+    void shouldMarkWebhookEventAsDuplicateWhenUniqueConstraintHits() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(409).setBody(
+                "{\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"payment_webhook_events_idempotency_key_key\\\"\"}"
+        ));
+
+        boolean duplicate = service.registerPaymentWebhookEvent(
+                "appstore",
+                "order-1",
+                "evt-1",
+                "11111111-1111-1111-1111-111111111111",
+                new ObjectMapper().readTree("{\"kind\":\"test\"}")
+        );
+
+        assertTrue(duplicate);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/payment_webhook_events"));
+    }
+
+    @Test
+    void shouldUpdateOrderStatusByProviderAndProviderOrderId() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"order-1\"}]"));
+
+        boolean updated = service.updateOrderStatus("appstore", "order-1", "paid");
+
+        assertTrue(updated);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("PATCH", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/orders"));
+        assertTrue(request.getPath().contains("provider=eq.appstore"));
+        assertTrue(request.getPath().contains("provider_order_id=eq.order-1"));
+    }
+
+    @Test
+    void shouldUpsertSubscriptionByUpdatingExistingSnapshot() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"sub-1\"}]"));
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"sub-1\"}]"));
+
+        boolean updated = service.upsertSubscriptionSnapshot(
+                "user-1",
+                "premium_monthly",
+                "active",
+                "2026-03-05T00:00:00Z",
+                "2026-04-05T00:00:00Z"
+        );
+
+        assertTrue(updated);
+
+        RecordedRequest find = server.takeRequest();
+        assertEquals("GET", find.getMethod());
+        assertTrue(find.getPath().contains("/rest/v1/subscriptions"));
+        assertTrue(find.getPath().contains("user_id=eq.user-1"));
+        assertTrue(find.getPath().contains("plan_code=eq.premium_monthly"));
+
+        RecordedRequest patch = server.takeRequest();
+        assertEquals("PATCH", patch.getMethod());
+        assertTrue(patch.getPath().contains("/rest/v1/subscriptions"));
+        assertTrue(patch.getPath().contains("id=eq.sub-1"));
+    }
+
+    @Test
+    void shouldDetectActiveEntitlementFromSubscriptionRows() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody(
+                "[{\"status\":\"grace\",\"expires_at\":\"2099-01-01T00:00:00Z\"}]"
+        ));
+
+        boolean entitled = service.hasActiveEntitlement("user-1");
+
+        assertTrue(entitled);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/subscriptions"));
+        assertTrue(request.getPath().contains("status=in.%28active%2Cgrace%29"));
+    }
+
+    @Test
+    void shouldReturnFalseWhenNoPaidOrderExists() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[]"));
+
+        boolean hasPaidOrder = service.hasPaidOrder("user-1");
+
+        assertFalse(hasPaidOrder);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/orders"));
+        assertTrue(request.getPath().contains("status=eq.paid"));
+    }
+
+    @Test
+    void shouldUpdatePaidReportVisibilityAndReturnAffectedCount() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"r1\"},{\"id\":\"r2\"}]"));
+
+        int updated = service.updatePaidReportVisibility("user-1", false);
+
+        assertEquals(2, updated);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("PATCH", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/reports"));
+        assertTrue(request.getPath().contains("user_id=eq.user-1"));
+        assertTrue(request.getPath().contains("is_paid_content=is.true"));
     }
 }

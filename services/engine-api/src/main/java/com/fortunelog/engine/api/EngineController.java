@@ -2,6 +2,7 @@ package com.fortunelog.engine.api;
 
 import com.fortunelog.engine.application.EngineService;
 import com.fortunelog.engine.application.EngineVersion;
+import com.fortunelog.engine.application.PaymentWebhookService;
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
 import com.fortunelog.engine.application.dto.GenerateAiInterpretationRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
@@ -14,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,10 +29,16 @@ import jakarta.servlet.http.HttpServletRequest;
 public class EngineController {
 
     private final EngineService engineService;
+    private final PaymentWebhookService paymentWebhookService;
     private final Environment env;
 
-    public EngineController(EngineService engineService, Environment env) {
+    public EngineController(
+            EngineService engineService,
+            PaymentWebhookService paymentWebhookService,
+            Environment env
+    ) {
         this.engineService = engineService;
+        this.paymentWebhookService = paymentWebhookService;
         this.env = env;
     }
 
@@ -118,6 +126,25 @@ public class EngineController {
                         "authDebug", authDebug
                 ),
                 "jwkSetUri", jwkSetUri
+        );
+    }
+
+    @PostMapping("/payments:webhook")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, Object> processPaymentWebhook(
+            @RequestBody String rawPayload,
+            @RequestHeader(name = "X-Payment-Signature", required = false) String signature,
+            HttpServletRequest httpRequest
+    ) {
+        var result = paymentWebhookService.processWebhook(rawPayload, signature);
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "duplicate", result.duplicate(),
+                "orderUpdated", result.orderUpdated(),
+                "subscriptionUpdated", result.subscriptionUpdated(),
+                "entitled", result.entitled(),
+                "reportsUpdated", result.reportsUpdated(),
+                "idempotencyKey", result.idempotencyKey()
         );
     }
 

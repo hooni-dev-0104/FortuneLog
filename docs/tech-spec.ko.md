@@ -202,6 +202,21 @@ FortuneLog/
 ## 7.2 보안
 - 웹훅 서명 검증 필수
 - 중복 이벤트 idempotency key 처리
+  - P0 기준 키 포맷: `provider + provider_order_id + event_id`
+  - 동일 키 재수신 시 DB 상태 변경 없이 200 응답(멱등 성공) 처리
+
+## 7.3 P0 웹훅 운영 메모 (최소)
+- 이벤트 처리 순서
+  1. 서명/타임스탬프 검증
+  2. idempotency key 확인
+  3. `orders` 상태 반영
+  4. `subscriptions` 상태 반영(active/grace/expired/canceled)
+  5. 유료 콘텐츠 가시성(`reports.visible`) 반영
+- 실패 처리
+  - 일시 오류는 재시도, 최대 재시도 초과 시 DLQ에 적재
+  - DLQ 재처리 시에도 동일 idempotency key 규칙 유지
+- 관측 필드(로그/알람 공통)
+  - `provider`, `provider_order_id`, `event_id`, `idempotency_key`, `requestId`
 
 ## 8. 배치/스케줄
 
