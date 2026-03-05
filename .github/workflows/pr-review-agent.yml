@@ -1,0 +1,183 @@
+name: PR Review Agent
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            mobile:
+              - 'apps/mobile/**'
+            engine:
+              - 'services/engine-api/**'
+            docs:
+              - 'docs/**'
+              - '.github/workflows/**'
+
+      - name: Set up Java 21
+        if: steps.changes.outputs.engine == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Flutter
+        if: steps.changes.outputs.mobile == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Engine tests
+        id: engine_tests
+        if: steps.changes.outputs.engine == 'true'
+        continue-on-error: true
+        working-directory: services/engine-api
+        run: ./gradlew test --no-daemon
+
+      - name: Mobile dependencies
+        id: mobile_deps
+        if: steps.changes.outputs.mobile == 'true'
+        continue-on-error: true
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      - name: Mobile analyze
+        id: mobile_analyze
+        if: steps.changes.outputs.mobile == 'true'
+        continue-on-error: true
+        working-directory: apps/mobile
+        run: flutter analyze
+
+      - name: Mobile tests
+        id: mobile_tests
+        if: steps.changes.outputs.mobile == 'true'
+        continue-on-error: true
+        working-directory: apps/mobile
+        run: flutter test --reporter expanded
+
+      - name: Build review report
+        id: report
+        if: always()
+        run: |
+          failed=false
+          report="<!-- pr-review-agent -->"$'\n'
+          report+="## PR Review Agent"$'\n'
+          report+=$'\n'
+          report+="### Scope"$'\n'
+          report+="- Mobile changes: `${{ steps.changes.outputs.mobile }}`"$'\n'
+          report+="- Engine changes: `${{ steps.changes.outputs.engine }}`"$'\n'
+          report+="- Docs/Workflow changes: `${{ steps.changes.outputs.docs }}`"$'\n'
+          report+=$'\n'
+          report+="### Checks"$'\n'
+
+          if [ "${{ steps.changes.outputs.engine }}" = "true" ]; then
+            if [ "${{ steps.engine_tests.outcome }}" = "success" ]; then
+              report+="- Engine test: ✅ pass"$'\n'
+            else
+              report+="- Engine test: ❌ fail"$'\n'
+              failed=true
+            fi
+          fi
+
+          if [ "${{ steps.changes.outputs.mobile }}" = "true" ]; then
+            if [ "${{ steps.mobile_deps.outcome }}" = "success" ]; then
+              report+="- Mobile deps: ✅ pass"$'\n'
+            else
+              report+="- Mobile deps: ❌ fail"$'\n'
+              failed=true
+            fi
+
+            if [ "${{ steps.mobile_analyze.outcome }}" = "success" ]; then
+              report+="- Mobile analyze: ✅ pass"$'\n'
+            else
+              report+="- Mobile analyze: ❌ fail"$'\n'
+              failed=true
+            fi
+
+            if [ "${{ steps.mobile_tests.outcome }}" = "success" ]; then
+              report+="- Mobile test: ✅ pass"$'\n'
+            else
+              report+="- Mobile test: ❌ fail"$'\n'
+              failed=true
+            fi
+          fi
+
+          if [ "${{ steps.changes.outputs.mobile }}" != "true" ] && [ "${{ steps.changes.outputs.engine }}" != "true" ]; then
+            report+="- No code-path checks required for this PR scope."$'\n'
+          fi
+
+          report+=$'\n'
+          report+="_This comment is updated automatically on each PR sync._"$'\n'
+
+          {
+            echo "failed=$failed"
+            echo "body<<'EOF'"
+            echo "$report"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upsert PR review comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- pr-review-agent -->';
+            const body = `${{ toJson(steps.report.outputs.body) }}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Fail on review check failure
+        if: always()
+        run: |
+          if [ "${{ steps.report.outputs.failed }}" = "true" ]; then
+            echo "PR Review Agent checks failed."
+            exit 1
+          fi
+          echo "PR Review Agent checks passed."
