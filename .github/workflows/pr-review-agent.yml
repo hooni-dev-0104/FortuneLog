@@ -131,9 +131,9 @@ jobs:
 
           {
             echo "failed=$failed"
-            echo "body<<'EOF'"
-            echo "$report"
-            echo "EOF"
+            echo "body<<__BODY__"
+            printf '%s\n' "$report"
+            echo "__BODY__"
           } >> "$GITHUB_OUTPUT"
 
       - name: Upsert PR review comment
