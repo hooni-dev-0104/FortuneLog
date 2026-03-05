@@ -47,6 +47,26 @@ Supabase Dashboard > Authentication > URL Configuration 의 Additional Redirect 
 
 각 결과는 화면 하단 JSON으로 표시됩니다.
 
+## 5. PR CI 게이트(모바일) 사전 점검
+
+모바일 관련 변경(`apps/mobile/**` 또는 `.github/workflows/mobile-ci.yml`)이 포함된 PR에서는 GitHub Actions `Mobile App CI`가 아래 순서로 실행됩니다.
+
+1. `flutter analyze --no-fatal-infos`
+2. `flutter test --reporter expanded`
+3. `flutter build apk --debug` (PR에서만 실행되는 빌드 게이트)
+
+PR 열기 전 로컬에서 동일 체크를 미리 실행하려면:
+
+```bash
+cd /Users/hooni/FortuneLog/apps/mobile
+flutter pub get
+flutter analyze --no-fatal-infos
+flutter test --reporter expanded
+flutter build apk --debug
+```
+
+참고: APK 빌드 단계는 PR에서만 강제되어, 기본 브랜치 push 대비 CI 런타임 비용을 줄이도록 구성되어 있습니다.
+
 ## 참고
 
 - `lunar` 입력도 지원되며 윤달 값 검증 실패 시 에러 메시지가 상세히 표시됩니다.
