@@ -79,6 +79,7 @@ jobs:
         id: report
         if: always()
         run: |
+          set +e
           failed=false
           report="<!-- pr-review-agent -->"$'\n'
           report+="## PR Review Agent"$'\n'
