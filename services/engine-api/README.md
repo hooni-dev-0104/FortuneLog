@@ -21,6 +21,23 @@ gradle wrapper
 ./gradlew bootRun
 ```
 
+## PR CI preflight (engine-api)
+
+For engine-related PRs, GitHub Actions runs these checks:
+
+1. `./gradlew test --no-daemon`
+2. `./gradlew assemble --no-daemon` (PR build gate)
+
+Run the same commands locally before opening a PR:
+
+```bash
+cd services/engine-api
+./gradlew test --no-daemon
+./gradlew assemble --no-daemon
+```
+
+`assemble` is intended as a pull-request build gate to catch packaging/build issues before merge.
+
 ## Endpoints
 
 - `GET /engine/v1/health`
