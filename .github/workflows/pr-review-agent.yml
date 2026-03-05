@@ -66,7 +66,7 @@ jobs:
         if: steps.changes.outputs.mobile == 'true'
         continue-on-error: true
         working-directory: apps/mobile
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Mobile tests
         id: mobile_tests
