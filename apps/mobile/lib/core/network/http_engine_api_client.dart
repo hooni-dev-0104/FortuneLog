@@ -23,14 +23,18 @@ class HttpEngineApiClient implements EngineApiClient {
   }) : _httpClient = httpClient ?? http.Client();
 
   @override
-  Future<ChartResponseDto> calculateChart(CalculateChartRequestDto request) async {
-    final jsonMap = await _post('/engine/v1/charts:calculate', request.toJson());
+  Future<ChartResponseDto> calculateChart(
+      CalculateChartRequestDto request) async {
+    final jsonMap =
+        await _post('/engine/v1/charts:calculate', request.toJson());
     return ChartResponseDto.fromJson(jsonMap);
   }
 
   @override
-  Future<ReportResponseDto> generateReport(GenerateReportRequestDto request) async {
-    final jsonMap = await _post('/engine/v1/reports:generate', request.toJson());
+  Future<ReportResponseDto> generateReport(
+      GenerateReportRequestDto request) async {
+    final jsonMap =
+        await _post('/engine/v1/reports:generate', request.toJson());
     return ReportResponseDto.fromJson(jsonMap);
   }
 
@@ -38,7 +42,8 @@ class HttpEngineApiClient implements EngineApiClient {
   Future<ReportResponseDto> generateAiInterpretation(
     GenerateAiInterpretationRequestDto request,
   ) async {
-    final jsonMap = await _post('/engine/v1/reports:interpret', request.toJson());
+    final jsonMap =
+        await _post('/engine/v1/reports:interpret', request.toJson());
     return ReportResponseDto.fromJson(jsonMap);
   }
 
@@ -50,7 +55,17 @@ class HttpEngineApiClient implements EngineApiClient {
     return DailyFortuneResponseDto.fromJson(jsonMap);
   }
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
+  @override
+  Future<AccountDeletionResponseDto> requestAccountDeletion(
+    RequestAccountDeletionRequestDto request,
+  ) async {
+    final jsonMap =
+        await _post('/engine/v1/accounts:deletion-request', request.toJson());
+    return AccountDeletionResponseDto.fromJson(jsonMap);
+  }
+
+  Future<Map<String, dynamic>> _post(
+      String path, Map<String, dynamic> body) async {
     final token = await tokenProvider.getAccessToken();
     if (token == null || token.isEmpty) {
       throw const EngineApiException(
@@ -82,10 +97,13 @@ class HttpEngineApiClient implements EngineApiClient {
     }
 
     // Helpful for local dev; shows up in `flutter logs`.
-    debugPrint('[engine-api] POST $uri -> ${response.statusCode} (reqId=$requestId)');
+    debugPrint(
+        '[engine-api] POST $uri -> ${response.statusCode} (reqId=$requestId)');
 
     final decoded = _decodeBody(response.body);
-    final responseRequestId = (decoded['requestId'] as String?) ?? response.headers['x-request-id'] ?? requestId;
+    final responseRequestId = (decoded['requestId'] as String?) ??
+        response.headers['x-request-id'] ??
+        requestId;
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;

@@ -195,6 +195,36 @@ class SupabasePersistenceServiceTest {
     }
 
     @Test
+    void shouldFindActiveAccountDeletionRequestId() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"del-1\"}]"));
+
+        String requestId = service.findActiveAccountDeletionRequestId("user-1");
+
+        assertEquals("del-1", requestId);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/account_deletion_requests"));
+        assertTrue(request.getPath().contains("status=in.%28requested%2Cprocessing%29"));
+    }
+
+    @Test
+    void shouldCreateAccountDeletionRequestAndReturnId() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(201).setBody("[{\"id\":\"del-2\"}]"));
+
+        String requestId = service.createAccountDeletionRequest(
+                "user-1",
+                "서비스를 더 이상 사용하지 않음"
+        );
+
+        assertEquals("del-2", requestId);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/account_deletion_requests"));
+    }
+
+    @Test
     void shouldUpdateOrderStatusByProviderAndProviderOrderId() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"order-1\"}]"));
 

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/network/engine_api_client.dart';
+import '../../core/network/engine_api_client_factory.dart';
+import '../../core/network/engine_error_mapper.dart';
+import '../../core/network/http_engine_api_client.dart';
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
 import '../birth/birth_input_page.dart';
@@ -30,6 +34,7 @@ class _MyPageState extends State<MyPage> {
   ));
 
   bool _loggingOut = false;
+  bool _deletionRequestSubmitting = false;
   late Future<_CommerceSummary> _commerceSummaryFuture;
 
   @override
@@ -96,6 +101,105 @@ class _MyPageState extends State<MyPage> {
       showAppSnackBar(context, '로그아웃에 실패했습니다. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _loggingOut = false);
+    }
+  }
+
+  EngineApiClient _engineClient() {
+    final baseUrl = const String.fromEnvironment('ENGINE_BASE_URL');
+    if (baseUrl.isEmpty) {
+      throw const FormatException('ENGINE_BASE_URL is empty');
+    }
+    return EngineApiClientFactory.create(baseUrl: baseUrl);
+  }
+
+  Future<void> _requestAccountDeletion() async {
+    setState(() => _deletionRequestSubmitting = true);
+    try {
+      final response = await _engineClient().requestAccountDeletion(
+        const RequestAccountDeletionRequestDto(),
+      );
+      await Supabase.instance.client.auth.signOut();
+
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        response.alreadyRequested
+            ? '이미 탈퇴 요청이 접수된 계정입니다. 로그아웃합니다.'
+            : '탈퇴 요청이 접수되었습니다. 로그아웃합니다.',
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        LoginPage.routeName,
+        (route) => false,
+      );
+    } on FormatException catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.');
+    } on EngineApiException catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, EngineErrorMapper.userMessage(e));
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackBar(context, '탈퇴 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      if (mounted) {
+        setState(() => _deletionRequestSubmitting = false);
+      }
+    }
+  }
+
+  Future<void> _confirmAndRequestAccountDeletion() async {
+    if (_deletionRequestSubmitting || _loggingOut) {
+      return;
+    }
+
+    final proceedFirst = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('회원 탈퇴 요청'),
+        content: const Text(
+          '탈퇴 요청 시 계정 접근이 제한되며, 개인정보 비식별화/파기 작업이 순차 처리됩니다.\n'
+          '진행하시겠어요?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('다음'),
+          ),
+        ],
+      ),
+    );
+
+    if (proceedFirst != true || !mounted) {
+      return;
+    }
+
+    final proceedFinal = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('최종 확인'),
+        content: const Text(
+          '탈퇴 요청 후에는 동일 계정으로 즉시 이용할 수 없으며, 처리 완료 시 결제/구독 정보가 비활성화될 수 있습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('탈퇴 요청'),
+          ),
+        ],
+      ),
+    );
+
+    if (proceedFinal == true && mounted) {
+      await _requestAccountDeletion();
     }
   }
 
@@ -227,6 +331,22 @@ class _MyPageState extends State<MyPage> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('로그아웃'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: _deletionRequestSubmitting || _loggingOut
+                    ? null
+                    : _confirmAndRequestAccountDeletion,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: _deletionRequestSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('회원 탈퇴 요청'),
               ),
             ],
           ),
