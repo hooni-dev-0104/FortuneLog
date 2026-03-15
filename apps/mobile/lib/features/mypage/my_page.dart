@@ -314,6 +314,9 @@ class _MyPageState extends State<MyPage> {
   @override
   Widget build(BuildContext context) {
     final email = _currentEmail();
+    final termsDoc = policyDocumentSpec(PolicyDocumentType.terms);
+    final privacyDoc = policyDocumentSpec(PolicyDocumentType.privacy);
+    final refundDoc = policyDocumentSpec(PolicyDocumentType.refund);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -521,22 +524,22 @@ class _MyPageState extends State<MyPage> {
           child: Column(
             children: [
               _MenuRow(
-                title: '이용약관',
-                subtitle: '최종 업데이트: 2026-03-15',
+                title: termsDoc.title,
+                subtitle: '최종 업데이트: ${termsDoc.updatedAt}',
                 onTap: () =>
                     _openPolicy(PolicyDocumentType.terms, _termsPolicyUrl),
               ),
               const SizedBox(height: 8),
               _MenuRow(
-                title: '개인정보 처리방침',
-                subtitle: '최종 업데이트: 2026-03-15',
+                title: privacyDoc.title,
+                subtitle: '최종 업데이트: ${privacyDoc.updatedAt}',
                 onTap: () =>
                     _openPolicy(PolicyDocumentType.privacy, _privacyPolicyUrl),
               ),
               const SizedBox(height: 8),
               _MenuRow(
-                title: '환불 정책',
-                subtitle: '최종 업데이트: 2026-03-15',
+                title: refundDoc.title,
+                subtitle: '최종 업데이트: ${refundDoc.updatedAt}',
                 onTap: () =>
                     _openPolicy(PolicyDocumentType.refund, _refundPolicyUrl),
               ),
