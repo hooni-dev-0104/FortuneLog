@@ -36,6 +36,12 @@ public class SupabasePersistenceService {
     ) {
     }
 
+    public record AccountDeletionQueueItem(
+            String requestId,
+            String userId
+    ) {
+    }
+
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
@@ -336,6 +342,103 @@ public class SupabasePersistenceService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("failed to parse Supabase profile response", e);
         }
+    }
+
+    public List<AccountDeletionQueueItem> findRequestedAccountDeletionRequests(int limit) {
+        ensureConfigured();
+        int normalizedLimit = Math.max(1, Math.min(limit, 100));
+        String path = "/rest/v1/account_deletion_requests"
+                + "?select=" + URLEncoder.encode("id,user_id", StandardCharsets.UTF_8)
+                + "&status=" + URLEncoder.encode("eq.requested", StandardCharsets.UTF_8)
+                + "&order=" + URLEncoder.encode("requested_at.asc", StandardCharsets.UTF_8)
+                + "&limit=" + normalizedLimit;
+        String responseBody = sendGet(path);
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray() || node.isEmpty()) {
+                return List.of();
+            }
+            List<AccountDeletionQueueItem> out = new ArrayList<>();
+            for (JsonNode row : node) {
+                String requestId = text(row, "id");
+                String userId = text(row, "user_id");
+                if (requestId == null || userId == null) {
+                    continue;
+                }
+                out.add(new AccountDeletionQueueItem(requestId, userId));
+            }
+            return out;
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse account deletion requests", e);
+        }
+    }
+
+    public boolean markAccountDeletionRequestProcessing(String requestId) {
+        ensureConfigured();
+        String path = "/rest/v1/account_deletion_requests"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + requestId, StandardCharsets.UTF_8)
+                + "&status=" + URLEncoder.encode("eq.requested", StandardCharsets.UTF_8);
+        String responseBody = sendPatch(path, Map.of("status", "processing"));
+        return parseArraySize(responseBody) > 0;
+    }
+
+    public boolean markAccountDeletionRequestCompleted(String requestId) {
+        ensureConfigured();
+        String nowIso = Instant.now().toString();
+        String path = "/rest/v1/account_deletion_requests"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + requestId, StandardCharsets.UTF_8)
+                + "&status=" + URLEncoder.encode("eq.processing", StandardCharsets.UTF_8);
+        String responseBody = sendPatch(path, Map.of(
+                "status", "completed",
+                "processed_at", nowIso,
+                "anonymized_at", nowIso
+        ));
+        return parseArraySize(responseBody) > 0;
+    }
+
+    public boolean markAccountDeletionRequestRejected(String requestId) {
+        ensureConfigured();
+        String path = "/rest/v1/account_deletion_requests"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + requestId, StandardCharsets.UTF_8);
+        String responseBody = sendPatch(path, Map.of(
+                "status", "rejected",
+                "processed_at", Instant.now().toString()
+        ));
+        return parseArraySize(responseBody) > 0;
+    }
+
+    public int deleteUserReports(String userId) {
+        return deleteByUserId("reports", userId);
+    }
+
+    public int deleteUserCharts(String userId) {
+        return deleteByUserId("saju_charts", userId);
+    }
+
+    public int deleteUserBirthProfiles(String userId) {
+        return deleteByUserId("birth_profiles", userId);
+    }
+
+    public int deleteUserOrders(String userId) {
+        return deleteByUserId("orders", userId);
+    }
+
+    public int deleteUserSubscriptions(String userId) {
+        return deleteByUserId("subscriptions", userId);
+    }
+
+    public boolean anonymizeUserProfile(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/profiles"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8);
+        String responseBody = sendPatch(path, Map.of(
+                "nickname", "Deleted user"
+        ));
+        return parseArraySize(responseBody) > 0;
     }
 
     public boolean registerPaymentWebhookEvent(
@@ -742,6 +845,78 @@ public class SupabasePersistenceService {
         throw new IllegalStateException("supabase update failed after retries");
     }
 
+    private int deleteByUserId(String table, String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/" + table
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8);
+        String responseBody = sendDelete(path);
+        return parseArraySize(responseBody);
+    }
+
+    private String sendDelete(String path) {
+        URI uri = URI.create(supabaseUrl + path);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .timeout(requestTimeout)
+                .header("apikey", serviceRoleKey)
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("Content-Type", "application/json")
+                .header("Prefer", "return=representation")
+                .DELETE()
+                .build();
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            long startedAt = System.currentTimeMillis();
+            try {
+                log.info("outgoing request: target=supabase method=DELETE url={} attempt={}", uri, attempt + 1);
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                long elapsedMs = System.currentTimeMillis() - startedAt;
+                log.info(
+                        "outgoing response: target=supabase method=DELETE url={} attempt={} status={} elapsedMs={}",
+                        uri,
+                        attempt + 1,
+                        response.statusCode(),
+                        elapsedMs
+                );
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    return response.body();
+                }
+
+                if (!isRetryableStatus(response.statusCode()) || attempt == maxRetries) {
+                    throw new IllegalStateException("supabase delete failed: " + response.statusCode() + " " + response.body());
+                }
+            } catch (HttpConnectTimeoutException e) {
+                log.warn(
+                        "outgoing timeout: target=supabase method=DELETE url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.getMessage()
+                );
+                if (attempt == maxRetries) {
+                    throw new IllegalStateException("supabase request timeout", e);
+                }
+            } catch (IOException e) {
+                log.warn(
+                        "outgoing io error: target=supabase method=DELETE url={} attempt={} message={}",
+                        uri,
+                        attempt + 1,
+                        e.toString()
+                );
+                if (attempt == maxRetries) {
+                    throw new IllegalStateException("failed to call Supabase", e);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("supabase call interrupted", e);
+            }
+
+            sleepBackoff(attempt);
+        }
+
+        throw new IllegalStateException("supabase delete failed after retries");
+    }
+
     private String preferHeader(boolean upsert) {
         if (upsert) {
             return "return=representation,resolution=merge-duplicates";
@@ -784,5 +959,14 @@ public class SupabasePersistenceService {
             return value.substring(0, value.length() - 1);
         }
         return value;
+    }
+
+    private String text(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        String out = value.asText();
+        return out == null || out.isBlank() ? null : out;
     }
 }

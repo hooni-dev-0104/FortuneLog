@@ -49,6 +49,14 @@ Environment:
 - `REVENUECAT_WEBHOOK_AUTH`: RevenueCat webhook Authorization header value
 - `PAYMENT_WEBHOOK_SECRET`: legacy generic webhook HMAC secret (backward compatibility)
 
+## Account deletion worker (beta)
+
+Environment:
+
+- `ACCOUNT_DELETION_WORKER_ENABLED` (default `true`)
+- `ACCOUNT_DELETION_WORKER_BATCH_SIZE` (default `20`)
+- `ACCOUNT_DELETION_WORKER_FIXED_DELAY_MS` (default `30000`)
+
 ## Endpoints
 
 - `GET /engine/v1/health`
@@ -56,3 +64,4 @@ Environment:
 - `POST /engine/v1/reports:generate`
 - `POST /engine/v1/reports:interpret`
 - `POST /engine/v1/fortunes:daily`
+- `POST /engine/v1/accounts:deletion-request`
