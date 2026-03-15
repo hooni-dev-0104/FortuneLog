@@ -1,3 +1,20 @@
+import java.util.Properties
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use(keystoreProperties::load)
+}
+val hasReleaseSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    .all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+
+if (!hasReleaseSigning) {
+    logger.lifecycle(
+        "Android release signing is not configured. " +
+            "Create android/key.properties from key.properties.example to use a real release keystore.",
+    )
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,7 +23,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fortune_log_mobile"
+    namespace = "com.fortunelog.mobile"
     compileSdk = flutter.compileSdkVersion
     // Keep in sync with Android plugin deps (app_links/path_provider/shared_preferences/url_launcher).
     ndkVersion = "27.0.12077973"
@@ -21,8 +38,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.fortune_log_mobile"
+        // Unique application ID for FortuneLog beta/release builds.
+        applicationId = "com.fortunelog.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -31,11 +48,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                // Keep local verification unblocked when secrets are intentionally absent.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

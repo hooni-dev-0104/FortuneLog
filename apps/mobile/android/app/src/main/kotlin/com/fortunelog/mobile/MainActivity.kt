@@ -1,4 +1,4 @@
-package com.example.fortune_log_mobile
+package com.fortunelog.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
