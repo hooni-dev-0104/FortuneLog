@@ -70,6 +70,7 @@ public class PaymentWebhookService {
 
         String normalizedOrderStatus = normalizeOrderStatus(event.orderStatus());
         String normalizedSubscriptionStatus = normalizeSubscriptionStatus(event.subscriptionStatus());
+        boolean deactivated = persistenceService.isProfileDeactivated(event.userId());
 
         boolean duplicate = persistenceService.registerPaymentWebhookEvent(
                 event.provider(),
@@ -82,7 +83,7 @@ public class PaymentWebhookService {
         boolean orderUpdated = false;
         boolean subscriptionUpdated = false;
 
-        if (!duplicate) {
+        if (!duplicate && !deactivated) {
             if (normalizedOrderStatus != null) {
                 orderUpdated = persistenceService.updateOrderStatus(
                         event.provider(),
@@ -102,8 +103,11 @@ public class PaymentWebhookService {
             }
         }
 
-        boolean entitled = persistenceService.hasActiveEntitlement(event.userId())
-                || persistenceService.hasPaidOrder(event.userId());
+        boolean entitled = false;
+        if (!deactivated) {
+            entitled = persistenceService.hasActiveEntitlement(event.userId())
+                    || persistenceService.hasPaidOrder(event.userId());
+        }
         int reportsUpdated = persistenceService.updatePaidReportVisibility(event.userId(), entitled);
 
         return new PaymentWebhookResult(
