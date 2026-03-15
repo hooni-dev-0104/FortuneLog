@@ -36,6 +36,7 @@ app:
     request-timeout-ms: ${SUPABASE_REQUEST_TIMEOUT_MS:5000}
   payment:
     webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
+    revenuecat-webhook-authorization: ${REVENUECAT_WEBHOOK_AUTH:}
   openai:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5-mini}

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/revenuecat/revenuecat_service.dart';
 import '../../core/ui/app_widgets.dart';
 import '../../core/app_prefs.dart';
 import '../birth/birth_input_page.dart';
@@ -22,6 +25,7 @@ class _AppGateState extends State<AppGate> {
   Stream<AuthState>? _authStream;
   String? _initError;
   bool _initializing = true;
+  String? _lastRevenueCatUserId;
 
   @override
   void initState() {
@@ -41,6 +45,8 @@ class _AppGateState extends State<AppGate> {
         // User opted out of persisting login. Clear any stored session on app start.
         await _supabase!.auth.signOut();
       }
+
+      _syncRevenueCatForSession(_supabase!.auth.currentSession);
     } catch (_) {
       _supabase = null;
       _authStream = null;
@@ -89,12 +95,31 @@ class _AppGateState extends State<AppGate> {
         }
 
         final session = supabase.auth.currentSession;
+        _syncRevenueCatForSession(session);
         if (session == null) {
           return const OnboardingPage();
         }
         return _SignedInGate(userId: session.user.id);
       },
     );
+  }
+
+  void _syncRevenueCatForSession(Session? session) {
+    final userId = session?.user.id;
+    if (_lastRevenueCatUserId == userId) return;
+
+    _lastRevenueCatUserId = userId;
+    unawaited(_syncRevenueCat(userId));
+  }
+
+  Future<void> _syncRevenueCat(String? userId) async {
+    try {
+      await RevenueCatService.syncWithUserId(userId);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[RevenueCat] sync failed: $e');
+      }
+    }
   }
 }
 

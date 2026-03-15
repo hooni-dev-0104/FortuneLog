@@ -133,10 +133,11 @@ public class EngineController {
     @ResponseStatus(HttpStatus.OK)
     public Map<String, Object> processPaymentWebhook(
             @RequestBody String rawPayload,
+            @RequestHeader(name = "Authorization", required = false) String authorizationHeader,
             @RequestHeader(name = "X-Payment-Signature", required = false) String signature,
             HttpServletRequest httpRequest
     ) {
-        var result = paymentWebhookService.processWebhook(rawPayload, signature);
+        var result = paymentWebhookService.processWebhook(rawPayload, authorizationHeader, signature);
         return Map.of(
                 "requestId", requestId(httpRequest),
                 "duplicate", result.duplicate(),
