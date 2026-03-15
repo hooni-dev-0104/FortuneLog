@@ -38,6 +38,17 @@ cd services/engine-api
 
 `assemble` is intended as a pull-request build gate to catch packaging/build issues before merge.
 
+## RevenueCat webhook (beta)
+
+Endpoint:
+
+- `POST /engine/v1/payments:webhook`
+
+Environment:
+
+- `REVENUECAT_WEBHOOK_AUTH`: RevenueCat webhook Authorization header value
+- `PAYMENT_WEBHOOK_SECRET`: legacy generic webhook HMAC secret (backward compatibility)
+
 ## Endpoints
 
 - `GET /engine/v1/health`
