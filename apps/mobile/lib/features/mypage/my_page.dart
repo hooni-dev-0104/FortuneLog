@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
@@ -10,6 +9,7 @@ import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
 import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
+import '../policy/policy_document_page.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -238,10 +238,12 @@ class _MyPageState extends State<MyPage> {
     });
   }
 
-  Future<void> _openPolicy(Uri uri) async {
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (ok || !mounted) return;
-    showAppSnackBar(context, '정책 링크를 열 수 없습니다. 잠시 후 다시 시도해주세요.');
+  Future<void> _openPolicy(PolicyDocumentType type, Uri uri) async {
+    await Navigator.pushNamed(
+      context,
+      PolicyDocumentPage.routeName,
+      arguments: PolicyDocumentRouteArgs(type: type, externalUrl: uri),
+    );
   }
 
   String _formatDateTime(dynamic value) {
@@ -312,6 +314,9 @@ class _MyPageState extends State<MyPage> {
   @override
   Widget build(BuildContext context) {
     final email = _currentEmail();
+    final termsDoc = policyDocumentSpec(PolicyDocumentType.terms);
+    final privacyDoc = policyDocumentSpec(PolicyDocumentType.privacy);
+    final refundDoc = policyDocumentSpec(PolicyDocumentType.refund);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -519,21 +524,24 @@ class _MyPageState extends State<MyPage> {
           child: Column(
             children: [
               _MenuRow(
-                title: '이용약관',
-                subtitle: '최종 업데이트: 2026-03-05',
-                onTap: () => _openPolicy(_termsPolicyUrl),
+                title: termsDoc.title,
+                subtitle: '최종 업데이트: ${termsDoc.updatedAt}',
+                onTap: () =>
+                    _openPolicy(PolicyDocumentType.terms, _termsPolicyUrl),
               ),
               const SizedBox(height: 8),
               _MenuRow(
-                title: '개인정보 처리방침',
-                subtitle: '최종 업데이트: 2026-03-05',
-                onTap: () => _openPolicy(_privacyPolicyUrl),
+                title: privacyDoc.title,
+                subtitle: '최종 업데이트: ${privacyDoc.updatedAt}',
+                onTap: () =>
+                    _openPolicy(PolicyDocumentType.privacy, _privacyPolicyUrl),
               ),
               const SizedBox(height: 8),
               _MenuRow(
-                title: '환불 정책',
-                subtitle: '최종 업데이트: 2026-03-05',
-                onTap: () => _openPolicy(_refundPolicyUrl),
+                title: refundDoc.title,
+                subtitle: '최종 업데이트: ${refundDoc.updatedAt}',
+                onTap: () =>
+                    _openPolicy(PolicyDocumentType.refund, _refundPolicyUrl),
               ),
             ],
           ),
