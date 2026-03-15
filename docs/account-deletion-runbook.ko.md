@@ -29,6 +29,15 @@
 4. 비식별화/파기 정책 수행
 5. 완료 시 `status='completed'`, `processed_at`, `anonymized_at` 기록
 
+## 비동기 워커(v1)
+- Engine API 내 스케줄러가 `requested -> processing -> completed/rejected` 전이를 처리합니다.
+- 기본 주기: 30초 (`ACCOUNT_DELETION_WORKER_FIXED_DELAY_MS`)
+- 배치 크기: 20 (`ACCOUNT_DELETION_WORKER_BATCH_SIZE`)
+- 처리 내용:
+  - `reports`, `saju_charts`, `birth_profiles`, `orders`, `subscriptions` 사용자 데이터 삭제
+  - `profiles.nickname` 비식별화
+  - 요청 상태 `completed` 및 시각(`processed_at`, `anonymized_at`) 기록
+
 ## 점검 쿼리 예시
 ```sql
 select id, user_id, status, requested_at

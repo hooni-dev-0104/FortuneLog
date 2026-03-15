@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -250,6 +251,67 @@ class SupabasePersistenceServiceTest {
         assertEquals("GET", request.getMethod());
         assertTrue(request.getPath().contains("/rest/v1/profiles"));
         assertTrue(request.getPath().contains("select=is_deactivated"));
+    }
+
+    @Test
+    void shouldFindRequestedAccountDeletionQueueItems() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody(
+                "[{\"id\":\"req-1\",\"user_id\":\"user-1\"}]"
+        ));
+
+        List<SupabasePersistenceService.AccountDeletionQueueItem> items =
+                service.findRequestedAccountDeletionRequests(20);
+
+        assertEquals(1, items.size());
+        assertEquals("req-1", items.get(0).requestId());
+        assertEquals("user-1", items.get(0).userId());
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/account_deletion_requests"));
+        assertTrue(request.getPath().contains("status=eq.requested"));
+    }
+
+    @Test
+    void shouldMarkAccountDeletionRequestAsProcessing() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"req-1\"}]"));
+
+        boolean updated = service.markAccountDeletionRequestProcessing("req-1");
+
+        assertTrue(updated);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("PATCH", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/account_deletion_requests"));
+        assertTrue(request.getPath().contains("status=eq.requested"));
+    }
+
+    @Test
+    void shouldMarkAccountDeletionRequestAsCompleted() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"req-1\"}]"));
+
+        boolean updated = service.markAccountDeletionRequestCompleted("req-1");
+
+        assertTrue(updated);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("PATCH", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/account_deletion_requests"));
+        assertTrue(request.getPath().contains("status=eq.processing"));
+    }
+
+    @Test
+    void shouldDeleteReportsByUserId() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"r1\"},{\"id\":\"r2\"}]"));
+
+        int deleted = service.deleteUserReports("user-1");
+
+        assertEquals(2, deleted);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("DELETE", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/reports"));
+        assertTrue(request.getPath().contains("user_id=eq.user-1"));
     }
 
     @Test
