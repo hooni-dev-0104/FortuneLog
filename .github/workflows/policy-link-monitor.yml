@@ -1,0 +1,63 @@
+name: Policy Link Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      terms_url:
+        description: Terms of service URL to verify
+        required: false
+        default: https://fortunelog.app/terms
+      privacy_url:
+        description: Privacy policy URL to verify
+        required: false
+        default: https://fortunelog.app/privacy
+      refund_url:
+        description: Refund policy URL to verify
+        required: false
+        default: https://fortunelog.app/refund
+  schedule:
+    - cron: '0 3 * * *'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'apps/mobile/lib/features/mypage/my_page.dart'
+      - 'scripts/check-policy-links.sh'
+      - '.github/workflows/policy-link-monitor.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: policy-link-monitor-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy-link-check:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      POLICY_TERMS_URL: ${{ github.event.inputs.terms_url || 'https://fortunelog.app/terms' }}
+      POLICY_PRIVACY_URL: ${{ github.event.inputs.privacy_url || 'https://fortunelog.app/privacy' }}
+      POLICY_REFUND_URL: ${{ github.event.inputs.refund_url || 'https://fortunelog.app/refund' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run policy link check
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/check-policy-links.sh
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Keep PR checks deterministic; real-link monitoring runs on schedule/dispatch.
+            scripts/check-policy-links.sh \
+              --url terms=https://example.com \
+              --url privacy=https://example.com \
+              --url refund=https://example.com
+          else
+            scripts/check-policy-links.sh
+          fi
