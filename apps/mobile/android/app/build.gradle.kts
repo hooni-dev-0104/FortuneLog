@@ -11,6 +11,9 @@ val allowDebugSignedRelease = providers
     .environmentVariable("ALLOW_DEBUG_SIGNED_RELEASE")
     .orNull
     ?.toBooleanStrictOrNull() == true
+val releaseSigningError =
+    "Release signing is required. Configure android/key.properties or set " +
+        "ALLOW_DEBUG_SIGNED_RELEASE=true only for local verification."
 
 if (!hasReleaseSigning) {
     logger.lifecycle(
@@ -70,13 +73,25 @@ android {
             } else if (allowDebugSignedRelease) {
                 // Keep explicit local verification unblocked when secrets are intentionally absent.
                 signingConfig = signingConfigs.getByName("debug")
-            } else {
-                throw GradleException(
-                    "Release signing is required. Configure android/key.properties or set " +
-                        "ALLOW_DEBUG_SIGNED_RELEASE=true only for local verification.",
-                )
             }
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val requiresReleaseSigning = allTasks.any { task ->
+        val taskName = task.name.lowercase()
+        taskName.contains("release") &&
+            (
+                taskName.startsWith("assemble") ||
+                    taskName.startsWith("bundle") ||
+                    taskName.startsWith("package") ||
+                    taskName.startsWith("sign")
+            )
+    }
+
+    if (requiresReleaseSigning && !hasReleaseSigning && !allowDebugSignedRelease) {
+        throw GradleException(releaseSigningError)
     }
 }
 
