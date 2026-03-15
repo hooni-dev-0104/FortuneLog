@@ -1,9 +1,13 @@
 abstract interface class EngineApiClient {
   Future<ChartResponseDto> calculateChart(CalculateChartRequestDto request);
   Future<ReportResponseDto> generateReport(GenerateReportRequestDto request);
-  Future<ReportResponseDto> generateAiInterpretation(GenerateAiInterpretationRequestDto request);
+  Future<ReportResponseDto> generateAiInterpretation(
+      GenerateAiInterpretationRequestDto request);
   Future<DailyFortuneResponseDto> generateDailyFortune(
     GenerateDailyFortuneRequestDto request,
+  );
+  Future<AccountDeletionResponseDto> requestAccountDeletion(
+    RequestAccountDeletionRequestDto request,
   );
 }
 
@@ -31,16 +35,16 @@ class CalculateChartRequestDto {
   });
 
   Map<String, dynamic> toJson() => {
-    'birthProfileId': birthProfileId,
-    'birthDate': birthDate,
-    'birthTime': birthTime,
-    'birthTimezone': birthTimezone,
-    'birthLocation': birthLocation,
-    'calendarType': calendarType,
-    'leapMonth': leapMonth,
-    'gender': gender,
-    'unknownBirthTime': unknownBirthTime,
-  };
+        'birthProfileId': birthProfileId,
+        'birthDate': birthDate,
+        'birthTime': birthTime,
+        'birthTimezone': birthTimezone,
+        'birthLocation': birthLocation,
+        'calendarType': calendarType,
+        'leapMonth': leapMonth,
+        'gender': gender,
+        'unknownBirthTime': unknownBirthTime,
+      };
 }
 
 class GenerateReportRequestDto {
@@ -53,9 +57,9 @@ class GenerateReportRequestDto {
   });
 
   Map<String, dynamic> toJson() => {
-    'chartId': chartId,
-    'reportType': reportType,
-  };
+        'chartId': chartId,
+        'reportType': reportType,
+      };
 }
 
 class GenerateDailyFortuneRequestDto {
@@ -68,9 +72,9 @@ class GenerateDailyFortuneRequestDto {
   });
 
   Map<String, dynamic> toJson() => {
-    'chartId': chartId,
-    'date': date,
-  };
+        'chartId': chartId,
+        'date': date,
+      };
 }
 
 class GenerateAiInterpretationRequestDto {
@@ -81,8 +85,22 @@ class GenerateAiInterpretationRequestDto {
   });
 
   Map<String, dynamic> toJson() => {
-    'chartId': chartId,
-  };
+        'chartId': chartId,
+      };
+}
+
+class RequestAccountDeletionRequestDto {
+  final String? reason;
+
+  const RequestAccountDeletionRequestDto({this.reason});
+
+  Map<String, dynamic> toJson() {
+    final trimmed = reason?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return <String, dynamic>{};
+    }
+    return <String, dynamic>{'reason': trimmed};
+  }
 }
 
 class ChartResponseDto {
@@ -171,6 +189,29 @@ class DailyFortuneResponseDto {
       ),
       categoryDetails: json['categoryDetails'] as Map<String, dynamic>?,
       actions: List<String>.from(json['actions'] as List<dynamic>),
+    );
+  }
+}
+
+class AccountDeletionResponseDto {
+  final String? requestId;
+  final String deletionRequestId;
+  final String status;
+  final bool alreadyRequested;
+
+  const AccountDeletionResponseDto({
+    required this.requestId,
+    required this.deletionRequestId,
+    required this.status,
+    required this.alreadyRequested,
+  });
+
+  factory AccountDeletionResponseDto.fromJson(Map<String, dynamic> json) {
+    return AccountDeletionResponseDto(
+      requestId: json['requestId'] as String?,
+      deletionRequestId: json['deletionRequestId'] as String,
+      status: json['status'] as String,
+      alreadyRequested: json['alreadyRequested'] as bool? ?? false,
     );
   }
 }

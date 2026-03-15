@@ -285,6 +285,28 @@ public class SupabasePersistenceService {
         }
     }
 
+    public String findActiveAccountDeletionRequestId(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/account_deletion_requests"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&status=" + URLEncoder.encode("in.(requested,processing)", StandardCharsets.UTF_8)
+                + "&order=" + URLEncoder.encode("requested_at.desc", StandardCharsets.UTF_8)
+                + "&limit=1";
+        String responseBody = sendGet(path);
+        return parseFirstStringField(responseBody, "id");
+    }
+
+    public String createAccountDeletionRequest(String userId, String reason) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("user_id", userId);
+        body.put("status", "requested");
+        if (reason != null && !reason.isBlank()) {
+            body.put("requested_reason", reason);
+        }
+        return insertReturningId("account_deletion_requests", body);
+    }
+
     public boolean registerPaymentWebhookEvent(
             String provider,
             String providerOrderId,

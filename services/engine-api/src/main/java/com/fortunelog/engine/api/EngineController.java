@@ -1,5 +1,6 @@
 package com.fortunelog.engine.api;
 
+import com.fortunelog.engine.application.AccountDeletionService;
 import com.fortunelog.engine.application.EngineService;
 import com.fortunelog.engine.application.EngineVersion;
 import com.fortunelog.engine.application.PaymentWebhookService;
@@ -7,6 +8,7 @@ import com.fortunelog.engine.application.dto.CalculateChartRequest;
 import com.fortunelog.engine.application.dto.GenerateAiInterpretationRequest;
 import com.fortunelog.engine.application.dto.GenerateDailyFortuneRequest;
 import com.fortunelog.engine.application.dto.GenerateReportRequest;
+import com.fortunelog.engine.application.dto.RequestAccountDeletionRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.core.env.Environment;
@@ -30,15 +32,18 @@ public class EngineController {
 
     private final EngineService engineService;
     private final PaymentWebhookService paymentWebhookService;
+    private final AccountDeletionService accountDeletionService;
     private final Environment env;
 
     public EngineController(
             EngineService engineService,
             PaymentWebhookService paymentWebhookService,
+            AccountDeletionService accountDeletionService,
             Environment env
     ) {
         this.engineService = engineService;
         this.paymentWebhookService = paymentWebhookService;
+        this.accountDeletionService = accountDeletionService;
         this.env = env;
     }
 
@@ -146,6 +151,23 @@ public class EngineController {
                 "entitled", result.entitled(),
                 "reportsUpdated", result.reportsUpdated(),
                 "idempotencyKey", result.idempotencyKey()
+        );
+    }
+
+    @PostMapping("/accounts:deletion-request")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public Map<String, Object> requestAccountDeletion(
+            @Valid @RequestBody(required = false) RequestAccountDeletionRequest request,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest httpRequest
+    ) {
+        String reason = request == null ? null : request.reason();
+        var result = accountDeletionService.requestDeletion(jwt.getSubject(), reason);
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "deletionRequestId", result.deletionRequestId(),
+                "status", result.status(),
+                "alreadyRequested", result.alreadyRequested()
         );
     }
 

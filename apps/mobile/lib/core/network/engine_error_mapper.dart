@@ -5,7 +5,8 @@ import 'http_engine_api_client.dart';
 class EngineErrorMapper {
   static String userMessage(EngineApiException e) {
     if (kDebugMode) {
-      debugPrint('[engine-api] error code=${e.code} status=${e.statusCode} msg=${e.message}');
+      debugPrint(
+          '[engine-api] error code=${e.code} status=${e.statusCode} msg=${e.message}');
     }
 
     switch (e.code) {
@@ -19,6 +20,10 @@ class EngineErrorMapper {
         return '입력된 출생정보를 확인해주세요.';
       case 'CHART_NOT_FOUND':
         return '사주 차트를 먼저 계산해주세요.';
+      case 'ACCOUNT_DELETION_INVALID_USER':
+        return '로그인 정보를 확인해주세요. 다시 로그인 후 시도해주세요.';
+      case 'ACCOUNT_DELETION_REQUEST_FAILED':
+        return '탈퇴 요청 처리에 실패했습니다. 잠시 후 다시 시도해주세요.';
       case 'AI_CONFIG_MISSING':
         return 'AI 해석 기능이 아직 준비 중입니다. 잠시 후 다시 시도해주세요.';
       case 'AI_GENERATION_FAILED':

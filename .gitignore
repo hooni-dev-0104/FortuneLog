@@ -84,3 +84,9 @@ venv/
 supabase/.branches/
 supabase/.temp/
 supabase/migrations/
+
+# OMX local runtime artifacts
+.omx/
+
+# Local Gradle cache override
+.gradle-local/
