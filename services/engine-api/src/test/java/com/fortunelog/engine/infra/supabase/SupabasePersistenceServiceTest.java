@@ -225,6 +225,34 @@ class SupabasePersistenceServiceTest {
     }
 
     @Test
+    void shouldMarkProfileAsDeactivated() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"user-1\"}]"));
+
+        boolean updated = service.markProfileDeactivated("user-1");
+
+        assertTrue(updated);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("PATCH", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/profiles"));
+        assertTrue(request.getPath().contains("id=eq.user-1"));
+    }
+
+    @Test
+    void shouldReadProfileDeactivatedFlag() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"is_deactivated\":true}]"));
+
+        boolean deactivated = service.isProfileDeactivated("user-1");
+
+        assertTrue(deactivated);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/profiles"));
+        assertTrue(request.getPath().contains("select=is_deactivated"));
+    }
+
+    @Test
     void shouldUpdateOrderStatusByProviderAndProviderOrderId() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"order-1\"}]"));
 

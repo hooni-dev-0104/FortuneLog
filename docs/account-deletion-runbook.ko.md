@@ -7,6 +7,7 @@
 
 ## 스키마
 - 마이그레이션: `202603150001_account_deletion_requests.sql`
+- 마이그레이션: `202603150002_profiles_deactivation_flag.sql`
 - 핵심 컬럼:
   - `user_id`: 대상 사용자
   - `status`: `requested | processing | completed | rejected | canceled`
@@ -16,6 +17,10 @@
 - 활성 요청 중복 방지:
   - `uq_account_deletion_requests_user_active`
   - 조건: `status in ('requested', 'processing')`
+
+## 접근 차단(즉시)
+- 탈퇴 요청 접수 시 `profiles.is_deactivated=true`, `profiles.deactivated_at=now()`로 즉시 전환됩니다.
+- Engine API는 비활성 계정에 대해 `ACCOUNT_DELETION_LOCKED (403)`을 반환합니다.
 
 ## 운영 처리 절차 (수동 v1)
 1. `status='requested'` 요청을 오래된 순으로 조회

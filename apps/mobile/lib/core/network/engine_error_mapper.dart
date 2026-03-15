@@ -24,6 +24,8 @@ class EngineErrorMapper {
         return '로그인 정보를 확인해주세요. 다시 로그인 후 시도해주세요.';
       case 'ACCOUNT_DELETION_REQUEST_FAILED':
         return '탈퇴 요청 처리에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      case 'ACCOUNT_DELETION_LOCKED':
+        return '탈퇴 요청이 접수되어 계정이 잠겼습니다. 다시 로그인할 수 없습니다.';
       case 'AI_CONFIG_MISSING':
         return 'AI 해석 기능이 아직 준비 중입니다. 잠시 후 다시 시도해주세요.';
       case 'AI_GENERATION_FAILED':

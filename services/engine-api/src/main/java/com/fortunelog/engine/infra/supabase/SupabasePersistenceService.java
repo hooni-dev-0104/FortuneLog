@@ -307,6 +307,37 @@ public class SupabasePersistenceService {
         return insertReturningId("account_deletion_requests", body);
     }
 
+    public boolean markProfileDeactivated(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/profiles"
+                + "?select=" + URLEncoder.encode("id", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8);
+        String responseBody = sendPatch(path, Map.of(
+                "is_deactivated", true,
+                "deactivated_at", Instant.now().toString()
+        ));
+        return parseArraySize(responseBody) > 0;
+    }
+
+    public boolean isProfileDeactivated(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/profiles"
+                + "?select=" + URLEncoder.encode("is_deactivated", StandardCharsets.UTF_8)
+                + "&id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&limit=1";
+        String responseBody = sendGet(path);
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray() || node.isEmpty()) {
+                return false;
+            }
+            JsonNode value = node.get(0).get("is_deactivated");
+            return value != null && value.asBoolean(false);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse Supabase profile response", e);
+        }
+    }
+
     public boolean registerPaymentWebhookEvent(
             String provider,
             String providerOrderId,
