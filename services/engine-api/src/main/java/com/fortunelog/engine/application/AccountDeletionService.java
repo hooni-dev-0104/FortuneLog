@@ -26,6 +26,8 @@ public class AccountDeletionService {
     public AccountDeletionRequestResult requestDeletion(String userId, String reason) {
         validateUserId(userId);
 
+        markUserAsDeactivated(userId);
+
         String existingRequestId = persistenceService.findActiveAccountDeletionRequestId(userId);
         if (existingRequestId != null && !existingRequestId.isBlank()) {
             return new AccountDeletionRequestResult(existingRequestId, "requested", true);
@@ -43,6 +45,18 @@ public class AccountDeletionService {
         }
 
         return new AccountDeletionRequestResult(deletionRequestId, "requested", false);
+    }
+
+    private void markUserAsDeactivated(String userId) {
+        try {
+            persistenceService.markProfileDeactivated(userId);
+        } catch (IllegalStateException ex) {
+            throw new ApiClientException(
+                    "ACCOUNT_DELETION_REQUEST_FAILED",
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "failed to mark profile as deactivated"
+            );
+        }
     }
 
     private void validateUserId(String userId) {

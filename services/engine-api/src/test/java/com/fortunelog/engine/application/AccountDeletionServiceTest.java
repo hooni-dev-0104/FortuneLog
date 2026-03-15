@@ -28,6 +28,7 @@ class AccountDeletionServiceTest {
     @Test
     void shouldReturnExistingRequestWhenActiveRequestAlreadyExists() {
         String userId = "11111111-1111-1111-1111-111111111111";
+        when(persistenceService.markProfileDeactivated(userId)).thenReturn(true);
         when(persistenceService.findActiveAccountDeletionRequestId(userId)).thenReturn("existing-del-1");
 
         var result = service.requestDeletion(userId, "테스트 사유");
@@ -35,11 +36,13 @@ class AccountDeletionServiceTest {
         assertEquals("existing-del-1", result.deletionRequestId());
         assertEquals("requested", result.status());
         assertTrue(result.alreadyRequested());
+        verify(persistenceService).markProfileDeactivated(userId);
     }
 
     @Test
     void shouldCreateDeletionRequestWhenNoActiveRequestExists() {
         String userId = "11111111-1111-1111-1111-111111111111";
+        when(persistenceService.markProfileDeactivated(userId)).thenReturn(true);
         when(persistenceService.findActiveAccountDeletionRequestId(userId)).thenReturn(null);
         when(persistenceService.createAccountDeletionRequest(userId, "개인정보 삭제 요청")).thenReturn("new-del-1");
 
@@ -48,6 +51,7 @@ class AccountDeletionServiceTest {
         assertEquals("new-del-1", result.deletionRequestId());
         assertEquals("requested", result.status());
         assertFalse(result.alreadyRequested());
+        verify(persistenceService).markProfileDeactivated(userId);
         verify(persistenceService).createAccountDeletionRequest(userId, "개인정보 삭제 요청");
     }
 

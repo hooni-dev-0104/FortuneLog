@@ -48,6 +48,7 @@ public class EngineService {
     }
 
     public ChartResult calculateChart(String userId, CalculateChartRequest request) {
+        ensureUserIsActive(userId);
         LocalDate birthDate = resolveSolarBirthDate(request);
         LocalTime birthTime = request.unknownBirthTime()
                 ? LocalTime.NOON
@@ -98,6 +99,7 @@ public class EngineService {
     }
 
     public ReportResult generateReport(String userId, GenerateReportRequest request) {
+        ensureUserIsActive(userId);
         Map<String, Object> content = Map.of(
                 "summary", "실행력은 강하지만 과부하 관리가 핵심입니다.",
                 "strengths", List.of("빠른 판단", "높은 집중력"),
@@ -118,6 +120,7 @@ public class EngineService {
     }
 
     public DailyFortuneResult generateDailyFortune(String userId, GenerateDailyFortuneRequest request) {
+        ensureUserIsActive(userId);
         LocalDate targetDate = LocalDate.parse(request.date());
         var snapshot = persistenceService.findChartSnapshot(userId, request.chartId());
         if (snapshot == null) {
@@ -458,6 +461,7 @@ public class EngineService {
     }
 
     public ReportResult generateAiInterpretation(String userId, GenerateAiInterpretationRequest request) {
+        ensureUserIsActive(userId);
         var snapshot = persistenceService.findChartSnapshot(userId, request.chartId());
         if (snapshot == null) {
             throw new ApiClientException(
@@ -491,6 +495,16 @@ public class EngineService {
         }
 
         return new ReportResult(request.chartId(), "ai_interpretation", content);
+    }
+
+    private void ensureUserIsActive(String userId) {
+        if (persistenceService.isProfileDeactivated(userId)) {
+            throw new ApiClientException(
+                    "ACCOUNT_DELETION_LOCKED",
+                    HttpStatus.FORBIDDEN,
+                    "account is locked due to deletion request"
+            );
+        }
     }
 
     private Map<String, Object> buildAiAnalysisInput(Map<String, String> chart, Map<String, Integer> fiveElements) {
