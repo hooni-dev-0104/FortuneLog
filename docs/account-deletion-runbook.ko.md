@@ -38,6 +38,11 @@
   - `profiles.nickname` 비식별화
   - 요청 상태 `completed` 및 시각(`processed_at`, `anonymized_at`) 기록
 
+## 결제/구독 웹훅 정합성 정책
+- `profiles.is_deactivated=true` 계정은 RevenueCat/결제 웹훅 수신 시에도 재활성화하지 않습니다.
+- 해당 계정의 `orders/subscriptions` 상태 갱신 및 entitlement 재계산을 건너뜁니다.
+- 유료 리포트 공개 상태는 항상 `false` 방향으로 보정해, 탈퇴 요청 이후 접근이 다시 열리지 않도록 유지합니다.
+
 ## 점검 쿼리 예시
 ```sql
 select id, user_id, status, requested_at

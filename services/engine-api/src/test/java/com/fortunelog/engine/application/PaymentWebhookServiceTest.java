@@ -99,6 +99,49 @@ class PaymentWebhookServiceTest {
     }
 
     @Test
+    void shouldSkipEntitlementMutationWhenProfileIsDeactivated() {
+        String payload = """
+                {
+                  "api_version": "1.0",
+                  "event": {
+                    "id": "evt-locked",
+                    "type": "INITIAL_PURCHASE",
+                    "app_user_id": "%s",
+                    "product_id": "premium_monthly",
+                    "original_transaction_id": "orig-locked",
+                    "transaction_id": "tx-locked",
+                    "purchased_at_ms": 1772712000000,
+                    "expiration_at_ms": 1775390400000
+                  }
+                }
+                """.formatted(USER_ID);
+
+        when(persistenceService.isProfileDeactivated(USER_ID)).thenReturn(true);
+        when(persistenceService.registerPaymentWebhookEvent(
+                eq("revenuecat"),
+                eq("orig-locked"),
+                eq("evt-locked"),
+                eq(USER_ID),
+                any()
+        )).thenReturn(false);
+        when(persistenceService.updatePaidReportVisibility(USER_ID, false)).thenReturn(1);
+
+        var result = service.processWebhook(payload, "Bearer " + REVENUECAT_AUTH, null);
+
+        assertFalse(result.duplicate());
+        assertFalse(result.orderUpdated());
+        assertFalse(result.subscriptionUpdated());
+        assertFalse(result.entitled());
+        assertEquals(1, result.reportsUpdated());
+
+        verify(persistenceService, never()).updateOrderStatus(any(), any(), any());
+        verify(persistenceService, never()).upsertSubscriptionSnapshot(any(), any(), any(), any(), any());
+        verify(persistenceService, never()).hasActiveEntitlement(any());
+        verify(persistenceService, never()).hasPaidOrder(any());
+        verify(persistenceService).updatePaidReportVisibility(USER_ID, false);
+    }
+
+    @Test
     void shouldResolveRevenueCatUserIdFromAliases() {
         String payload = """
                 {
