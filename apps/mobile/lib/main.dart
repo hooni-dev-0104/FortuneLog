@@ -13,6 +13,7 @@ import 'features/birth/birth_profile_list_page.dart';
 import 'features/devtest/dev_test_page.dart';
 import 'features/home/home_page.dart';
 import 'features/onboarding/onboarding_page.dart';
+import 'features/policy/policy_document_page.dart';
 import 'features/report/report_page.dart';
 import 'features/saju/manseoryeok_detail_page.dart';
 import 'features/saju/saju_guide_page.dart';
@@ -83,14 +84,28 @@ class _FortuneLogAppState extends State<FortuneLogApp> {
         BirthInputPage.routeName: (_) => const BirthInputPage(),
         BirthProfileListPage.routeName: (_) => const BirthProfileListPage(),
         HomePage.routeName: (_) => const HomePage(),
+        PolicyDocumentPage.routeName: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is PolicyDocumentRouteArgs) {
+            return PolicyDocumentPage(args: args);
+          }
+          return PolicyDocumentPage(
+            args: PolicyDocumentRouteArgs(
+              type: PolicyDocumentType.terms,
+              externalUrl: Uri.parse('https://fortunelog.app/terms'),
+            ),
+          );
+        },
         ReportPage.routeName: (_) => const ReportPage(),
         ManseoryeokDetailPage.routeName: (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
-          return ManseoryeokDetailPage(chart: args is Map<String, String> ? args : const {});
+          return ManseoryeokDetailPage(
+              chart: args is Map<String, String> ? args : const {});
         },
         SajuGuidePage.routeName: (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
-          return SajuGuidePage(chart: args is Map<String, String> ? args : null);
+          return SajuGuidePage(
+              chart: args is Map<String, String> ? args : null);
         },
         DevTestPage.routeName: (_) => const DevTestPage(),
       },

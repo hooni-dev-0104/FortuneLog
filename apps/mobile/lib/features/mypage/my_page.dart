@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
@@ -10,6 +9,7 @@ import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
 import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
+import '../policy/policy_document_page.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -238,10 +238,12 @@ class _MyPageState extends State<MyPage> {
     });
   }
 
-  Future<void> _openPolicy(Uri uri) async {
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (ok || !mounted) return;
-    showAppSnackBar(context, '정책 링크를 열 수 없습니다. 잠시 후 다시 시도해주세요.');
+  Future<void> _openPolicy(PolicyDocumentType type, Uri uri) async {
+    await Navigator.pushNamed(
+      context,
+      PolicyDocumentPage.routeName,
+      arguments: PolicyDocumentRouteArgs(type: type, externalUrl: uri),
+    );
   }
 
   String _formatDateTime(dynamic value) {
@@ -520,20 +522,23 @@ class _MyPageState extends State<MyPage> {
             children: [
               _MenuRow(
                 title: '이용약관',
-                subtitle: '최종 업데이트: 2026-03-05',
-                onTap: () => _openPolicy(_termsPolicyUrl),
+                subtitle: '최종 업데이트: 2026-03-15',
+                onTap: () =>
+                    _openPolicy(PolicyDocumentType.terms, _termsPolicyUrl),
               ),
               const SizedBox(height: 8),
               _MenuRow(
                 title: '개인정보 처리방침',
-                subtitle: '최종 업데이트: 2026-03-05',
-                onTap: () => _openPolicy(_privacyPolicyUrl),
+                subtitle: '최종 업데이트: 2026-03-15',
+                onTap: () =>
+                    _openPolicy(PolicyDocumentType.privacy, _privacyPolicyUrl),
               ),
               const SizedBox(height: 8),
               _MenuRow(
                 title: '환불 정책',
-                subtitle: '최종 업데이트: 2026-03-05',
-                onTap: () => _openPolicy(_refundPolicyUrl),
+                subtitle: '최종 업데이트: 2026-03-15',
+                onTap: () =>
+                    _openPolicy(PolicyDocumentType.refund, _refundPolicyUrl),
               ),
             ],
           ),
