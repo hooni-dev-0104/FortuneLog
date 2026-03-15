@@ -30,7 +30,10 @@ FortuneLog now supports a local, non-secret release signing setup for Android.
 5. Build a signed artifact:
    - `flutter build appbundle --release --dart-define-from-file=.env`
    - or `flutter build apk --release --dart-define-from-file=.env`
+6. If you only need a local verification build without the real upload keystore, opt in explicitly:
+   - `ALLOW_DEBUG_SIGNED_RELEASE=true flutter build apk --release --dart-define-from-file=.env`
 
 Notes:
 - `android/key.properties`, `*.jks`, and `*.keystore` are already gitignored.
-- If `android/key.properties` is absent, release builds fall back to the debug signing key so local verification can still run, but that output should not be used for Play Console beta/release uploads.
+- `storeFile` is resolved from `apps/mobile/android/`, so `storeFile=upload-keystore.jks` expects `apps/mobile/android/upload-keystore.jks`.
+- Release builds fail by default when signing secrets are absent. The debug-signing fallback is available only when `ALLOW_DEBUG_SIGNED_RELEASE=true` is set for explicit local verification, and that output must not be used for Play Console beta/release uploads.

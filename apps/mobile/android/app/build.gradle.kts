@@ -7,6 +7,10 @@ if (keystorePropertiesFile.exists()) {
 }
 val hasReleaseSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
     .all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+val allowDebugSignedRelease = providers
+    .environmentVariable("ALLOW_DEBUG_SIGNED_RELEASE")
+    .orNull
+    ?.toBooleanStrictOrNull() == true
 
 if (!hasReleaseSigning) {
     logger.lifecycle(
@@ -53,7 +57,7 @@ android {
             create("release") {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
             }
         }
@@ -61,11 +65,16 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else if (allowDebugSignedRelease) {
+                // Keep explicit local verification unblocked when secrets are intentionally absent.
+                signingConfig = signingConfigs.getByName("debug")
             } else {
-                // Keep local verification unblocked when secrets are intentionally absent.
-                signingConfigs.getByName("debug")
+                throw GradleException(
+                    "Release signing is required. Configure android/key.properties or set " +
+                        "ALLOW_DEBUG_SIGNED_RELEASE=true only for local verification.",
+                )
             }
         }
     }
