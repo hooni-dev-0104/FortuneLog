@@ -1,19 +1,21 @@
-# fortune_log_mobile
+# FortuneLog Mobile
 
-A new Flutter project.
+Flutter client for FortuneLog.
 
-## Getting Started
+## Local development
 
-This project is a starting point for a Flutter application.
+1. Install dependencies: `flutter pub get`
+2. Add app configuration to `.env`
+3. Run the app: `flutter run --dart-define-from-file=.env`
+4. Validate changes locally:
+   - `flutter analyze --no-fatal-infos`
+   - `flutter test --reporter expanded`
 
-A few resources to get you started if this is your first Flutter project:
+## Release identifiers
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Android application ID / namespace: `com.fortunelog.mobile`
+- iOS bundle identifier: `com.fortunelog.mobile`
+- macOS bundle identifier: `com.fortunelog.mobile`
 
 ## Android release signing
 
@@ -37,3 +39,15 @@ Notes:
 - `android/key.properties`, `*.jks`, and `*.keystore` are already gitignored.
 - `storeFile` is resolved from `apps/mobile/android/`, so `storeFile=upload-keystore.jks` expects `apps/mobile/android/upload-keystore.jks`.
 - Release builds fail by default when signing secrets are absent. The debug-signing fallback is available only when `ALLOW_DEBUG_SIGNED_RELEASE=true` is set for explicit local verification, and that output must not be used for Play Console beta/release uploads.
+
+## CI release gate
+
+Pull requests run `.github/workflows/mobile-ci.yml`, which:
+
+1. installs Flutter dependencies,
+2. runs `flutter analyze --no-fatal-infos`,
+3. runs `flutter test --reporter expanded`,
+4. builds a debug APK, and
+5. creates an ephemeral Android keystore plus `android/key.properties` before building a release APK.
+
+This keeps the release-signing path enforced in CI without committing real signing secrets to the repository.
