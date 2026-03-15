@@ -357,6 +357,83 @@ class PaymentWebhookServiceTest {
     }
 
     @Test
+    void shouldKeepDeactivatedAccountLockedForDuplicateWebhook() {
+        String payload = """
+                {
+                  "api_version": "1.0",
+                  "event": {
+                    "id": "evt-dup-locked",
+                    "type": "INITIAL_PURCHASE",
+                    "app_user_id": "%s",
+                    "product_id": "premium_monthly",
+                    "original_transaction_id": "orig-dup-locked"
+                  }
+                }
+                """.formatted(USER_ID);
+
+        when(persistenceService.isProfileDeactivated(USER_ID)).thenReturn(true);
+        when(persistenceService.registerPaymentWebhookEvent(
+                eq("revenuecat"),
+                eq("orig-dup-locked"),
+                eq("evt-dup-locked"),
+                eq(USER_ID),
+                any()
+        )).thenReturn(true);
+        when(persistenceService.updatePaidReportVisibility(USER_ID, false)).thenReturn(0);
+
+        var result = service.processWebhook(payload, "Bearer " + REVENUECAT_AUTH, null);
+
+        assertTrue(result.duplicate());
+        assertFalse(result.orderUpdated());
+        assertFalse(result.subscriptionUpdated());
+        assertFalse(result.entitled());
+        assertEquals(0, result.reportsUpdated());
+
+        verify(persistenceService, never()).updateOrderStatus(any(), any(), any());
+        verify(persistenceService, never()).upsertSubscriptionSnapshot(any(), any(), any(), any(), any());
+        verify(persistenceService, never()).hasActiveEntitlement(any());
+        verify(persistenceService, never()).hasPaidOrder(any());
+        verify(persistenceService).updatePaidReportVisibility(USER_ID, false);
+    }
+
+    @Test
+    void shouldKeepDeactivatedAccountLockedForLegacyWebhook() {
+        String payload = """
+                {
+                  "provider": "revenuecat",
+                  "provider_order_id": "order-legacy-locked",
+                  "event_id": "evt-legacy-locked",
+                  "user_id": "%s",
+                  "order_status": "paid"
+                }
+                """.formatted(USER_ID);
+
+        when(persistenceService.isProfileDeactivated(USER_ID)).thenReturn(true);
+        when(persistenceService.registerPaymentWebhookEvent(
+                eq("revenuecat"),
+                eq("order-legacy-locked"),
+                eq("evt-legacy-locked"),
+                eq(USER_ID),
+                any()
+        )).thenReturn(false);
+        when(persistenceService.updatePaidReportVisibility(USER_ID, false)).thenReturn(1);
+
+        var result = service.processWebhook(payload, null, sign(payload));
+
+        assertFalse(result.duplicate());
+        assertFalse(result.orderUpdated());
+        assertFalse(result.subscriptionUpdated());
+        assertFalse(result.entitled());
+        assertEquals(1, result.reportsUpdated());
+
+        verify(persistenceService, never()).updateOrderStatus(any(), any(), any());
+        verify(persistenceService, never()).upsertSubscriptionSnapshot(any(), any(), any(), any(), any());
+        verify(persistenceService, never()).hasActiveEntitlement(any());
+        verify(persistenceService, never()).hasPaidOrder(any());
+        verify(persistenceService).updatePaidReportVisibility(USER_ID, false);
+    }
+
+    @Test
     void shouldRejectInvalidRevenueCatAuthorizationHeader() {
         String payload = """
                 {
