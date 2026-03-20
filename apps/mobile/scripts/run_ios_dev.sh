@@ -2,7 +2,16 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-ENV_FILE="${ROOT_DIR}/.env"
+ENV_FILE="${ROOT_DIR}/.env.local"
+
+if ! command -v flutter >/dev/null 2>&1; then
+  if [[ -x "${HOME}/sdk/flutter/bin/flutter" ]]; then
+    export PATH="${HOME}/sdk/flutter/bin:${PATH}"
+  else
+    echo "[error] flutter not found in PATH or ~/sdk/flutter/bin."
+    exit 1
+  fi
+fi
 
 boot_ios_simulator_if_needed() {
   local device_name="$1"
@@ -45,7 +54,7 @@ boot_ios_simulator_if_needed() {
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "[error] ${ENV_FILE} not found."
-  echo "Copy .env.example to .env and fill SUPABASE_URL/SUPABASE_ANON_KEY/AUTH_REDIRECT_TO first."
+  echo "Create .env.local and fill SUPABASE_URL/SUPABASE_ANON_KEY/AUTH_REDIRECT_TO first."
   exit 1
 fi
 
@@ -54,9 +63,9 @@ source "${ENV_FILE}"
 set +a
 
 # Validate required keys exist in the file (for dev ergonomics).
-: "${SUPABASE_URL:?SUPABASE_URL is required in .env}"
-: "${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required in .env}"
-: "${AUTH_REDIRECT_TO:?AUTH_REDIRECT_TO is required in .env}"
+: "${SUPABASE_URL:?SUPABASE_URL is required in .env.local}"
+: "${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required in .env.local}"
+: "${AUTH_REDIRECT_TO:?AUTH_REDIRECT_TO is required in .env.local}"
 
 # Default to local engine-api for dev convenience.
 ENGINE_BASE_URL="${ENGINE_BASE_URL:-http://127.0.0.1:8080}"
@@ -80,8 +89,10 @@ if [[ "${START_ENGINE}" == "1" ]]; then
       set +a
     fi
 
-    # Prefer Homebrew JDK 21 if available.
-    if [[ -x "/opt/homebrew/opt/openjdk@21/bin/java" ]]; then
+    # Prefer a local JDK 21 if available.
+    if [[ -x "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java" ]]; then
+      export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    elif [[ -x "/opt/homebrew/opt/openjdk@21/bin/java" ]]; then
       export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
     fi
 
