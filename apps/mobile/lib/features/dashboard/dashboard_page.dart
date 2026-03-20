@@ -151,11 +151,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               for (final p in _birthProfiles)
-                RadioListTile<String>(
-                  value: p['id'] as String,
-                  groupValue: _selectedBirthProfileId,
-                  onChanged: (value) => Navigator.pop(context, value),
+                ListTile(
+                  leading: Icon(
+                    p['id'] == _selectedBirthProfileId
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                  ),
                   title: Text(_birthProfileLabel(p)),
+                  onTap: () => Navigator.pop(context, p['id'] as String),
                 ),
               const Divider(height: 1),
               ListTile(
@@ -195,7 +198,9 @@ class _DashboardPageState extends State<DashboardPage> {
           .limit(1);
     } on PostgrestException catch (e) {
       final msg = e.message.toLowerCase();
-      if (!msg.contains('target_date') || !msg.contains('does not exist')) rethrow;
+      if (!msg.contains('target_date') || !msg.contains('does not exist')) {
+        rethrow;
+      }
 
       rows = await _supabase()
           .from('reports')
@@ -2074,7 +2079,9 @@ class _InauspiciousStarsSection extends StatelessWidget {
             for (final e in entries) {
               final s = e.stem;
               final b = e.branch;
-              if (s == '갑' || s == '병' || s == '정' || s == '임') labels.add(e.label);
+              if (s == '갑' || s == '병' || s == '정' || s == '임') {
+                labels.add(e.label);
+              }
               if (b == '진' || b == '자') labels.add(e.label);
             }
             final list = labels.toList()..sort();

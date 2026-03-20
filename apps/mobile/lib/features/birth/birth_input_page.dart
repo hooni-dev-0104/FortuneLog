@@ -443,7 +443,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: _gender,
+                        initialValue: _gender,
                         decoration: const InputDecoration(labelText: '성별'),
                         items: const [
                           DropdownMenuItem(value: 'female', child: Text('여성')),

@@ -471,7 +471,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
-                        value: _gender,
+                        initialValue: _gender,
                         decoration: const InputDecoration(labelText: '성별'),
                         items: const [
                           DropdownMenuItem(value: 'female', child: Text('여성')),
