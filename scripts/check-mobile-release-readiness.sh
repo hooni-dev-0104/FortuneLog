@@ -3,6 +3,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CHECK_POLICY_LINKS=0
+ANDROID_BUILD="apps/mobile/android/app/build.gradle.kts"
+ANDROID_KOTLIN_ROOT="apps/mobile/android/app/src/main/kotlin"
+IOS_PROJECT="apps/mobile/ios/Runner.xcodeproj/project.pbxproj"
+MACOS_PROJECT="apps/mobile/macos/Runner.xcodeproj/project.pbxproj"
+MACOS_APPINFO="apps/mobile/macos/Runner/Configs/AppInfo.xcconfig"
+PUBSPEC_FILE="apps/mobile/pubspec.yaml"
+POLICY_PAGE="apps/mobile/lib/features/policy/policy_document_page.dart"
+MYPAGE_FILE="apps/mobile/lib/features/mypage/my_page.dart"
 
 usage() {
   cat <<USAGE
@@ -52,6 +60,10 @@ fail() {
   failures=1
 }
 
+warn() {
+  printf 'WARN %s\n' "$1"
+}
+
 contains() {
   local file="$1"
   local pattern="$2"
@@ -84,19 +96,43 @@ cd "$ROOT_DIR"
 
 echo "Mobile release readiness check started at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
-check_absent "apps/mobile/android/app/build.gradle.kts" 'namespace = "com.example.fortune_log_mobile"' 'android namespace is not left on com.example placeholder'
-check_absent "apps/mobile/android/app/build.gradle.kts" 'applicationId = "com.example.fortune_log_mobile"' 'android applicationId is not left on com.example placeholder'
-check_absent "apps/mobile/android/app/build.gradle.kts" 'signingConfig = signingConfigs.getByName("debug")' 'android release build is not signed with debug config'
-check_absent "apps/mobile/android/app/src/main/kotlin/com/example/fortune_log_mobile/MainActivity.kt" 'package com.example.fortune_log_mobile' 'android MainActivity package is not left on com.example placeholder'
-check_absent "apps/mobile/ios/Runner.xcodeproj/project.pbxproj" 'PRODUCT_BUNDLE_IDENTIFIER = com.example.fortuneLogMobile;' 'ios Runner bundle identifier is not left on com.example placeholder'
-check_absent "apps/mobile/macos/Runner/Configs/AppInfo.xcconfig" 'PRODUCT_BUNDLE_IDENTIFIER = com.example.fortuneLogMobile' 'macOS bundle identifier is not left on com.example placeholder'
-check_absent "apps/mobile/pubspec.yaml" 'description: FortuneLog mobile app (dev test shell)' 'pubspec description no longer uses dev test shell placeholder'
-check_present "apps/mobile/lib/features/policy/policy_document_page.dart" 'case PolicyDocumentType.terms:' 'in-app terms document exists'
-check_present "apps/mobile/lib/features/policy/policy_document_page.dart" 'case PolicyDocumentType.privacy:' 'in-app privacy document exists'
-check_present "apps/mobile/lib/features/policy/policy_document_page.dart" 'case PolicyDocumentType.refund:' 'in-app refund document exists'
-check_present "apps/mobile/lib/features/mypage/my_page.dart" '회원 탈퇴 요청' 'account deletion entry point exists in app UI'
+check_absent "$ANDROID_BUILD" 'namespace = "com.example.fortune_log_mobile"' 'android namespace is not left on com.example placeholder'
+check_absent "$ANDROID_BUILD" 'applicationId = "com.example.fortune_log_mobile"' 'android applicationId is not left on com.example placeholder'
+if rg -n --fixed-strings --quiet 'package com.example.' "$ANDROID_KOTLIN_ROOT"; then
+  fail 'android MainActivity package is not left on com.example placeholder'
+else
+  pass 'android MainActivity package is not left on com.example placeholder'
+fi
+check_absent "$IOS_PROJECT" 'PRODUCT_BUNDLE_IDENTIFIER = com.example.fortuneLogMobile;' 'ios Runner bundle identifier is not left on com.example placeholder'
+check_absent "$MACOS_PROJECT" 'PRODUCT_BUNDLE_IDENTIFIER = com.example.fortuneLogMobile.RunnerTests;' 'macOS RunnerTests bundle identifier is not left on com.example placeholder'
+check_absent "$MACOS_APPINFO" 'PRODUCT_BUNDLE_IDENTIFIER = com.example.fortuneLogMobile' 'macOS bundle identifier is not left on com.example placeholder'
+check_absent "$PUBSPEC_FILE" 'description: FortuneLog mobile app (dev test shell)' 'pubspec description no longer uses dev test shell placeholder'
+check_present "$POLICY_PAGE" 'case PolicyDocumentType.terms:' 'in-app terms document exists'
+check_present "$POLICY_PAGE" 'case PolicyDocumentType.privacy:' 'in-app privacy document exists'
+check_present "$POLICY_PAGE" 'case PolicyDocumentType.refund:' 'in-app refund document exists'
+check_present "$MYPAGE_FILE" '회원 탈퇴 요청' 'account deletion entry point exists in app UI'
 check_present "docs/policy-link-monitoring.ko.md" 'https://fortunelog.app/privacy' 'policy link monitoring doc exists'
 check_present "docs/account-deletion-runbook.ko.md" 'POST /engine/v1/accounts:deletion-request' 'account deletion runbook exists'
+
+if contains "$ANDROID_BUILD" 'ALLOW_DEBUG_SIGNED_RELEASE=true'; then
+  pass 'android release signing documents explicit debug-signed local verification opt-in'
+elif contains "$ANDROID_BUILD" 'ALLOW_DEBUG_SIGNED_RELEASE'; then
+  pass 'android release signing requires explicit opt-in for debug-signed local verification'
+else
+  warn 'android release signing gate does not expose an explicit local verification opt-in marker'
+fi
+
+if [[ -f apps/mobile/android/key.properties ]]; then
+  pass 'android/key.properties is present for release signing'
+else
+  warn 'android/key.properties is absent in repo; release builds require signing material unless ALLOW_DEBUG_SIGNED_RELEASE=true is set for local verification'
+fi
+
+if contains "$IOS_PROJECT" 'DEVELOPMENT_TEAM ='; then
+  pass 'ios DEVELOPMENT_TEAM is configured in Runner.xcodeproj'
+else
+  warn 'ios DEVELOPMENT_TEAM is not configured in Runner.xcodeproj'
+fi
 
 if [[ $CHECK_POLICY_LINKS -eq 1 ]]; then
   if scripts/check-policy-links.sh; then

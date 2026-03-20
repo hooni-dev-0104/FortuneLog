@@ -62,10 +62,16 @@ else
   fail 'Android release signing hook missing from build.gradle.kts'
 fi
 
+if grep -Fq 'ALLOW_DEBUG_SIGNED_RELEASE' "$ANDROID_BUILD"; then
+  pass 'Android release signing exposes explicit local debug-sign opt-in'
+else
+  warn 'Android release signing does not expose an explicit local debug-sign opt-in'
+fi
+
 if [[ -f "$ROOT_DIR/android/key.properties" ]]; then
   pass 'android/key.properties is present for release signing'
 else
-  warn 'android/key.properties is missing; release builds will keep using debug signing until the keystore is supplied'
+  warn 'android/key.properties is missing; release builds require signing material unless ALLOW_DEBUG_SIGNED_RELEASE=true is set for local verification'
 fi
 
 if grep -Fq 'DEVELOPMENT_TEAM =' "$IOS_PROJECT"; then

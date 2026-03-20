@@ -9,10 +9,24 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
-val hasReleaseSigning = keystorePropertiesFile.exists()
-
-if (hasReleaseSigning) {
+if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use(keystoreProperties::load)
+}
+val hasReleaseSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    .all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+val allowDebugSignedRelease = providers
+    .environmentVariable("ALLOW_DEBUG_SIGNED_RELEASE")
+    .orNull
+    ?.toBooleanStrictOrNull() == true
+val releaseSigningError =
+    "Release signing is required. Configure android/key.properties or set " +
+        "ALLOW_DEBUG_SIGNED_RELEASE=true only for local verification."
+
+if (!hasReleaseSigning) {
+    logger.lifecycle(
+        "Android release signing is not configured. " +
+            "Create android/key.properties from key.properties.example to use a real release keystore.",
+    )
 }
 
 android {
@@ -41,27 +55,40 @@ android {
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
-                val storeFilePath = keystoreProperties.getProperty("storeFile")
-                require(!storeFilePath.isNullOrBlank()) {
-                    "android/key.properties is missing storeFile for release signing."
-                }
-
-                storeFile = rootProject.file(storeFilePath)
-                storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else if (allowDebugSignedRelease) {
+                // Keep explicit local verification unblocked when secrets are intentionally absent.
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val requiresReleaseSigning = allTasks.any { task ->
+        val taskName = task.name.lowercase()
+        taskName.contains("release") &&
+            (
+                taskName.startsWith("assemble") ||
+                    taskName.startsWith("bundle") ||
+                    taskName.startsWith("package") ||
+                    taskName.startsWith("sign")
+            )
+    }
+
+    if (requiresReleaseSigning && !hasReleaseSigning && !allowDebugSignedRelease) {
+        throw GradleException(releaseSigningError)
     }
 }
 

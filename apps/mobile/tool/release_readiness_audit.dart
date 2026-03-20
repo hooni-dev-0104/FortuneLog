@@ -77,8 +77,11 @@ ReleaseAuditReport auditReleaseReadiness({String rootPath = '.'}) {
     );
   }
 
-  if (androidGradle
-      .contains('signingConfig = signingConfigs.getByName("debug")')) {
+  final hasDebugReleaseFallback =
+      androidGradle.contains('signingConfig = signingConfigs.getByName("debug")');
+  final hasExplicitDebugReleaseOptIn =
+      androidGradle.contains('ALLOW_DEBUG_SIGNED_RELEASE');
+  if (hasDebugReleaseFallback && !hasExplicitDebugReleaseOptIn) {
     findings.add(
       const ReleaseFinding(
         code: 'android_release_debug_signing',

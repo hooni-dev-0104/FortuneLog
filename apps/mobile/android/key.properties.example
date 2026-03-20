@@ -1,0 +1,7 @@
+# Copy this file to android/key.properties and fill in your real values locally.
+# The actual key.properties file is gitignored and must never be committed.
+# storeFile is resolved relative to apps/mobile/android/.
+storePassword=REPLACE_WITH_UPLOAD_KEYSTORE_PASSWORD
+keyPassword=REPLACE_WITH_UPLOAD_KEY_PASSWORD
+keyAlias=upload
+storeFile=upload-keystore.jks

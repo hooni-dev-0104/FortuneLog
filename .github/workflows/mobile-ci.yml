@@ -48,3 +48,28 @@ jobs:
       - name: Build Android APK (PR gate)
         if: github.event_name == 'pull_request'
         run: flutter build apk --debug
+
+      - name: Create ephemeral Android signing config
+        if: github.event_name == 'pull_request'
+        working-directory: apps/mobile/android
+        run: |
+          keytool -genkeypair -v \
+            -storetype PKCS12 \
+            -keystore ci-upload-keystore.jks \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=FortuneLog CI, OU=CI, O=FortuneLog, L=Seoul, S=Seoul, C=KR"
+          cat > key.properties <<'EOF'
+          storePassword=android
+          keyPassword=android
+          keyAlias=upload
+          storeFile=ci-upload-keystore.jks
+          EOF
+
+      - name: Build Android Release APK (signing gate)
+        if: github.event_name == 'pull_request'
+        run: flutter build apk --release
