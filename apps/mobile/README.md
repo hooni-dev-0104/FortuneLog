@@ -73,4 +73,8 @@ flutter run \
 cd apps/mobile
 flutter analyze
 flutter test
+dart run tool/release_readiness_audit.dart
 ```
+
+`tool/release_readiness_audit.dart` 는 스토어 제출 전 점검이 필요한 항목을 빠르게 스캔합니다.
+기본 실행은 리포트만 출력하고, `--strict` 를 붙이면 blocker 발견 시 종료 코드 1로 실패합니다.
