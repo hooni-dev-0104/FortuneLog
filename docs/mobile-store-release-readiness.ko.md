@@ -35,6 +35,10 @@
 **의미**
 - 실제 Apple Developer Team / signing 설정이 완료되기 전에는 App Store Connect용 archive/code signing을 신뢰할 수 없습니다.
 
+**현재 운영 판단**
+- 2026-03-21 기준 Apple Developer 등록이 아직 완료되지 않았으므로, 이 항목은 **즉시 해결해야 하는 개발 이슈가 아니라 추후 등록 완료 후 처리할 운영 이슈**로 기록합니다.
+- 즉, 현재 단계에서는 known issue로 추적하되 **논이슈(non-issue for now)** 로 간주합니다.
+
 ### 2. Android release signing 자격증명이 저장소 밖에서 주입되어야 함
 - `apps/mobile/android/app/build.gradle.kts`
 - `apps/mobile/scripts/check_store_readiness.sh`
