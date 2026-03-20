@@ -1,5 +1,12 @@
 import java.util.Properties
 
+plugins {
+    id("com.android.application")
+    id("kotlin-android")
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("dev.flutter.flutter-gradle-plugin")
+}
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -22,13 +29,6 @@ if (!hasReleaseSigning) {
     )
 }
 
-plugins {
-    id("com.android.application")
-    id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
-    id("dev.flutter.flutter-gradle-plugin")
-}
-
 android {
     namespace = "com.fortunelog.mobile"
     compileSdk = flutter.compileSdkVersion
@@ -45,10 +45,7 @@ android {
     }
 
     defaultConfig {
-        // Unique application ID for FortuneLog beta/release builds.
         applicationId = "com.fortunelog.mobile"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -1,5 +1,5 @@
 name: fortune_log_mobile
-description: FortuneLog mobile app (dev test shell)
+description: FortuneLog mobile app
 publish_to: "none"
 version: 0.1.0+1
 

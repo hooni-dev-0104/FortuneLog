@@ -370,7 +370,7 @@ class _DevTestPageState extends State<DevTestPage> {
             _field(_birthProfileIdController, 'Birth Profile ID (UUID)'),
             if (_birthProfiles.isNotEmpty)
               DropdownButtonFormField<String>(
-                value: _birthProfileIdController.text.isEmpty
+                initialValue: _birthProfileIdController.text.isEmpty
                     ? null
                     : _birthProfileIdController.text,
                 items: _birthProfiles
