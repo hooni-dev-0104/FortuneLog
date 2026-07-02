@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
 
+import '../../core/network/engine_api_client.dart';
+import '../../core/network/engine_api_client_factory.dart';
+import '../../core/network/engine_error_mapper.dart';
+import '../../core/network/http_engine_api_client.dart';
 import '../../core/ui/app_widgets.dart';
 
+class ReportPageArgs {
+  const ReportPageArgs({
+    required this.chartId,
+    this.initialReportType = 'personality',
+  });
+
+  final String chartId;
+  final String initialReportType;
+}
+
 class ReportPage extends StatefulWidget {
-  const ReportPage({super.key});
+  const ReportPage({
+    super.key,
+    this.args,
+    EngineApiClient? engineClient,
+  }) : _engineClientOverride = engineClient;
 
   static const routeName = '/report';
+
+  final ReportPageArgs? args;
+  final EngineApiClient? _engineClientOverride;
 
   @override
   State<ReportPage> createState() => _ReportPageState();
@@ -13,104 +34,162 @@ class ReportPage extends StatefulWidget {
 
 class _ReportPageState extends State<ReportPage>
     with SingleTickerProviderStateMixin {
+  static const List<_ReportTabSpec> _tabs = [
+    _ReportTabSpec(label: '성향', reportType: 'personality'),
+    _ReportTabSpec(label: '연애', reportType: 'relationship'),
+    _ReportTabSpec(label: '직업', reportType: 'career'),
+  ];
+
   late final TabController _tabController;
-  bool _loading = false;
-  String? _error;
+  final Map<String, _ReportContent> _contents = {};
+  final Set<String> _loadingTypes = {};
+  final Map<String, String> _errors = {};
+  final Map<String, String?> _requestIds = {};
+
+  String? get _chartId {
+    final chartId = widget.args?.chartId.trim();
+    if (chartId == null || chartId.isEmpty) return null;
+    return chartId;
+  }
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    final initialIndex = _tabs.indexWhere(
+      (tab) => tab.reportType == widget.args?.initialReportType,
+    );
+    _tabController = TabController(
+      length: _tabs.length,
+      initialIndex: initialIndex < 0 ? 0 : initialIndex,
+      vsync: this,
+    );
+    _tabController.addListener(_loadSelectedTabIfNeeded);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSelectedTab(force: false);
+    });
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_loadSelectedTabIfNeeded);
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _regenerate() async {
+  EngineApiClient _engineClient() {
+    final override = widget._engineClientOverride;
+    if (override != null) return override;
+
+    final baseUrl = const String.fromEnvironment('ENGINE_BASE_URL');
+    if (baseUrl.isEmpty) {
+      throw const FormatException('ENGINE_BASE_URL is empty');
+    }
+    return EngineApiClientFactory.create(baseUrl: baseUrl);
+  }
+
+  String _selectedReportType() => _tabs[_tabController.index].reportType;
+
+  void _loadSelectedTabIfNeeded() {
+    if (_tabController.indexIsChanging) return;
+    _loadSelectedTab(force: false);
+  }
+
+  Future<void> _loadSelectedTab({required bool force}) async {
+    final reportType = _selectedReportType();
+    if (!force && _contents.containsKey(reportType)) return;
+    if (_loadingTypes.contains(reportType)) return;
+    await _loadReport(reportType, force: force);
+  }
+
+  Future<void> _loadReport(String reportType, {required bool force}) async {
+    final chartId = _chartId;
+    if (chartId == null) {
+      return;
+    }
+
     setState(() {
-      _loading = true;
-      _error = null;
+      _loadingTypes.add(reportType);
+      _errors.remove(reportType);
+      _requestIds.remove(reportType);
+      if (force) {
+        _contents.remove(reportType);
+      }
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 650));
-    if (!mounted) return;
+    try {
+      final response = await _engineClient().generateReport(
+        GenerateReportRequestDto(chartId: chartId, reportType: reportType),
+      );
+      if (!mounted) return;
+      setState(() {
+        _contents[reportType] = _ReportContent.fromJson(response.content);
+        _requestIds[reportType] = response.requestId;
+        _loadingTypes.remove(reportType);
+      });
+    } on EngineApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errors[reportType] = EngineErrorMapper.userMessage(e);
+        _requestIds[reportType] = e.requestId;
+        _loadingTypes.remove(reportType);
+      });
+    } on FormatException {
+      if (!mounted) return;
+      setState(() {
+        _errors[reportType] = 'ENGINE_BASE_URL이 비어 있습니다. .env 설정을 확인해주세요.';
+        _loadingTypes.remove(reportType);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errors[reportType] = '리포트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+        _loadingTypes.remove(reportType);
+      });
+    }
+  }
 
-    setState(() => _loading = false);
+  Future<void> _regenerate() async {
+    await _loadSelectedTab(force: true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final chartId = _chartId;
     return Scaffold(
       appBar: AppBar(
         title: const Text('상세 리포트'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: '성향'),
-            Tab(text: '연애'),
-            Tab(text: '직업'),
-          ],
+          tabs: [for (final tab in _tabs) Tab(text: tab.label)],
         ),
       ),
-      body: _loading
-          ? const _ReportSkeleton()
-          : Column(
+      body: chartId == null
+          ? const Padding(
+              padding: EdgeInsets.fromLTRB(20, 14, 20, 20),
+              child: EmptyState(
+                title: '사주 차트가 필요합니다',
+                description: '출생정보로 사주 계산을 완료한 뒤 상세 리포트를 확인할 수 있습니다.',
+                icon: Icons.assignment_outlined,
+                tone: BadgeTone.warning,
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
               children: [
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-                    child: StatusNotice.error(
-                        message: _error!, requestId: 'report-req-001'),
+                for (final tab in _tabs)
+                  _ReportTab(
+                    loading: _loadingTypes.contains(tab.reportType),
+                    error: _errors[tab.reportType],
+                    requestId: _requestIds[tab.reportType],
+                    content: _contents[tab.reportType],
+                    onRetry: () => _loadReport(tab.reportType, force: true),
                   ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: const [
-                      _ReportTab(
-                        summary:
-                            '핵심 에너지는 추진력과 몰입에 강점이 있으나, 과도한 자기압박이 발생하기 쉽습니다.',
-                        strengths: '강점: 목표 집중력, 실행 속도, 변동성 대응력',
-                        caution: '주의: 과한 완벽주의로 인한 피로 누적',
-                        actions: [
-                          '중요 목표는 2개 이하로 제한하기',
-                          '하루 마감 15분 회고로 과부하 정리하기',
-                          '주 1회 일정 비우는 회복 슬롯 고정하기',
-                        ],
-                      ),
-                      _ReportTab(
-                        summary:
-                            '관계에서는 감정 표현보다 맥락 설명이 효과적이며, 즉흥 반응을 줄일수록 안정적입니다.',
-                        strengths: '강점: 배려 중심의 관계 유지, 문제 해결 지향 대화',
-                        caution: '주의: 감정 누적 후 급격한 거리두기',
-                        actions: [
-                          '감정 표현 전 사실-요청 구조로 문장화하기',
-                          '갈등 시 30분 후 대화 규칙 세우기',
-                          '주간 체크인 루틴으로 기대치 정렬하기',
-                        ],
-                      ),
-                      _ReportTab(
-                        summary:
-                            '업무에서는 빠른 실행이 장점이지만, 우선순위 정렬 없이 확장하면 효율이 떨어집니다.',
-                        strengths: '강점: 초기 세팅 속도, 책임감, 마감 대응력',
-                        caution: '주의: 동시다발 과제 수용으로 인한 품질 저하',
-                        actions: [
-                          '주간 Top3 우선순위 선언 후 공유하기',
-                          '회의 전 의사결정 항목 미리 정의하기',
-                          '집중 블록(90분)과 소통 블록 분리하기',
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 6, 20, 16),
         child: FilledButton.icon(
-          onPressed: _regenerate,
+          onPressed: chartId == null ? null : _regenerate,
           icon: const Icon(Icons.refresh),
           label: const Text('리포트 재생성'),
         ),
@@ -119,43 +198,138 @@ class _ReportPageState extends State<ReportPage>
   }
 }
 
-class _ReportTab extends StatelessWidget {
-  const _ReportTab({
+class _ReportTabSpec {
+  const _ReportTabSpec({
+    required this.label,
+    required this.reportType,
+  });
+
+  final String label;
+  final String reportType;
+}
+
+class _ReportContent {
+  const _ReportContent({
     required this.summary,
     required this.strengths,
-    required this.caution,
+    required this.cautions,
     required this.actions,
   });
 
   final String summary;
-  final String strengths;
-  final String caution;
+  final List<String> strengths;
+  final List<String> cautions;
   final List<String> actions;
+
+  factory _ReportContent.fromJson(Map<String, dynamic> json) {
+    return _ReportContent(
+      summary: _stringValue(json['summary'], fallback: '요약 정보가 없습니다.'),
+      strengths: _stringList(json['strengths']),
+      cautions: _stringList(json['cautions']),
+      actions: _stringList(json['actions']),
+    );
+  }
+
+  static String _stringValue(dynamic value, {required String fallback}) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return fallback;
+    return text;
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return const [];
+    return [text];
+  }
+}
+
+class _ReportTab extends StatelessWidget {
+  const _ReportTab({
+    required this.loading,
+    required this.error,
+    required this.requestId,
+    required this.content,
+    required this.onRetry,
+  });
+
+  final bool loading;
+  final String? error;
+  final String? requestId;
+  final _ReportContent? content;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    if (loading && content == null) {
+      return const _ReportSkeleton();
+    }
+
+    if (content == null) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
+        children: [
+          if (error != null) ...[
+            StatusNotice.error(message: error!, requestId: requestId),
+            const SizedBox(height: 10),
+          ],
+          EmptyState(
+            title: '생성된 리포트가 없습니다',
+            description: '선택한 탭의 리포트를 생성하면 요약, 강점, 주의 포인트, 행동 가이드가 표시됩니다.',
+            actionText: '리포트 생성',
+            onAction: onRetry,
+            icon: Icons.article_outlined,
+            tone: BadgeTone.info,
+          ),
+        ],
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
       children: [
+        if (error != null) ...[
+          StatusNotice.error(message: error!, requestId: requestId),
+          const SizedBox(height: 10),
+        ],
         PageSection(
           title: '요약',
-          child: Text(summary, style: Theme.of(context).textTheme.bodyLarge),
+          child: Text(content!.summary,
+              style: Theme.of(context).textTheme.bodyLarge),
         ),
         const SizedBox(height: 10),
         PageSection(
           title: '강점',
-          child: Text(strengths, style: Theme.of(context).textTheme.bodyLarge),
+          child: AppTextList(
+            items: content!.strengths,
+            marker: AppListMarker.check,
+            emptyText: '강점 정보가 없습니다.',
+          ),
         ),
         const SizedBox(height: 10),
         PageSection(
           title: '주의 포인트',
-          child: Text(caution, style: Theme.of(context).textTheme.bodyLarge),
+          child: AppTextList(
+            items: content!.cautions,
+            marker: AppListMarker.bullet,
+            emptyText: '주의 포인트 정보가 없습니다.',
+          ),
         ),
         const SizedBox(height: 10),
         PageSection(
           title: '행동 가이드',
           subtitle: '즉시 실행 가능한 체크리스트',
-          child: AppTextList(items: actions, marker: AppListMarker.check),
+          child: AppTextList(
+            items: content!.actions,
+            marker: AppListMarker.check,
+            emptyText: '행동 가이드가 없습니다.',
+          ),
         ),
       ],
     );

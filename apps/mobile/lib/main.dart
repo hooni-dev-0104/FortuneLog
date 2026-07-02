@@ -96,7 +96,10 @@ class _FortuneLogAppState extends State<FortuneLogApp> {
             ),
           );
         },
-        ReportPage.routeName: (_) => const ReportPage(),
+        ReportPage.routeName: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          return ReportPage(args: args is ReportPageArgs ? args : null);
+        },
         ManseoryeokDetailPage.routeName: (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           return ManseoryeokDetailPage(

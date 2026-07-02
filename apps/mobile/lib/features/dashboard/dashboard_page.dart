@@ -769,8 +769,11 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () =>
-                  Navigator.pushNamed(context, ReportPage.routeName),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                ReportPage.routeName,
+                arguments: ReportPageArgs(chartId: _chartId!),
+              ),
               child: const Text('상세 리포트 보기'),
             ),
             const SizedBox(height: 8),
