@@ -27,6 +27,12 @@ public class PaymentWebhookService {
     private static final Set<String> ORDER_STATUS_VALUES = Set.of("pending", "paid", "failed", "canceled");
     private static final Set<String> SUBSCRIPTION_STATUS_VALUES = Set.of("active", "grace", "expired", "canceled");
     private static final String PROVIDER_REVENUECAT = "revenuecat";
+    private static final String AI_INTERPRETATION_CREDIT = "ai_interpretation";
+    private static final java.util.Map<String, Integer> REVENUECAT_CREDIT_PACKS = java.util.Map.of(
+            "fortunelog_ai_credit_1", 1,
+            "fortunelog_ai_credit_5", 5,
+            "fortunelog_ai_credit_10", 10
+    );
 
     private final SupabasePersistenceService persistenceService;
     private final ObjectMapper objectMapper;
@@ -82,6 +88,8 @@ public class PaymentWebhookService {
 
         boolean orderUpdated = false;
         boolean subscriptionUpdated = false;
+        Integer creditAmount = creditAmountFor(event.planCode());
+        boolean creditPackEvent = creditAmount != null;
 
         if (!duplicate && !deactivated) {
             if (normalizedOrderStatus != null) {
@@ -89,6 +97,21 @@ public class PaymentWebhookService {
                         event.provider(),
                         event.providerOrderId(),
                         normalizedOrderStatus
+                );
+            }
+
+            if ("paid".equals(normalizedOrderStatus) && creditAmount != null) {
+                persistenceService.grantCredits(
+                        event.userId(),
+                        AI_INTERPRETATION_CREDIT,
+                        creditAmount,
+                        event.provider(),
+                        event.eventId(),
+                        event.providerOrderId(),
+                        java.util.Map.of(
+                                "productId", event.planCode(),
+                                "creditAmount", creditAmount
+                        )
                 );
             }
 
@@ -104,11 +127,14 @@ public class PaymentWebhookService {
         }
 
         boolean entitled = false;
-        if (!deactivated) {
-            entitled = persistenceService.hasActiveEntitlement(event.userId())
-                    || persistenceService.hasPaidOrder(event.userId());
+        int reportsUpdated = 0;
+        if (!creditPackEvent) {
+            if (!deactivated) {
+                entitled = persistenceService.hasActiveEntitlement(event.userId())
+                        || persistenceService.hasPaidOrder(event.userId());
+            }
+            reportsUpdated = persistenceService.updatePaidReportVisibility(event.userId(), entitled);
         }
-        int reportsUpdated = persistenceService.updatePaidReportVisibility(event.userId(), entitled);
 
         return new PaymentWebhookResult(
                 duplicate,
@@ -178,11 +204,11 @@ public class PaymentWebhookService {
             throw badRequest("event.id is required");
         }
 
-        String providerOrderId = firstNonBlank(
-                text(eventNode, "original_transaction_id"),
-                text(eventNode, "transaction_id"),
-                eventId
-        );
+        String transactionId = text(eventNode, "transaction_id");
+        String originalTransactionId = text(eventNode, "original_transaction_id");
+        String providerOrderId = "NON_RENEWING_PURCHASE".equals(normalizedType)
+                ? firstNonBlank(transactionId, originalTransactionId, eventId)
+                : firstNonBlank(originalTransactionId, transactionId, eventId);
         String userId = resolveRevenueCatUserId(eventNode);
         String planCode = text(eventNode, "product_id");
         String startedAt = normalizeInstant(fromEpochMillisNode(eventNode.get("purchased_at_ms")));
@@ -326,6 +352,13 @@ public class PaymentWebhookService {
         if (normalizedSubscriptionStatus != null && isBlank(event.planCode())) {
             throw badRequest("plan_code is required when subscription_status is present");
         }
+    }
+
+    private Integer creditAmountFor(String productId) {
+        if (isBlank(productId)) {
+            return null;
+        }
+        return REVENUECAT_CREDIT_PACKS.get(productId.trim());
     }
 
     private String normalizeOrderStatus(String value) {

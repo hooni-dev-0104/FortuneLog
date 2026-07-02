@@ -80,6 +80,23 @@ public class EngineController {
         );
     }
 
+    @GetMapping("/credits")
+    public Map<String, Object> credits(
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest httpRequest
+    ) {
+        var balances = engineService.listCreditBalances(jwt.getSubject()).stream()
+                .map(balance -> Map.of(
+                        "creditType", balance.creditType(),
+                        "balance", balance.balance()
+                ))
+                .toList();
+        return Map.of(
+                "requestId", requestId(httpRequest),
+                "balances", balances
+        );
+    }
+
     @PostMapping("/reports:interpret")
     @ResponseStatus(HttpStatus.OK)
     public Map<String, Object> generateAiInterpretation(

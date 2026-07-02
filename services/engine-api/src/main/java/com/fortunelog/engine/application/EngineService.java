@@ -9,6 +9,7 @@ import com.fortunelog.engine.domain.LunarDateConverter;
 import com.fortunelog.engine.domain.SajuCalculator;
 import com.fortunelog.engine.domain.model.ChartResult;
 import com.fortunelog.engine.domain.model.DailyCategoryDetail;
+import com.fortunelog.engine.domain.model.CreditBalance;
 import com.fortunelog.engine.domain.model.DailyFortuneResult;
 import com.fortunelog.engine.domain.model.ReportResult;
 import com.fortunelog.engine.infra.llm.OpenAiAnalysisClient;
@@ -33,6 +34,7 @@ public class EngineService {
     private static final Logger log = LoggerFactory.getLogger(EngineService.class);
 
     private static final DateTimeFormatter BIRTH_TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm");
+    private static final String AI_INTERPRETATION_CREDIT = "ai_interpretation";
 
     private final SajuCalculator sajuCalculator = new SajuCalculator();
     private final LunarDateConverter lunarDateConverter = new LunarDateConverter();
@@ -460,6 +462,11 @@ public class EngineService {
         };
     }
 
+    public List<CreditBalance> listCreditBalances(String userId) {
+        ensureUserIsActive(userId);
+        return persistenceService.listCreditBalances(userId);
+    }
+
     public ReportResult generateAiInterpretation(String userId, GenerateAiInterpretationRequest request) {
         ensureUserIsActive(userId);
         var snapshot = persistenceService.findChartSnapshot(userId, request.chartId());
@@ -471,6 +478,14 @@ public class EngineService {
             );
         }
 
+        if (persistenceService.creditBalance(userId, AI_INTERPRETATION_CREDIT) < 1) {
+            throw new ApiClientException(
+                    "AI_CREDIT_REQUIRED",
+                    HttpStatus.PAYMENT_REQUIRED,
+                    "AI 사주풀이 이용권이 필요합니다. 이용권을 구매한 뒤 다시 시도해주세요."
+            );
+        }
+
         Map<String, Object> content = openAiAnalysisClient.generateSajuInterpretation(
                 snapshot.chart(),
                 snapshot.fiveElements()
@@ -479,19 +494,21 @@ public class EngineService {
         content.put("analysisInput", buildAiAnalysisInput(snapshot.chart(), snapshot.fiveElements()));
         content.put("analysisInputText", buildAiAnalysisInputText(snapshot.chart(), snapshot.fiveElements()));
 
-        try {
-            persistenceService.upsertNonDailyReport(
-                    userId,
-                    request.chartId(),
-                    "ai_interpretation",
-                    content,
-                    true,
-                    true
+        String consumptionId = "ai_interpretation:" + userId + ":" + request.chartId() + ":" + System.currentTimeMillis();
+        boolean finalized = persistenceService.finalizeAiInterpretationReport(
+                userId,
+                request.chartId(),
+                content,
+                consumptionId,
+                Map.of("chartId", request.chartId(), "reportType", "ai_interpretation")
+        );
+        if (!finalized) {
+            log.warn("ai interpretation finalization failed: userId={} chartId={}", userId, request.chartId());
+            throw new ApiClientException(
+                    "AI_CREDIT_REQUIRED",
+                    HttpStatus.PAYMENT_REQUIRED,
+                    "AI 사주풀이 이용권 확인에 실패했습니다. 잔액을 확인한 뒤 다시 시도해주세요."
             );
-        } catch (IllegalStateException e) {
-            // Do not fail user-facing generation when persistence schema is behind (e.g. enum/index mismatch).
-            // Client can still render the returned content immediately.
-            log.warn("ai interpretation persistence skipped due to storage error: {}", e.getMessage());
         }
 
         return new ReportResult(request.chartId(), "ai_interpretation", content);

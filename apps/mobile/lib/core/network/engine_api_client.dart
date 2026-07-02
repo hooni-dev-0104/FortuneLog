@@ -6,6 +6,7 @@ abstract interface class EngineApiClient {
   Future<DailyFortuneResponseDto> generateDailyFortune(
     GenerateDailyFortuneRequestDto request,
   );
+  Future<CreditBalanceResponseDto> getCredits();
   Future<AccountDeletionResponseDto> requestAccountDeletion(
     RequestAccountDeletionRequestDto request,
   );
@@ -189,6 +190,50 @@ class DailyFortuneResponseDto {
       ),
       categoryDetails: json['categoryDetails'] as Map<String, dynamic>?,
       actions: List<String>.from(json['actions'] as List<dynamic>),
+    );
+  }
+}
+
+class CreditBalanceResponseDto {
+  final String? requestId;
+  final List<CreditBalanceDto> balances;
+
+  const CreditBalanceResponseDto({
+    required this.requestId,
+    required this.balances,
+  });
+
+  int balanceFor(String creditType) {
+    for (final balance in balances) {
+      if (balance.creditType == creditType) return balance.balance;
+    }
+    return 0;
+  }
+
+  factory CreditBalanceResponseDto.fromJson(Map<String, dynamic> json) {
+    return CreditBalanceResponseDto(
+      requestId: json['requestId'] as String?,
+      balances: (json['balances'] as List<dynamic>? ?? const [])
+          .map((value) =>
+              CreditBalanceDto.fromJson((value as Map).cast<String, dynamic>()))
+          .toList(),
+    );
+  }
+}
+
+class CreditBalanceDto {
+  final String creditType;
+  final int balance;
+
+  const CreditBalanceDto({
+    required this.creditType,
+    required this.balance,
+  });
+
+  factory CreditBalanceDto.fromJson(Map<String, dynamic> json) {
+    return CreditBalanceDto(
+      creditType: json['creditType'] as String,
+      balance: json['balance'] as int? ?? 0,
     );
   }
 }

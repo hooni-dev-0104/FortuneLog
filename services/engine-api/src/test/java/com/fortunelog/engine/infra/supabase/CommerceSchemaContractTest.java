@@ -24,6 +24,14 @@ class CommerceSchemaContractTest {
             "migrations",
             "202602130001_init_schema.sql"
     );
+    private static final Path AI_CREDIT_LEDGER_SCHEMA = Path.of(
+            "..",
+            "..",
+            "infra",
+            "supabase",
+            "migrations",
+            "202606150001_ai_credit_ledger.sql"
+    );
 
     private String sql;
 
@@ -62,6 +70,24 @@ class CommerceSchemaContractTest {
                 sql.contains("visible boolean not null default true"),
                 "reports.visible default is required for entitlement visibility toggles"
         );
+    }
+
+    @Test
+    void shouldKeepCreditPackFallbackPricesAlignedWithLaunchContract() throws IOException {
+        String creditSql = Files.readString(AI_CREDIT_LEDGER_SCHEMA);
+
+        assertTrue(creditSql.contains("('fortunelog_ai_credit_1', 'AI 사주풀이 1회권', 1500, 'KRW', 'one_time')"));
+        assertTrue(creditSql.contains("('fortunelog_ai_credit_5', 'AI 사주풀이 5회권', 5500, 'KRW', 'one_time')"));
+        assertTrue(creditSql.contains("('fortunelog_ai_credit_10', 'AI 사주풀이 10회권', 10000, 'KRW', 'one_time')"));
+    }
+
+    @Test
+    void shouldDedupeCreditPackPurchaseGrantsByProviderOrder() throws IOException {
+        String creditSql = Files.readString(AI_CREDIT_LEDGER_SCHEMA).toLowerCase();
+
+        assertTrue(creditSql.contains("uq_credit_ledger_purchase_order"));
+        assertTrue(creditSql.contains("on public.credit_ledger (source_provider, source_order_id, reason, credit_type)"));
+        assertTrue(creditSql.contains("and reason = 'purchase'"));
     }
 
     private List<String> enumValues(String enumName) {

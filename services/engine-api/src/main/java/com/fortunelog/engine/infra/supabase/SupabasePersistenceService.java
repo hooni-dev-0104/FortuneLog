@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fortunelog.engine.domain.model.CreditBalance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -464,6 +466,185 @@ public class SupabasePersistenceService {
             String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
             if (isUniqueViolation(msg)) {
                 return true;
+            }
+            throw e;
+        }
+    }
+
+    public List<CreditBalance> listCreditBalances(String userId) {
+        ensureConfigured();
+        String path = "/rest/v1/credit_balances"
+                + "?select=" + URLEncoder.encode("credit_type,balance", StandardCharsets.UTF_8)
+                + "&user_id=" + URLEncoder.encode("eq." + userId, StandardCharsets.UTF_8)
+                + "&order=" + URLEncoder.encode("credit_type.asc", StandardCharsets.UTF_8);
+        String responseBody = sendGet(path);
+
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (!node.isArray() || node.isEmpty()) {
+                return List.of();
+            }
+            List<CreditBalance> balances = new ArrayList<>();
+            for (JsonNode row : node) {
+                String creditType = text(row, "credit_type");
+                int balance = row.path("balance").asInt(0);
+                if (creditType != null && !creditType.isBlank()) {
+                    balances.add(new CreditBalance(creditType, balance));
+                }
+            }
+            return balances;
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse credit balance response", e);
+        }
+    }
+
+    public int creditBalance(String userId, String creditType) {
+        for (CreditBalance balance : listCreditBalances(userId)) {
+            if (creditType.equals(balance.creditType())) {
+                return balance.balance();
+            }
+        }
+        return 0;
+    }
+
+    public boolean finalizeAiInterpretationReport(
+            String userId,
+            String chartId,
+            Map<String, ?> content,
+            String sourceEventId,
+            Map<String, Object> metadata
+    ) {
+        ensureConfigured();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("p_user_id", userId);
+        body.put("p_chart_id", chartId);
+        body.put("p_content", content);
+        body.put("p_source_event_id", sourceEventId);
+        body.put("p_metadata", metadata == null ? Map.of() : metadata);
+
+        String responseBody = sendPost("/rest/v1/rpc/finalize_ai_interpretation_report", body, false);
+        try {
+            JsonNode node = objectMapper.readTree(responseBody);
+            if (node == null || node.isNull()) {
+                return false;
+            }
+            if (node.isTextual()) {
+                return !node.asText().isBlank();
+            }
+            if (node.isArray() && !node.isEmpty()) {
+                JsonNode first = node.get(0);
+                return first != null && !first.isNull() && !first.asText().isBlank();
+            }
+            return false;
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to parse finalize AI interpretation response", e);
+        }
+    }
+
+    public boolean grantCredits(
+            String userId,
+            String creditType,
+            int amount,
+            String provider,
+            String eventId,
+            String providerOrderId,
+            Map<String, Object> metadata
+    ) {
+        if (amount <= 0) {
+            return false;
+        }
+        return insertCreditLedgerEntry(
+                userId,
+                creditType,
+                amount,
+                "purchase",
+                provider,
+                eventId,
+                providerOrderId,
+                null,
+                metadata
+        );
+    }
+
+    public boolean consumeCredit(
+            String userId,
+            String creditType,
+            String sourceEventId,
+            Map<String, Object> metadata
+    ) {
+        ensureConfigured();
+        if (creditBalance(userId, creditType) < 1) {
+            return false;
+        }
+        return insertCreditLedgerEntry(
+                userId,
+                creditType,
+                -1,
+                "consume",
+                "engine-api",
+                sourceEventId,
+                null,
+                null,
+                metadata
+        );
+    }
+
+    public void refundCredit(
+            String userId,
+            String creditType,
+            String sourceEventId,
+            Map<String, Object> metadata
+    ) {
+        insertCreditLedgerEntry(
+                userId,
+                creditType,
+                1,
+                "refund",
+                "engine-api",
+                sourceEventId,
+                null,
+                null,
+                metadata
+        );
+    }
+
+    private boolean insertCreditLedgerEntry(
+            String userId,
+            String creditType,
+            int delta,
+            String reason,
+            String sourceProvider,
+            String sourceEventId,
+            String sourceOrderId,
+            String relatedReportId,
+            Map<String, Object> metadata
+    ) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("user_id", userId);
+        body.put("credit_type", creditType);
+        body.put("delta", delta);
+        body.put("reason", reason);
+        if (sourceProvider != null && !sourceProvider.isBlank()) {
+            body.put("source_provider", sourceProvider);
+        }
+        if (sourceEventId != null && !sourceEventId.isBlank()) {
+            body.put("source_event_id", sourceEventId);
+        }
+        if (sourceOrderId != null && !sourceOrderId.isBlank()) {
+            body.put("source_order_id", sourceOrderId);
+        }
+        if (relatedReportId != null && !relatedReportId.isBlank()) {
+            body.put("related_report_id", relatedReportId);
+        }
+        body.put("metadata", metadata == null ? Map.of() : metadata);
+
+        try {
+            insertReturningId("credit_ledger", body);
+            return true;
+        } catch (IllegalStateException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (isUniqueViolation(msg)) {
+                return false;
             }
             throw e;
         }

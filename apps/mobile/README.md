@@ -30,6 +30,8 @@ apps/mobile/scripts/run_local_dev.sh
 
 기본 타깃은 `chrome` 입니다.
 
+참고: `chrome` 실행은 Flutter web 검증용이며 RevenueCat 네이티브 구매를 실행하지 않습니다. 프리미엄 사주풀이 이용권 실제 구매 QA는 iOS/Android 타깃에서 진행해야 합니다.
+
 다른 타깃 예시:
 
 ```bash

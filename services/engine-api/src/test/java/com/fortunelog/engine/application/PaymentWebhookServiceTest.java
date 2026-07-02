@@ -295,6 +295,116 @@ class PaymentWebhookServiceTest {
     }
 
     @Test
+    void shouldGrantCreditsForRevenueCatCreditPackPurchase() {
+        String payload = """
+                {
+                  "api_version": "1.0",
+                  "event": {
+                    "id": "evt-credit-5",
+                    "type": "NON_RENEWING_PURCHASE",
+                    "app_user_id": "%s",
+                    "product_id": "fortunelog_ai_credit_5",
+                    "original_transaction_id": "orig-credit-5",
+                    "transaction_id": "tx-credit-5",
+                    "purchased_at_ms": 1772712000000
+                  }
+                }
+                """.formatted(USER_ID);
+
+        when(persistenceService.registerPaymentWebhookEvent(
+                eq("revenuecat"),
+                eq("tx-credit-5"),
+                eq("evt-credit-5"),
+                eq(USER_ID),
+                any()
+        )).thenReturn(false);
+        when(persistenceService.updateOrderStatus("revenuecat", "tx-credit-5", "paid")).thenReturn(true);
+        when(persistenceService.hasActiveEntitlement(USER_ID)).thenReturn(false);
+
+        var result = service.processWebhook(payload, "Bearer " + REVENUECAT_AUTH, null);
+
+        assertFalse(result.duplicate());
+        assertTrue(result.orderUpdated());
+        assertFalse(result.subscriptionUpdated());
+        assertFalse(result.entitled());
+        assertEquals(0, result.reportsUpdated());
+
+        verify(persistenceService).updateOrderStatus("revenuecat", "tx-credit-5", "paid");
+        verify(persistenceService).grantCredits(
+                eq(USER_ID),
+                eq("ai_interpretation"),
+                eq(5),
+                eq("revenuecat"),
+                eq("evt-credit-5"),
+                eq("tx-credit-5"),
+                any()
+        );
+        verify(persistenceService, never()).hasPaidOrder(USER_ID);
+        verify(persistenceService, never()).updatePaidReportVisibility(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void shouldNotGrantCreditsForDuplicateCreditPackWebhook() {
+        String payload = """
+                {
+                  "api_version": "1.0",
+                  "event": {
+                    "id": "evt-credit-dup",
+                    "type": "NON_RENEWING_PURCHASE",
+                    "app_user_id": "%s",
+                    "product_id": "fortunelog_ai_credit_10",
+                    "original_transaction_id": "orig-credit-dup"
+                  }
+                }
+                """.formatted(USER_ID);
+
+        when(persistenceService.registerPaymentWebhookEvent(
+                eq("revenuecat"),
+                eq("orig-credit-dup"),
+                eq("evt-credit-dup"),
+                eq(USER_ID),
+                any()
+        )).thenReturn(true);
+        when(persistenceService.hasActiveEntitlement(USER_ID)).thenReturn(false);
+
+        var result = service.processWebhook(payload, "Bearer " + REVENUECAT_AUTH, null);
+
+        assertTrue(result.duplicate());
+        assertFalse(result.entitled());
+        assertEquals(0, result.reportsUpdated());
+        verify(persistenceService, never()).grantCredits(any(), any(), eq(10), any(), any(), any(), any());
+        verify(persistenceService, never()).updateOrderStatus(any(), any(), any());
+        verify(persistenceService, never()).hasPaidOrder(USER_ID);
+        verify(persistenceService, never()).updatePaidReportVisibility(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void shouldUseConsumableTransactionIdAsCreditPackIdempotencyKey() {
+        String payload = """
+                {"event":{"id":"evt-credit-a","type":"NON_RENEWING_PURCHASE","app_user_id":"%s","product_id":"fortunelog_ai_credit_1","original_transaction_id":"orig-credit-same","transaction_id":"tx-credit-a"}}
+                """.formatted(USER_ID);
+
+        when(persistenceService.registerPaymentWebhookEvent(
+                eq("revenuecat"), eq("tx-credit-a"), eq("evt-credit-a"), eq(USER_ID), any()
+        )).thenReturn(false);
+        when(persistenceService.updateOrderStatus("revenuecat", "tx-credit-a", "paid")).thenReturn(true);
+        when(persistenceService.hasActiveEntitlement(USER_ID)).thenReturn(false);
+
+        service.processWebhook(payload, "Bearer " + REVENUECAT_AUTH, null);
+
+        verify(persistenceService).grantCredits(
+                eq(USER_ID),
+                eq("ai_interpretation"),
+                eq(1),
+                eq("revenuecat"),
+                eq("evt-credit-a"),
+                eq("tx-credit-a"),
+                any()
+        );
+        verify(persistenceService, never()).hasPaidOrder(USER_ID);
+    }
+
+    @Test
     void shouldTreatRevenueCatTestEventAsNoop() {
         String payload = """
                 {

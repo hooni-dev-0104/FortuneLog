@@ -196,6 +196,89 @@ class SupabasePersistenceServiceTest {
     }
 
     @Test
+    void shouldListCreditBalances() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody(
+                "[{\"credit_type\":\"ai_interpretation\",\"balance\":5}]"
+        ));
+
+        List<com.fortunelog.engine.domain.model.CreditBalance> balances = service.listCreditBalances("user-1");
+
+        assertEquals(1, balances.size());
+        assertEquals("ai_interpretation", balances.get(0).creditType());
+        assertEquals(5, balances.get(0).balance());
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("GET", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/credit_balances"));
+        assertTrue(request.getPath().contains("user_id=eq.user-1"));
+    }
+
+    @Test
+    void shouldGrantCreditsWithPurchaseMetadata() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(201).setBody("[{\"id\":\"ledger-1\"}]"));
+
+        boolean granted = service.grantCredits(
+                "11111111-1111-1111-1111-111111111111",
+                "ai_interpretation",
+                5,
+                "revenuecat",
+                "evt-credit-5",
+                "orig-credit-5",
+                Map.of("productId", "fortunelog_ai_credit_5")
+        );
+
+        assertTrue(granted);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/credit_ledger"));
+        String body = request.getBody().readUtf8();
+        assertTrue(body.contains("\"delta\":5"));
+        assertTrue(body.contains("\"reason\":\"purchase\""));
+        assertTrue(body.contains("\"source_provider\":\"revenuecat\""));
+        assertTrue(body.contains("\"source_event_id\":\"evt-credit-5\""));
+        assertTrue(body.contains("\"source_order_id\":\"orig-credit-5\""));
+    }
+
+    @Test
+    void shouldFinalizeAiInterpretationViaRpc() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("\"report-1\""));
+
+        boolean finalized = service.finalizeAiInterpretationReport(
+                "11111111-1111-1111-1111-111111111111",
+                "22222222-2222-2222-2222-222222222222",
+                Map.of("summary", "ok"),
+                "consume-1",
+                Map.of("chartId", "22222222-2222-2222-2222-222222222222")
+        );
+
+        assertTrue(finalized);
+
+        RecordedRequest request = server.takeRequest();
+        assertEquals("POST", request.getMethod());
+        assertTrue(request.getPath().contains("/rest/v1/rpc/finalize_ai_interpretation_report"));
+        String body = request.getBody().readUtf8();
+        assertTrue(body.contains("\"p_user_id\":\"11111111-1111-1111-1111-111111111111\""));
+        assertTrue(body.contains("\"p_chart_id\":\"22222222-2222-2222-2222-222222222222\""));
+        assertTrue(body.contains("\"p_source_event_id\":\"consume-1\""));
+    }
+
+    @Test
+    void shouldReturnFalseWhenFinalizeRpcReturnsNull() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("null"));
+
+        boolean finalized = service.finalizeAiInterpretationReport(
+                "11111111-1111-1111-1111-111111111111",
+                "22222222-2222-2222-2222-222222222222",
+                Map.of("summary", "ok"),
+                "consume-1",
+                Map.of()
+        );
+
+        assertFalse(finalized);
+    }
+
+    @Test
     void shouldFindActiveAccountDeletionRequestId() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(200).setBody("[{\"id\":\"del-1\"}]"));
 

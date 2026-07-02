@@ -38,6 +38,19 @@ cd services/engine-api
 
 `assemble` is intended as a pull-request build gate to catch packaging/build issues before merge.
 
+## Premium AI credits (beta)
+
+Endpoint:
+
+- `GET /engine/v1/credits` — returns authenticated user's credit balances.
+- `POST /engine/v1/reports:interpret` — requires one `ai_interpretation` credit. If no credit is available, returns HTTP 402 with `code=AI_CREDIT_REQUIRED`.
+
+Credit packs:
+
+- `fortunelog_ai_credit_1`: 1 AI saju interpretation credit, fallback price 1,500 KRW
+- `fortunelog_ai_credit_5`: 5 credits, fallback price 5,500 KRW
+- `fortunelog_ai_credit_10`: 10 credits, fallback price 10,000 KRW
+
 ## RevenueCat webhook (beta)
 
 Endpoint:
@@ -60,6 +73,7 @@ Environment:
 ## Endpoints
 
 - `GET /engine/v1/health`
+- `GET /engine/v1/credits`
 - `POST /engine/v1/charts:calculate`
 - `POST /engine/v1/reports:generate`
 - `POST /engine/v1/reports:interpret`

@@ -56,12 +56,48 @@ class HttpEngineApiClient implements EngineApiClient {
   }
 
   @override
+  Future<CreditBalanceResponseDto> getCredits() async {
+    final jsonMap = await _get('/engine/v1/credits');
+    return CreditBalanceResponseDto.fromJson(jsonMap);
+  }
+
+  @override
   Future<AccountDeletionResponseDto> requestAccountDeletion(
     RequestAccountDeletionRequestDto request,
   ) async {
     final jsonMap =
         await _post('/engine/v1/accounts:deletion-request', request.toJson());
     return AccountDeletionResponseDto.fromJson(jsonMap);
+  }
+
+  Future<Map<String, dynamic>> _get(String path) async {
+    final token = await tokenProvider.getAccessToken();
+    if (token == null || token.isEmpty) {
+      throw const EngineApiException(
+        code: 'UNAUTHORIZED',
+        message: 'missing access token',
+      );
+    }
+
+    final requestId = generateRequestId();
+    final uri = Uri.parse('$baseUrl$path');
+
+    try {
+      final response = await _httpClient.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-Request-Id': requestId,
+        },
+      );
+      return _handleResponse('GET', uri, requestId, response);
+    } on SocketException catch (e) {
+      throw EngineApiException(
+        code: 'NETWORK_ERROR',
+        message: 'engine unreachable: $uri ($e)',
+        requestId: requestId,
+      );
+    }
   }
 
   Future<Map<String, dynamic>> _post(
@@ -77,9 +113,8 @@ class HttpEngineApiClient implements EngineApiClient {
     final requestId = generateRequestId();
     final uri = Uri.parse('$baseUrl$path');
 
-    http.Response response;
     try {
-      response = await _httpClient.post(
+      final response = await _httpClient.post(
         uri,
         headers: {
           'Authorization': 'Bearer $token',
@@ -88,6 +123,7 @@ class HttpEngineApiClient implements EngineApiClient {
         },
         body: jsonEncode(body),
       );
+      return _handleResponse('POST', uri, requestId, response);
     } on SocketException catch (e) {
       throw EngineApiException(
         code: 'NETWORK_ERROR',
@@ -95,10 +131,13 @@ class HttpEngineApiClient implements EngineApiClient {
         requestId: requestId,
       );
     }
+  }
 
+  Map<String, dynamic> _handleResponse(
+      String method, Uri uri, String requestId, http.Response response) {
     // Helpful for local dev; shows up in `flutter logs`.
     debugPrint(
-        '[engine-api] POST $uri -> ${response.statusCode} (reqId=$requestId)');
+        '[engine-api] $method $uri -> ${response.statusCode} (reqId=$requestId)');
 
     final decoded = _decodeBody(response.body);
     final responseRequestId = (decoded['requestId'] as String?) ??
