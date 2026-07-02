@@ -613,33 +613,18 @@ class _BirthInputPageState extends State<BirthInputPage> {
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: EdgeInsets.zero,
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            color: AppTheme.surfaceRaised,
-            border: Border(top: BorderSide(color: AppTheme.border)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppTheme.pagePadding,
-              10,
-              AppTheme.pagePadding,
-              16,
-            ),
-            child: FilledButton(
-              onPressed: _saving ? null : () => _validateAndSubmit(),
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppTheme.textOnBrand,
-                      ))
-                  : Text(isEdit ? '수정하고 결과 보기' : '저장하고 결과 보기'),
-            ),
-          ),
+      bottomNavigationBar: AppBottomActionBar(
+        child: FilledButton(
+          onPressed: _saving ? null : () => _validateAndSubmit(),
+          child: _saving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.textOnBrand,
+                  ))
+              : Text(isEdit ? '수정하고 결과 보기' : '저장하고 결과 보기'),
         ),
       ),
     );

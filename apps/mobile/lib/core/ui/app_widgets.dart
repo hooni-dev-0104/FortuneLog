@@ -89,6 +89,39 @@ class PageSection extends StatelessWidget {
   }
 }
 
+class AppBottomActionBar extends StatelessWidget {
+  const AppBottomActionBar({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.fromLTRB(
+      AppTheme.pagePadding,
+      10,
+      AppTheme.pagePadding,
+      16,
+    ),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      minimum: EdgeInsets.zero,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceRaised,
+          border: Border(top: BorderSide(color: AppTheme.border)),
+        ),
+        child: Padding(
+          padding: padding,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 enum NoticeTone { error, warning, info, success }
 
 class StatusNotice extends StatelessWidget {
@@ -338,6 +371,73 @@ class AppInfoRow extends StatelessWidget {
               const SizedBox(width: 10),
               const Icon(Icons.chevron_right, color: AppTheme.textWeak),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AppKeyValueTable extends StatelessWidget {
+  const AppKeyValueTable({
+    super.key,
+    required this.firstHeader,
+    required this.secondHeader,
+    required this.rows,
+    this.firstColumnWidth = 86,
+  });
+
+  final String firstHeader;
+  final String secondHeader;
+  final List<(String, String)> rows;
+  final double firstColumnWidth;
+
+  TableRow _row(
+    BuildContext context, {
+    required String left,
+    required String right,
+    bool header = false,
+  }) {
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: header ? FontWeight.w700 : FontWeight.w500,
+          color: header ? AppTheme.textStrong : AppTheme.textWeak,
+        );
+
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          child: Text(left, style: style),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          child: Text(right, style: style),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.border),
+          color: AppTheme.surfaceRaised,
+        ),
+        child: Table(
+          columnWidths: {
+            0: FixedColumnWidth(firstColumnWidth),
+            1: const FlexColumnWidth(),
+          },
+          border: const TableBorder(
+            horizontalInside: BorderSide(color: AppTheme.border),
+            verticalInside: BorderSide(color: AppTheme.border),
+          ),
+          children: [
+            _row(context, left: firstHeader, right: secondHeader, header: true),
+            for (final row in rows) _row(context, left: row.$1, right: row.$2),
           ],
         ),
       ),
@@ -778,6 +878,63 @@ class CategoryScoreRow extends StatelessWidget {
   }
 }
 
+class CategoryInsightSection extends StatelessWidget {
+  const CategoryInsightSection({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.score,
+    this.summary,
+    this.good = const [],
+    this.cautions = const [],
+    this.actions = const [],
+  });
+
+  final String label;
+  final IconData icon;
+  final int score;
+  final String? summary;
+  final List<String> good;
+  final List<String> cautions;
+  final List<String> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return PageSection(
+      title: label,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CategoryScoreRow(
+            icon: icon,
+            label: label,
+            score: score,
+            summary: summary,
+          ),
+          if (good.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            AppTextList(items: good),
+          ],
+          if (cautions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            AppTextList(items: cautions),
+          ],
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            AppTextList(items: actions, marker: AppListMarker.check),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class ElementDistributionBar extends StatelessWidget {
   const ElementDistributionBar({super.key, required this.counts});
 
@@ -810,6 +967,109 @@ class ElementDistributionBar extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+class ElementGlyphTile extends StatelessWidget {
+  const ElementGlyphTile({
+    super.key,
+    required this.primaryText,
+    this.secondaryText,
+    this.elementKey,
+    this.height,
+    this.aspectRatio = 1,
+    this.radius = AppTheme.radiusMd,
+    this.primaryTextStyle,
+    this.showElementLabel = true,
+  });
+
+  final String primaryText;
+  final String? secondaryText;
+  final String? elementKey;
+  final double? height;
+  final double aspectRatio;
+  final double radius;
+  final TextStyle? primaryTextStyle;
+  final bool showElementLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = elementKey == null
+        ? AppTheme.surfaceSunken
+        : AppTheme.elementColor(elementKey!);
+    final border = elementKey == null ? AppTheme.border : Colors.transparent;
+    final fg = ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
+        ? Colors.white
+        : AppTheme.textStrong;
+    final elementLabel =
+        elementKey == null ? null : AppTheme.elementLabel(elementKey!);
+
+    final tile = Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: border),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              primaryText,
+              textAlign: TextAlign.center,
+              style: (primaryTextStyle ??
+                      Theme.of(context).textTheme.headlineSmall)
+                  ?.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+          if (secondaryText != null && secondaryText!.trim().isNotEmpty)
+            Positioned(
+              left: 8,
+              bottom: 6,
+              child: Text(
+                secondaryText!,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: fg.withValues(alpha: 0.92)),
+              ),
+            ),
+          if (showElementLabel &&
+              elementLabel != null &&
+              elementLabel.trim().isNotEmpty)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceRaised.withValues(alpha: 0.24),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                  border: Border.all(
+                    color: AppTheme.surfaceRaised.withValues(alpha: 0.38),
+                  ),
+                ),
+                child: Text(
+                  elementLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (height != null) return tile;
+    return AspectRatio(aspectRatio: aspectRatio, child: tile);
   }
 }
 

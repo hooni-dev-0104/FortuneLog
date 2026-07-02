@@ -14,6 +14,10 @@ class AppTheme {
   static const goldLight = Color(0xFFFFD77A);
   static const goldFill = Color(0xFFFFF6E2);
 
+  static const kakaoYellow = Color(0xFFFEE500);
+  static const kakaoYellowBorder = Color(0xFFE7D200);
+  static const socialTextDark = Color(0xFF111111);
+
   static const surface = Color(0xFFF6F8F7);
   static const surfaceRaised = Colors.white;
   static const surfaceSunken = Color(0xFFEEF2F0);

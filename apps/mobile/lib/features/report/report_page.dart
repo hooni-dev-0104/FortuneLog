@@ -170,25 +170,14 @@ class _ReportSkeleton extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
       children: const [
-        _SkeletonBox(height: 120),
+        AppSkeleton(height: 120),
         SizedBox(height: 10),
-        _SkeletonBox(height: 90),
+        AppSkeleton(height: 90),
         SizedBox(height: 10),
-        _SkeletonBox(height: 90),
+        AppSkeleton(height: 90),
         SizedBox(height: 10),
-        _SkeletonBox(height: 140),
+        AppSkeleton(height: 140),
       ],
     );
-  }
-}
-
-class _SkeletonBox extends StatelessWidget {
-  const _SkeletonBox({required this.height});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSkeleton(height: height);
   }
 }

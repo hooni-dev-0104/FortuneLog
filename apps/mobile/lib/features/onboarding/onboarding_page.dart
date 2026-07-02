@@ -18,91 +18,87 @@ class OnboardingPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [AppTheme.brandTint, AppTheme.surface],
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppTheme.pagePadding,
+            20,
+            AppTheme.pagePadding,
+            16,
           ),
-        ),
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            children: [
-              Center(
-                child: Image.asset(
-                  'assets/branding/fortunelog-logo.png',
-                  width: 86,
-                  height: 86,
-                  fit: BoxFit.contain,
-                ),
+          children: [
+            Center(
+              child: Image.asset(
+                'assets/branding/fortunelog-logo.png',
+                width: 86,
+                height: 86,
+                fit: BoxFit.contain,
               ),
-              const SizedBox(height: 14),
-              Text('FortuneLog',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 6),
-              Text('당신의 오늘을 더 명확하게',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              Text(
-                '결과는 참고용 해석이며 중요한 의사결정은 전문가 상담을 권장합니다.',
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              PageSection(
-                title: '핵심 기능',
-                child: Column(
-                  children: [
-                    for (final b in bullets) ...[
-                      AppInfoRow(
-                        title: b.$1,
-                        subtitle: b.$2,
-                        leadingIcon: Icons.check_circle_outline,
-                      ),
-                      if (b != bullets.last) const SizedBox(height: 4),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              PageSection(
-                title: '사주팔자(4주) 한눈에',
-                subtitle: '연/월/일/시 4기둥이 의미하는 것',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('사주팔자는 4개의 기둥(연주·월주·일주·시주)으로 구성됩니다.'),
-                    const SizedBox(height: 12),
-                    const _FourPillarsMeaningTable(),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '각 기둥은 천간+지지(2글자)로 표시되며, 조합을 바탕으로 해석이 만들어집니다.',
+            ),
+            const SizedBox(height: 14),
+            Text('FortuneLog',
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center),
+            const SizedBox(height: 6),
+            Text('당신의 오늘을 더 명확하게',
+                style: Theme.of(context).textTheme.headlineMedium,
+                textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            Text(
+              '결과는 참고용 해석이며 중요한 의사결정은 전문가 상담을 권장합니다.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            PageSection(
+              title: '핵심 기능',
+              child: Column(
+                children: [
+                  for (final b in bullets) ...[
+                    AppInfoRow(
+                      title: b.$1,
+                      subtitle: b.$2,
+                      leadingIcon: Icons.check_circle_outline,
                     ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => Navigator.pushNamed(
-                            context, SajuGuidePage.routeName),
-                        icon: const Icon(Icons.menu_book_outlined, size: 18),
-                        label: const Text('용어/설명 보기'),
-                      ),
-                    ),
+                    if (b != bullets.last) const SizedBox(height: 4),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => Navigator.pushReplacementNamed(
-                    context, LoginPage.routeName),
-                child: const Text('시작하기'),
+            ),
+            const SizedBox(height: 10),
+            PageSection(
+              title: '사주팔자(4주) 한눈에',
+              subtitle: '연/월/일/시 4기둥이 의미하는 것',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('사주팔자는 4개의 기둥(연주·월주·일주·시주)으로 구성됩니다.'),
+                  const SizedBox(height: 12),
+                  const _FourPillarsMeaningTable(),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '각 기둥은 천간+지지(2글자)로 표시되며, 조합을 바탕으로 해석이 만들어집니다.',
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, SajuGuidePage.routeName),
+                      icon: const Icon(Icons.menu_book_outlined, size: 18),
+                      label: const Text('용어/설명 보기'),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, LoginPage.routeName),
+              child: const Text('시작하기'),
+            ),
+          ],
         ),
       ),
     );
@@ -112,62 +108,17 @@ class OnboardingPage extends StatelessWidget {
 class _FourPillarsMeaningTable extends StatelessWidget {
   const _FourPillarsMeaningTable();
 
-  TableRow _row(BuildContext context,
-      {required String left, required String right, bool header = false}) {
-    final leftStyle = header
-        ? Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(fontWeight: FontWeight.w700)
-        : Theme.of(context).textTheme.bodySmall;
-    final rightStyle = header
-        ? Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(fontWeight: FontWeight.w700)
-        : Theme.of(context).textTheme.bodySmall;
-
-    return TableRow(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-          child: Text(left, style: leftStyle),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-          child: Text(right, style: rightStyle),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.border),
-          color: AppTheme.surfaceRaised,
-        ),
-        child: Table(
-          columnWidths: const {
-            0: FixedColumnWidth(86),
-            1: FlexColumnWidth(),
-          },
-          border: const TableBorder(
-            horizontalInside: BorderSide(color: AppTheme.border),
-            verticalInside: BorderSide(color: AppTheme.border),
-          ),
-          children: [
-            _row(context, left: '구분', right: '의미', header: true),
-            _row(context, left: '연주', right: '가문·조상·사회적 배경'),
-            _row(context, left: '월주', right: '성장 환경·부모·직업 기질'),
-            _row(context, left: '일주', right: '나 자신·성격·배우자'),
-            _row(context, left: '시주', right: '말년운·자녀·잠재 능력'),
-          ],
-        ),
-      ),
+    return const AppKeyValueTable(
+      firstHeader: '구분',
+      secondHeader: '의미',
+      rows: [
+        ('연주', '가문·조상·사회적 배경'),
+        ('월주', '성장 환경·부모·직업 기질'),
+        ('일주', '나 자신·성격·배우자'),
+        ('시주', '말년운·자녀·잠재 능력'),
+      ],
     );
   }
 }

@@ -437,9 +437,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                     filterQuality: FilterQuality.none,
                     isAntiAlias: false,
                   ),
-                  backgroundColor: const Color(0xFFFEE500),
-                  foregroundColor: Colors.black,
-                  borderColor: const Color(0xFFE7D200),
+                  backgroundColor: AppTheme.kakaoYellow,
+                  foregroundColor: AppTheme.socialTextDark,
+                  borderColor: AppTheme.kakaoYellowBorder,
                   onPressed: _loading
                       ? null
                       : () => _startSocialLogin(OAuthProvider.kakao),
@@ -454,7 +454,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                     width: 22,
                     height: 22,
                   ),
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppTheme.surfaceRaised,
                   foregroundColor: AppTheme.textStrong,
                   borderColor: AppTheme.border,
                   onPressed: _loading
@@ -467,8 +467,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      bottomNavigationBar: AppBottomActionBar(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         child: FilledButton(
           onPressed: _loading ? null : _submitEmailLogin,
           child: _loading

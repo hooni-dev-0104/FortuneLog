@@ -645,13 +645,9 @@ class _DashboardPageState extends State<DashboardPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceRaised,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            border: Border.all(color: AppTheme.border),
-          ),
+        PageSection(
+          title: '현재 선택 프로필',
+          showHeader: false,
           child: Row(
             children: [
               Expanded(
@@ -1052,37 +1048,14 @@ class _DailyCategoryCard extends StatelessWidget {
 
     final scoreValue = _dailyScoreValue(score);
 
-    return PageSection(
-      title: label,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CategoryScoreRow(
-            icon: icon,
-            label: label,
-            score: scoreValue,
-            summary: summary,
-          ),
-          if (good.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            AppTextList(items: good),
-          ],
-          if (cautions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            AppTextList(items: cautions),
-          ],
-          if (actions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            AppTextList(items: actions, marker: AppListMarker.check),
-          ],
-        ],
-      ),
+    return CategoryInsightSection(
+      label: label,
+      icon: icon,
+      score: scoreValue,
+      summary: summary,
+      good: good,
+      cautions: cautions,
+      actions: actions,
     );
   }
 }
@@ -1351,106 +1324,58 @@ class _LuckCard extends StatelessWidget {
     final branchElement =
         branch == null ? null : SajuStars.branchElementKey(branch);
 
-    return Container(
+    return SizedBox(
       width: 108,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.border),
-        color: AppTheme.surfaceRaised,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            item.title,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          if (item.subtitle.trim().isNotEmpty)
-            Text(
-              item.subtitle,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          const SizedBox(height: 6),
-          if (item.tenGod != null && item.tenGod!.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                item.tenGod!,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
-            ),
-          _LuckGlyphBox(
-            hanja: stemHanja,
-            hangul: stem ?? '-',
-            elementKey: stemElement,
-          ),
-          const SizedBox(height: 6),
-          _LuckGlyphBox(
-            hanja: branchHanja,
-            hangul: branch ?? '-',
-            elementKey: branchElement,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LuckGlyphBox extends StatelessWidget {
-  const _LuckGlyphBox({
-    required this.hanja,
-    required this.hangul,
-    required this.elementKey,
-  });
-
-  final String hanja;
-  final String hangul;
-  final String? elementKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = elementKey == null
-        ? AppTheme.surfaceSunken
-        : AppTheme.elementColor(elementKey!);
-    final border = elementKey == null ? AppTheme.border : Colors.transparent;
-    final fg = ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
-        ? Colors.white
-        : AppTheme.textStrong;
-    return Container(
-      height: 44,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: border),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Text(
-              hanja,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: fg,
+              if (item.subtitle.trim().isNotEmpty)
+                Text(
+                  item.subtitle,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              const SizedBox(height: 6),
+              if (item.tenGod != null && item.tenGod!.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    item.tenGod!,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
-            ),
+                ),
+              ElementGlyphTile(
+                primaryText: stemHanja,
+                secondaryText: stem ?? '-',
+                elementKey: stemElement,
+                height: 44,
+                radius: AppTheme.radiusSm,
+                primaryTextStyle: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              ElementGlyphTile(
+                primaryText: branchHanja,
+                secondaryText: branch ?? '-',
+                elementKey: branchElement,
+                height: 44,
+                radius: AppTheme.radiusSm,
+                primaryTextStyle: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
           ),
-          Positioned(
-            right: 6,
-            bottom: 4,
-            child: Text(
-              hangul,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2407,13 +2332,6 @@ class _MansePillarColumn extends StatelessWidget {
   final String label;
   final String pillar;
 
-  static const Color _unknownBg = AppTheme.surfaceSunken;
-  static const Color _unknownBorder = AppTheme.border;
-
-  Color _elementColor(String key) => AppTheme.elementColor(key);
-
-  String _elementLabel(String key) => AppTheme.elementLabel(key);
-
   @override
   Widget build(BuildContext context) {
     final stem = SajuStars.stemOf(pillar);
@@ -2432,24 +2350,16 @@ class _MansePillarColumn extends StatelessWidget {
         children: [
           Text(label, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 6),
-          _HanjaTile(
-            hanja: stemHanja,
-            hangul: stem,
+          ElementGlyphTile(
+            primaryText: stemHanja ?? '-',
+            secondaryText: stem,
             elementKey: stemEl,
-            elementLabel: stemEl == null ? null : _elementLabel(stemEl),
-            unknownBg: _unknownBg,
-            unknownBorder: _unknownBorder,
-            elementColor: (k) => _elementColor(k),
           ),
           const SizedBox(height: 6),
-          _HanjaTile(
-            hanja: branchHanja,
-            hangul: branch,
+          ElementGlyphTile(
+            primaryText: branchHanja ?? '-',
+            secondaryText: branch,
             elementKey: branchEl,
-            elementLabel: branchEl == null ? null : _elementLabel(branchEl),
-            unknownBg: _unknownBg,
-            unknownBorder: _unknownBorder,
-            elementColor: (k) => _elementColor(k),
           ),
           const SizedBox(height: 6),
           Text(pillar, style: Theme.of(context).textTheme.titleMedium),
@@ -2458,87 +2368,6 @@ class _MansePillarColumn extends StatelessWidget {
             Text(pillarHanja, style: Theme.of(context).textTheme.bodySmall),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _HanjaTile extends StatelessWidget {
-  const _HanjaTile({
-    required this.hanja,
-    required this.hangul,
-    required this.elementKey,
-    required this.elementLabel,
-    required this.unknownBg,
-    required this.unknownBorder,
-    required this.elementColor,
-  });
-
-  final String? hanja;
-  final String? hangul;
-  final String? elementKey;
-  final String? elementLabel;
-  final Color unknownBg;
-  final Color unknownBorder;
-  final Color Function(String key) elementColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = elementKey == null ? unknownBg : elementColor(elementKey!);
-    final border = elementKey == null ? unknownBorder : Colors.transparent;
-    final brightness = ThemeData.estimateBrightnessForColor(bg);
-    final fg =
-        brightness == Brightness.dark ? Colors.white : AppTheme.textStrong;
-
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: border),
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Text(
-                hanja ?? '-',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
-              ),
-            ),
-            if (hangul != null && hangul!.trim().isNotEmpty) ...[
-              Positioned(
-                left: 8,
-                bottom: 6,
-                child: Text(
-                  hangul!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: fg.withValues(alpha: 0.92)),
-                ),
-              ),
-            ],
-            if (elementLabel != null && elementLabel!.trim().isNotEmpty) ...[
-              Positioned(
-                right: 8,
-                top: 6,
-                child: Text(
-                  elementLabel!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: fg.withValues(alpha: 0.92)),
-                ),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

@@ -469,37 +469,14 @@ class _CategoryCard extends StatelessWidget {
 
     final scoreValue = _scoreValue(score);
 
-    return PageSection(
-      title: label,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CategoryScoreRow(
-            icon: icon,
-            label: label,
-            score: scoreValue,
-            summary: summary,
-          ),
-          if (good.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            AppTextList(items: good),
-          ],
-          if (cautions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            AppTextList(items: cautions),
-          ],
-          if (actions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            AppTextList(items: actions, marker: AppListMarker.check),
-          ],
-        ],
-      ),
+    return CategoryInsightSection(
+      label: label,
+      icon: icon,
+      score: scoreValue,
+      summary: summary,
+      good: good,
+      cautions: cautions,
+      actions: actions,
     );
   }
 }

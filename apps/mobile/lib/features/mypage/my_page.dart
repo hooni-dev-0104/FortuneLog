@@ -377,7 +377,7 @@ class _MyPageState extends State<MyPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _MenuRow(
+                  AppInfoRow(
                     title: title,
                     subtitle: subtitle,
                     onTap: () => Navigator.pushNamed(
@@ -523,21 +523,21 @@ class _MyPageState extends State<MyPage> {
           title: '정책 문서',
           child: Column(
             children: [
-              _MenuRow(
+              AppInfoRow(
                 title: termsDoc.title,
                 subtitle: '최종 업데이트: ${termsDoc.updatedAt}',
                 onTap: () =>
                     _openPolicy(PolicyDocumentType.terms, _termsPolicyUrl),
               ),
               const SizedBox(height: 8),
-              _MenuRow(
+              AppInfoRow(
                 title: privacyDoc.title,
                 subtitle: '최종 업데이트: ${privacyDoc.updatedAt}',
                 onTap: () =>
                     _openPolicy(PolicyDocumentType.privacy, _privacyPolicyUrl),
               ),
               const SizedBox(height: 8),
-              _MenuRow(
+              AppInfoRow(
                 title: refundDoc.title,
                 subtitle: '최종 업데이트: ${refundDoc.updatedAt}',
                 onTap: () =>
@@ -568,23 +568,6 @@ List<Widget> _withVerticalSpacing(List<Widget> children) {
     }
   }
   return widgets;
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.title, required this.subtitle, this.onTap});
-
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppInfoRow(
-      title: title,
-      subtitle: subtitle,
-      onTap: onTap,
-    );
-  }
 }
 
 class _StatusRow extends StatelessWidget {

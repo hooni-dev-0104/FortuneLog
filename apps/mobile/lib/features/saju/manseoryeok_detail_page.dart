@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/saju/saju_manseoryeok.dart';
 import '../../core/saju/saju_stars.dart';
-import '../../core/ui/app_theme.dart';
 import '../../core/ui/app_widgets.dart';
 
 class ManseoryeokDetailPage extends StatefulWidget {
@@ -181,53 +180,31 @@ class _HeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppTheme.brandTint,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.brandTintLine),
+    return PageSection(
+      title: '프로필',
+      showHeader: false,
+      child: AppInfoRow(
+        title: name,
+        subtitle: birthLine,
+        leadingIcon: Icons.person_outline,
+        trailing: IconButton(
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('만세력(사주팔자)'),
+              content: const Text(
+                '이 화면은 사주팔자(4주)의 천간/지지, 오행 색상, 십신(간단)을 보여줍니다.\n'
+                '해석은 참고용이며, 전체 사주 맥락에 따라 달라질 수 있습니다.',
               ),
-              child:
-                  const Icon(Icons.person_outline, color: AppTheme.onBrandTint),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('확인')),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 2),
-                  Text(birthLine, style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('만세력(사주팔자)'),
-                  content: const Text(
-                    '이 화면은 사주팔자(4주)의 천간/지지, 오행 색상, 십신(간단)을 보여줍니다.\n'
-                    '해석은 참고용이며, 전체 사주 맥락에 따라 달라질 수 있습니다.',
-                  ),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('확인')),
-                  ],
-                ),
-              ),
-              icon: const Icon(Icons.info_outline),
-              tooltip: '설명',
-            ),
-          ],
+          ),
+          icon: const Icon(Icons.info_outline),
+          tooltip: '설명',
         ),
       ),
     );
@@ -311,17 +288,15 @@ class _PillarDetailColumn extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
         ],
-        _GlyphTile(
-          primaryText: stemHanja ?? '-',
-          secondaryText: stem,
-          elementKey: stemEl,
-        ),
+        ElementGlyphTile(
+            primaryText: stemHanja ?? '-',
+            secondaryText: stem,
+            elementKey: stemEl),
         const SizedBox(height: 6),
-        _GlyphTile(
-          primaryText: branchHanja ?? '-',
-          secondaryText: branch,
-          elementKey: branchEl,
-        ),
+        ElementGlyphTile(
+            primaryText: branchHanja ?? '-',
+            secondaryText: branch,
+            elementKey: branchEl),
         const SizedBox(height: 6),
         Text(pillar, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 6),
@@ -353,90 +328,6 @@ class _PillarDetailColumn extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _GlyphTile extends StatelessWidget {
-  const _GlyphTile(
-      {required this.primaryText,
-      required this.secondaryText,
-      required this.elementKey});
-
-  final String primaryText;
-  final String? secondaryText;
-  final String? elementKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = elementKey == null
-        ? AppTheme.surfaceSunken
-        : AppTheme.elementColor(elementKey!);
-    final border = elementKey == null ? AppTheme.border : Colors.transparent;
-    final brightness = ThemeData.estimateBrightnessForColor(bg);
-    final fg =
-        brightness == Brightness.dark ? Colors.white : AppTheme.textStrong;
-
-    final elLabel =
-        elementKey == null ? null : AppTheme.elementLabel(elementKey!);
-
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: border),
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Text(
-                primaryText,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w900,
-                      height: 1.0,
-                    ),
-              ),
-            ),
-            if (secondaryText != null && secondaryText!.trim().isNotEmpty)
-              Positioned(
-                left: 8,
-                bottom: 6,
-                child: Text(
-                  secondaryText!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: fg.withValues(alpha: 0.92)),
-                ),
-              ),
-            if (elLabel != null && elLabel.trim().isNotEmpty)
-              Positioned(
-                right: 8,
-                top: 6,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                  ),
-                  child: Text(
-                    elLabel,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: fg, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
