@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/saju/saju_manseoryeok.dart';
 import '../../core/saju/saju_stars.dart';
+import '../../core/ui/app_theme.dart';
 import '../../core/ui/app_widgets.dart';
 
 class ManseoryeokDetailPage extends StatefulWidget {
@@ -50,18 +51,24 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
 
       final rows = await supabase
           .from('birth_profiles')
-          .select('birth_datetime_local, birth_timezone, birth_location, calendar_type, is_leap_month, gender, unknown_birth_time, created_at')
+          .select(
+              'birth_datetime_local, birth_timezone, birth_location, calendar_type, is_leap_month, gender, unknown_birth_time, created_at')
           .eq('user_id', user.id)
           .order('created_at', ascending: false)
           .limit(1);
       final birthProfile = rows.isEmpty ? null : rows.first;
       return _HeaderData(displayName: displayName, birthProfile: birthProfile);
     } on PostgrestException catch (e) {
-      return _HeaderData(displayName: '사용자', birthProfile: null, errorMessage: e.message);
+      return _HeaderData(
+          displayName: '사용자', birthProfile: null, errorMessage: e.message);
     } on StateError catch (e) {
-      return _HeaderData(displayName: '사용자', birthProfile: null, errorMessage: e.message);
+      return _HeaderData(
+          displayName: '사용자', birthProfile: null, errorMessage: e.message);
     } catch (_) {
-      return const _HeaderData(displayName: '사용자', birthProfile: null, errorMessage: '만세력 정보를 불러오지 못했습니다.');
+      return const _HeaderData(
+          displayName: '사용자',
+          birthProfile: null,
+          errorMessage: '만세력 정보를 불러오지 못했습니다.');
     }
   }
 
@@ -104,19 +111,24 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
             builder: (context, snapshot) {
               final data = snapshot.data;
               final name = data?.displayName ?? '불러오는 중...';
-              final birthLine = data == null ? '출생정보를 불러오는 중...' : _birthSummary(data.birthProfile);
+              final birthLine = data == null
+                  ? '출생정보를 불러오는 중...'
+                  : _birthSummary(data.birthProfile);
 
               return Column(
                 children: [
                   _HeaderCard(name: name, birthLine: birthLine),
                   if (data?.errorMessage != null) ...[
                     const SizedBox(height: 10),
-                    StatusNotice.warning(message: data!.errorMessage!, requestId: 'manseoryeok-header'),
+                    StatusNotice.warning(
+                        message: data!.errorMessage!,
+                        requestId: 'manseoryeok-header'),
                     const SizedBox(height: 6),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
-                        onPressed: () => setState(() => _headerFuture = _loadHeader()),
+                        onPressed: () =>
+                            setState(() => _headerFuture = _loadHeader()),
                         child: const Text('다시 불러오기'),
                       ),
                     ),
@@ -139,7 +151,8 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
                   year: year,
                 ),
                 const SizedBox(height: 10),
-                _RelationsSummary(hour: hour, day: day, month: month, year: year),
+                _RelationsSummary(
+                    hour: hour, day: day, month: month, year: year),
               ],
             ),
           ),
@@ -148,7 +161,8 @@ class _ManseoryeokDetailPageState extends State<ManseoryeokDetailPage> {
             title: '길신/흉살(요약)',
             subtitle: '대시보드와 동일한 기준으로 계산',
             trailing: TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/saju-guide', arguments: c),
+              onPressed: () =>
+                  Navigator.pushNamed(context, '/saju-guide', arguments: c),
               child: const Text('용어 보기'),
             ),
             child: _StarsChips(chart: c),
@@ -176,11 +190,12 @@ class _HeaderCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F5F1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFBFE2D8)),
+                color: AppTheme.brandTint,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                border: Border.all(color: AppTheme.brandTintLine),
               ),
-              child: const Icon(Icons.person_outline, color: Color(0xFF096B52)),
+              child:
+                  const Icon(Icons.person_outline, color: AppTheme.onBrandTint),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -203,7 +218,9 @@ class _HeaderCard extends StatelessWidget {
                     '해석은 참고용이며, 전체 사주 맥락에 따라 달라질 수 있습니다.',
                   ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('확인')),
                   ],
                 ),
               ),
@@ -244,7 +261,9 @@ class _PillarsTable extends StatelessWidget {
     return Row(
       children: [
         for (final col in cols) ...[
-          Expanded(child: _PillarDetailColumn(label: col.label, pillar: col.pillar, dayStem: dayStem)),
+          Expanded(
+              child: _PillarDetailColumn(
+                  label: col.label, pillar: col.pillar, dayStem: dayStem)),
           if (col != cols.last) const SizedBox(width: 8),
         ],
       ],
@@ -253,7 +272,8 @@ class _PillarsTable extends StatelessWidget {
 }
 
 class _PillarDetailColumn extends StatelessWidget {
-  const _PillarDetailColumn({required this.label, required this.pillar, required this.dayStem});
+  const _PillarDetailColumn(
+      {required this.label, required this.pillar, required this.dayStem});
 
   final String label;
   final String pillar;
@@ -272,16 +292,23 @@ class _PillarDetailColumn extends StatelessWidget {
 
     final tenGodLabel = (label == '일주')
         ? '일간(나)'
-        : (dayStem != null && stem != null ? SajuManseoryeok.tenGod(dayStem: dayStem!, targetStem: stem) : null);
+        : (dayStem != null && stem != null
+            ? SajuManseoryeok.tenGod(dayStem: dayStem!, targetStem: stem)
+            : null);
 
-    final hidden = branch == null ? const <String>[] : SajuManseoryeok.hiddenStems(branch);
+    final hidden =
+        branch == null ? const <String>[] : SajuManseoryeok.hiddenStems(branch);
 
     return Column(
       children: [
         Text(label, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 6),
         if (tenGodLabel != null && tenGodLabel.trim().isNotEmpty) ...[
-          Text(tenGodLabel, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+          Text(tenGodLabel,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
         ],
         _GlyphTile(
@@ -301,7 +328,11 @@ class _PillarDetailColumn extends StatelessWidget {
         if (hidden.isNotEmpty) ...[
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('지장간', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+            child: Text('지장간',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 4),
           Wrap(
@@ -309,8 +340,9 @@ class _PillarDetailColumn extends StatelessWidget {
             runSpacing: 6,
             children: [
               for (final hs in hidden)
-                _MiniChip(
-                  label: '$hs${SajuStars.stemHanja(hs) == null ? '' : ' ${SajuStars.stemHanja(hs)}'}',
+                AppMiniChip(
+                  label:
+                      '$hs${SajuStars.stemHanja(hs) == null ? '' : ' ${SajuStars.stemHanja(hs)}'}',
                 ),
             ],
           ),
@@ -326,7 +358,10 @@ class _PillarDetailColumn extends StatelessWidget {
 }
 
 class _GlyphTile extends StatelessWidget {
-  const _GlyphTile({required this.primaryText, required this.secondaryText, required this.elementKey});
+  const _GlyphTile(
+      {required this.primaryText,
+      required this.secondaryText,
+      required this.elementKey});
 
   final String primaryText;
   final String? secondaryText;
@@ -334,19 +369,23 @@ class _GlyphTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = elementKey == null ? const Color(0xFFF3F4F6) : SajuManseoryeok.elementColor(elementKey!);
-    final border = elementKey == null ? const Color(0xFFE5E7EB) : Colors.transparent;
+    final bg = elementKey == null
+        ? AppTheme.surfaceSunken
+        : AppTheme.elementColor(elementKey!);
+    final border = elementKey == null ? AppTheme.border : Colors.transparent;
     final brightness = ThemeData.estimateBrightnessForColor(bg);
-    final fg = brightness == Brightness.dark ? Colors.white : const Color(0xFF111827);
+    final fg =
+        brightness == Brightness.dark ? Colors.white : AppTheme.textStrong;
 
-    final elLabel = elementKey == null ? null : SajuManseoryeok.elementLabel(elementKey!);
+    final elLabel =
+        elementKey == null ? null : AppTheme.elementLabel(elementKey!);
 
     return AspectRatio(
       aspectRatio: 1,
       child: Container(
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: border),
         ),
         child: Stack(
@@ -367,7 +406,10 @@ class _GlyphTile extends StatelessWidget {
                 bottom: 6,
                 child: Text(
                   secondaryText!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.92)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: fg.withValues(alpha: 0.92)),
                 ),
               ),
             if (elLabel != null && elLabel.trim().isNotEmpty)
@@ -375,15 +417,20 @@ class _GlyphTile extends StatelessWidget {
                 right: 8,
                 top: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.35)),
                   ),
                   child: Text(
                     elLabel,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg, fontWeight: FontWeight.w800),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: fg, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -394,27 +441,12 @@ class _GlyphTile extends StatelessWidget {
   }
 }
 
-class _MiniChip extends StatelessWidget {
-  const _MiniChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFD8E0DC)),
-        color: Colors.white,
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-    );
-  }
-}
-
 class _RelationsSummary extends StatelessWidget {
-  const _RelationsSummary({required this.hour, required this.day, required this.month, required this.year});
+  const _RelationsSummary(
+      {required this.hour,
+      required this.day,
+      required this.month,
+      required this.year});
 
   final String hour;
   final String day;
@@ -453,14 +485,19 @@ class _RelationsSummary extends StatelessWidget {
     if (items.isEmpty) {
       return Align(
         alignment: Alignment.centerLeft,
-        child: Text('합/충 정보가 없습니다.', style: Theme.of(context).textTheme.bodySmall),
+        child:
+            Text('합/충 정보가 없습니다.', style: Theme.of(context).textTheme.bodySmall),
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('간단 관계(합/충)', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
+        Text('간단 관계(합/충)',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
         Text(items.join('\n'), style: Theme.of(context).textTheme.bodySmall),
       ],
@@ -478,7 +515,8 @@ class _StarsChips extends StatelessWidget {
     final day = chart['day'] ?? '';
     final dayStem = SajuStars.stemOf(day);
     if (dayStem == null) {
-      return Text('별(길신/흉살)을 계산할 수 없습니다.', style: Theme.of(context).textTheme.bodySmall);
+      return Text('별(길신/흉살)을 계산할 수 없습니다.',
+          style: Theme.of(context).textTheme.bodySmall);
     }
 
     final pillars = <String>[
@@ -487,8 +525,14 @@ class _StarsChips extends StatelessWidget {
       chart['day'] ?? '',
       chart['hour'] ?? '',
     ];
-    final stems = pillars.map(SajuStars.stemOf).whereType<String>().toList(growable: false);
-    final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
+    final stems = pillars
+        .map(SajuStars.stemOf)
+        .whereType<String>()
+        .toList(growable: false);
+    final branches = pillars
+        .map(SajuStars.branchOf)
+        .whereType<String>()
+        .toList(growable: false);
 
     final chips = <String>[];
 
@@ -531,13 +575,28 @@ class _StarsChips extends StatelessWidget {
     if (hongYeom != null && branches.contains(hongYeom)) chips.add('홍염살');
     final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
     final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
-    if (SajuStars.isGyeokGak(yearBranch: yearBranch, dayBranch: dayBranch)) chips.add('격각살');
-    final goJinT1 = yearBranch == null ? null : SajuStars.goJinTargetByBaseBranch(yearBranch);
-    final goJinT2 = dayBranch == null ? null : SajuStars.goJinTargetByBaseBranch(dayBranch);
-    if ((goJinT1 != null && branches.contains(goJinT1)) || (goJinT2 != null && branches.contains(goJinT2))) chips.add('고진살');
-    final gwaSukT1 = yearBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(yearBranch);
-    final gwaSukT2 = dayBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(dayBranch);
-    if ((gwaSukT1 != null && branches.contains(gwaSukT1)) || (gwaSukT2 != null && branches.contains(gwaSukT2))) chips.add('과숙살');
+    if (SajuStars.isGyeokGak(yearBranch: yearBranch, dayBranch: dayBranch)) {
+      chips.add('격각살');
+    }
+    final goJinT1 = yearBranch == null
+        ? null
+        : SajuStars.goJinTargetByBaseBranch(yearBranch);
+    final goJinT2 =
+        dayBranch == null ? null : SajuStars.goJinTargetByBaseBranch(dayBranch);
+    if ((goJinT1 != null && branches.contains(goJinT1)) ||
+        (goJinT2 != null && branches.contains(goJinT2))) {
+      chips.add('고진살');
+    }
+    final gwaSukT1 = yearBranch == null
+        ? null
+        : SajuStars.gwaSukTargetByBaseBranch(yearBranch);
+    final gwaSukT2 = dayBranch == null
+        ? null
+        : SajuStars.gwaSukTargetByBaseBranch(dayBranch);
+    if ((gwaSukT1 != null && branches.contains(gwaSukT1)) ||
+        (gwaSukT2 != null && branches.contains(gwaSukT2))) {
+      chips.add('과숙살');
+    }
     if (SajuStars.hasGwiMunGwanSal(
       monthBranch: SajuStars.branchOf(chart['month'] ?? ''),
       dayBranch: dayBranch,
@@ -545,17 +604,27 @@ class _StarsChips extends StatelessWidget {
     )) {
       chips.add('귀문관살');
     }
-    final geupGakTargets = monthBranch == null ? const <String>{} : SajuStars.geupGakTargetsByMonthBranch(monthBranch);
-    if (geupGakTargets.isNotEmpty && geupGakTargets.any(branches.contains)) chips.add('급각살');
-    final danGyoTarget = monthBranch == null ? null : SajuStars.danGyoGwanTargetByMonthBranch(monthBranch);
+    final geupGakTargets = monthBranch == null
+        ? const <String>{}
+        : SajuStars.geupGakTargetsByMonthBranch(monthBranch);
+    if (geupGakTargets.isNotEmpty && geupGakTargets.any(branches.contains)) {
+      chips.add('급각살');
+    }
+    final danGyoTarget = monthBranch == null
+        ? null
+        : SajuStars.danGyoGwanTargetByMonthBranch(monthBranch);
     if (danGyoTarget != null &&
-        (dayBranch == danGyoTarget || SajuStars.branchOf(chart['hour'] ?? '') == danGyoTarget)) {
+        (dayBranch == danGyoTarget ||
+            SajuStars.branchOf(chart['hour'] ?? '') == danGyoTarget)) {
       chips.add('단교관살');
     }
     if (pillars.any(SajuStars.isGokGakPillar)) chips.add('곡각살');
-    final cheonRaJiMangType = SajuStars.cheonRaJiMangType(dayBranch: dayBranch, allBranches: branches);
+    final cheonRaJiMangType = SajuStars.cheonRaJiMangType(
+        dayBranch: dayBranch, allBranches: branches);
     if (cheonRaJiMangType != null) chips.add('천라지망');
-    final daeMoTarget = yearBranch == null ? null : SajuStars.daeMoTargetByYearBranch(yearBranch);
+    final daeMoTarget = yearBranch == null
+        ? null
+        : SajuStars.daeMoTargetByYearBranch(yearBranch);
     if (daeMoTarget != null && branches.contains(daeMoTarget)) chips.add('대모살');
     if (SajuStars.isGuGyoDayPillar(day)) chips.add('구교살');
     if (SajuStars.pyeongDuCount(pillars) >= 4) chips.add('평두살');
@@ -570,14 +639,15 @@ class _StarsChips extends StatelessWidget {
     }
 
     if (chips.isEmpty) {
-      return Text('표시할 길신/흉살이 없습니다.', style: Theme.of(context).textTheme.bodySmall);
+      return Text('표시할 길신/흉살이 없습니다.',
+          style: Theme.of(context).textTheme.bodySmall);
     }
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final c in chips) _MiniChip(label: c),
+        for (final c in chips) AppMiniChip(label: c),
       ],
     );
   }

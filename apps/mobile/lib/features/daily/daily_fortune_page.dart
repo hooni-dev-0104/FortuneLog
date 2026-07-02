@@ -72,7 +72,9 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
         // Backward-compatible schema: reports.target_date doesn't exist yet.
         // Fall back to "latest daily report" and validate the embedded content date.
         final msg = e.message.toLowerCase();
-        if (!msg.contains('target_date') || !msg.contains('does not exist')) rethrow;
+        if (!msg.contains('target_date') || !msg.contains('does not exist')) {
+          rethrow;
+        }
 
         rows = await _supabase()
             .from('reports')
@@ -96,7 +98,9 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
 
       // If we used the fallback query (no target_date), ensure this record is for "today".
       final contentDate = content['date']?.toString();
-      if (contentDate != null && contentDate.isNotEmpty && contentDate != today) {
+      if (contentDate != null &&
+          contentDate.isNotEmpty &&
+          contentDate != today) {
         setState(() {
           _loading = false;
           _content = null;
@@ -212,7 +216,8 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       children: [
         // "차트 없음"은 정상적인 온보딩 상태이므로 에러 박스로 보이지 않게 한다.
         if (_error != null && !_missingChart) ...[
-          StatusNotice.error(message: _error!, requestId: _requestId ?? 'daily'),
+          StatusNotice.error(
+              message: _error!, requestId: _requestId ?? 'daily'),
           const SizedBox(height: 10),
           FilledButton.tonal(onPressed: _refresh, child: const Text('재시도')),
           const SizedBox(height: 10),
@@ -226,7 +231,8 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
                       title: '사주 차트가 없습니다',
                       description: '먼저 출생정보를 입력하고 사주 계산을 완료해주세요.',
                       actionText: '출생정보 입력',
-                      onAction: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                      onAction: () => Navigator.pushNamed(
+                          context, BirthInputPage.routeName),
                       icon: Icons.auto_graph_outlined,
                       tone: BadgeTone.warning,
                     )
@@ -243,7 +249,8 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
               // provide an escape hatch to the required input screen.
               if (!_missingChart)
                 OutlinedButton(
-                  onPressed: () => Navigator.pushNamed(context, BirthInputPage.routeName),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, BirthInputPage.routeName),
                   child: const Text('출생정보 입력'),
                 ),
             ],
@@ -254,19 +261,33 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
               final summary = _content!['summary']?.toString().trim();
               final showSummary = summary != null && summary.isNotEmpty;
               final hasCategories = _CategoryList.hasCategory(_content);
+              final score = _scoreValue(_content!['score']);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   PageSection(
-                    title: '오늘 점수 ${_content!['score'] ?? '-'}점',
-                    subtitle: '기준일: ${_content!['date'] ?? _todayDateString()} (Asia/Seoul)',
-                    trailing: FilledButton.tonal(onPressed: _refresh, child: const Text('새로고침')),
+                    title: '오늘 점수',
+                    subtitle:
+                        '기준일: ${_content!['date'] ?? _todayDateString()} (Asia/Seoul)',
+                    trailing: FilledButton.tonal(
+                        onPressed: _refresh, child: const Text('새로고침')),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        if (showSummary) Text('총평: $summary'),
-                        if (!showSummary) const Text('오늘 액션을 확인해보세요.'),
+                        ScoreDonut(
+                          score: score,
+                          label: '오늘의 전체 흐름',
+                          caption: showSummary ? null : '오늘 액션을 확인해보세요.',
+                        ),
+                        if (showSummary) ...[
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('총평: $summary',
+                                style: Theme.of(context).textTheme.bodyLarge),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -281,14 +302,17 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
                     PageSection(
                       title: '카테고리',
                       subtitle: '상세 카테고리가 없는 리포트입니다.',
-                      trailing: FilledButton.tonal(onPressed: _generateToday, child: const Text('다시 생성')),
+                      trailing: FilledButton.tonal(
+                          onPressed: _generateToday,
+                          child: const Text('다시 생성')),
                       child: const Text('다시 생성하면 카테고리별 상세 운세를 볼 수 있어요.'),
                     ),
                     const SizedBox(height: 10),
                   ],
                   PageSection(
                     title: '오늘 액션',
-                    child: _ActionList(actions: _content!['actions'] as List<dynamic>?),
+                    child: _ActionList(
+                        actions: _content!['actions'] as List<dynamic>?),
                   ),
                 ],
               );
@@ -298,6 +322,12 @@ class _DailyFortunePageState extends State<DailyFortunePage> {
       ],
     );
   }
+}
+
+int _scoreValue(dynamic value) {
+  if (value is int) return value.clamp(0, 100).toInt();
+  if (value is num) return value.round().clamp(0, 100).toInt();
+  return int.tryParse(value?.toString() ?? '')?.clamp(0, 100).toInt() ?? 0;
 }
 
 class _CategoryList extends StatelessWidget {
@@ -355,13 +385,25 @@ class _CategoryList extends StatelessWidget {
     if (details != null && details.isNotEmpty) {
       return Column(
         children: [
-          _CategoryCard(label: '금전', icon: Icons.payments_outlined, data: details['money'] as Map<String, dynamic>?),
+          _CategoryCard(
+              label: '금전',
+              icon: Icons.payments_outlined,
+              data: details['money'] as Map<String, dynamic>?),
           const SizedBox(height: 10),
-          _CategoryCard(label: '연애/결혼', icon: Icons.favorite_border, data: details['love'] as Map<String, dynamic>?),
+          _CategoryCard(
+              label: '연애/결혼',
+              icon: Icons.favorite_border,
+              data: details['love'] as Map<String, dynamic>?),
           const SizedBox(height: 10),
-          _CategoryCard(label: '직업', icon: Icons.work_outline, data: details['work'] as Map<String, dynamic>?),
+          _CategoryCard(
+              label: '직업',
+              icon: Icons.work_outline,
+              data: details['work'] as Map<String, dynamic>?),
           const SizedBox(height: 10),
-          _CategoryCard(label: '건강', icon: Icons.health_and_safety_outlined, data: details['health'] as Map<String, dynamic>?),
+          _CategoryCard(
+              label: '건강',
+              icon: Icons.health_and_safety_outlined,
+              data: details['health'] as Map<String, dynamic>?),
         ],
       );
     }
@@ -390,9 +432,11 @@ class _CategoryList extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_labelForLegacyKey(k), style: Theme.of(context).textTheme.titleMedium),
+                  Text(_labelForLegacyKey(k),
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
-                  Text(legacy[k].toString(), style: Theme.of(context).textTheme.bodySmall),
+                  Text(legacy[k].toString(),
+                      style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             ),
@@ -402,7 +446,8 @@ class _CategoryList extends StatelessWidget {
 }
 
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.label, required this.icon, required this.data});
+  const _CategoryCard(
+      {required this.label, required this.icon, required this.data});
 
   final String label;
   final IconData icon;
@@ -413,60 +458,45 @@ class _CategoryCard extends StatelessWidget {
     final d = data ?? const <String, dynamic>{};
     final score = d['score'];
     final summary = d['summary']?.toString().trim();
-    final good = (d['good'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final cautions = (d['cautions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final actions = (d['actions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final good = (d['good'] as List?)?.map((e) => e.toString()).toList() ??
+        const <String>[];
+    final cautions =
+        (d['cautions'] as List?)?.map((e) => e.toString()).toList() ??
+            const <String>[];
+    final actions =
+        (d['actions'] as List?)?.map((e) => e.toString()).toList() ??
+            const <String>[];
+
+    final scoreValue = _scoreValue(score);
 
     return PageSection(
       title: label,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 8),
-          StatusBadge(
-            label: score is int ? '$score점' : '-',
-            tone: BadgeTone.neutral,
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (summary != null && summary.isNotEmpty) ...[
-            Text(summary, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 10),
-          ],
+          CategoryScoreRow(
+            icon: icon,
+            label: label,
+            score: scoreValue,
+            summary: summary,
+          ),
           if (good.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            for (final g in good) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $g')),
-            const SizedBox(height: 10),
+            AppTextList(items: good),
           ],
           if (cautions.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            for (final w in cautions) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $w')),
-            const SizedBox(height: 10),
+            AppTextList(items: cautions),
           ],
           if (actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            for (final a in actions)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Icon(Icons.check_circle_outline, size: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(a)),
-                  ],
-                ),
-              ),
+            AppTextList(items: actions, marker: AppListMarker.check),
           ],
         ],
       ),
@@ -483,17 +513,12 @@ class _ActionList extends StatelessWidget {
   Widget build(BuildContext context) {
     final list = actions;
     if (list == null || list.isEmpty) {
-      return const Text('액션 정보가 없습니다.');
+      return const AppTextList(items: [], emptyText: '액션 정보가 없습니다.');
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < list.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text('${i + 1}. ${list[i]}'),
-          ),
-      ],
+    return AppTextList(
+      items: list.map((item) => item.toString()).toList(growable: false),
+      marker: AppListMarker.number,
+      emptyText: '액션 정보가 없습니다.',
     );
   }
 }

@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/ui/app_widgets.dart';
-import '../../core/saju/saju_stars.dart';
 import '../../core/saju/saju_manseoryeok.dart';
+import '../../core/saju/saju_stars.dart';
 import '../../core/saju/saju_chart_persistence.dart';
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
 import '../../core/network/http_engine_api_client.dart';
 import '../../core/network/engine_error_mapper.dart';
+import '../../core/ui/app_theme.dart';
+import '../../core/ui/app_widgets.dart';
 import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
 import '../report/report_page.dart';
@@ -95,7 +96,8 @@ class _DashboardPageState extends State<DashboardPage> {
   String _selectedBirthProfileLabel() {
     if (_birthProfiles.isEmpty) return '등록된 프로필 없음';
     final selectedId = _selectedBirthProfileId;
-    final selected = _birthProfiles.where((p) => p['id'] == selectedId).toList();
+    final selected =
+        _birthProfiles.where((p) => p['id'] == selectedId).toList();
     if (selected.isEmpty) {
       return _birthProfileLabel(_birthProfiles.first);
     }
@@ -183,7 +185,8 @@ class _DashboardPageState extends State<DashboardPage> {
     await _refresh();
   }
 
-  Future<Map<String, dynamic>?> _fetchDailyContentForChart(String userId, String chartId) async {
+  Future<Map<String, dynamic>?> _fetchDailyContentForChart(
+      String userId, String chartId) async {
     final today = _todayDateString();
     List<dynamic> rows;
     try {
@@ -290,7 +293,8 @@ class _DashboardPageState extends State<DashboardPage> {
       final userId = session.user.id;
       final profileRows = await _supabase()
           .from('birth_profiles')
-          .select('id, profile_name, profile_tag, birth_datetime_local, created_at')
+          .select(
+              'id, profile_name, profile_tag, birth_datetime_local, created_at')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
@@ -311,7 +315,8 @@ class _DashboardPageState extends State<DashboardPage> {
       if (selectedId != null && selectedId.isNotEmpty) {
         chartQuery = chartQuery.eq('birth_profile_id', selectedId);
       }
-      final rows = await chartQuery.order('created_at', ascending: false).limit(1);
+      final rows =
+          await chartQuery.order('created_at', ascending: false).limit(1);
 
       if (rows.isEmpty) {
         setState(() {
@@ -545,12 +550,15 @@ class _DashboardPageState extends State<DashboardPage> {
       final userId = session.user.id;
       PostgrestFilterBuilder<dynamic> profileQuery = _supabase()
           .from('birth_profiles')
-          .select('id, birth_datetime_local, birth_timezone, birth_location, calendar_type, is_leap_month, gender, unknown_birth_time, created_at')
+          .select(
+              'id, birth_datetime_local, birth_timezone, birth_location, calendar_type, is_leap_month, gender, unknown_birth_time, created_at')
           .eq('user_id', userId);
-      if (_selectedBirthProfileId != null && _selectedBirthProfileId!.isNotEmpty) {
+      if (_selectedBirthProfileId != null &&
+          _selectedBirthProfileId!.isNotEmpty) {
         profileQuery = profileQuery.eq('id', _selectedBirthProfileId!);
       }
-      final rows = await profileQuery.order('created_at', ascending: false).limit(1);
+      final rows =
+          await profileQuery.order('created_at', ascending: false).limit(1);
 
       if (rows.isEmpty) {
         throw StateError('출생정보가 없습니다. 출생정보를 먼저 입력해주세요.');
@@ -569,7 +577,8 @@ class _DashboardPageState extends State<DashboardPage> {
       // birth_datetime_local is stored as "YYYY-MM-DDTHH:mm:ss" (timestamp, no timezone).
       final datePart = birthDatetime.split('T').first;
       final timePart = birthDatetime.split('T').last.substring(0, 5);
-      final birthLocationForEngine = birthLocation.trim().isEmpty ? '미입력' : birthLocation.trim();
+      final birthLocationForEngine =
+          birthLocation.trim().isEmpty ? '미입력' : birthLocation.trim();
 
       final response = await _engineClient().calculateChart(
         CalculateChartRequestDto(
@@ -639,9 +648,9 @@ class _DashboardPageState extends State<DashboardPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFD7DFDB)),
+            color: AppTheme.surfaceRaised,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(color: AppTheme.border),
           ),
           child: Row(
             children: [
@@ -672,7 +681,8 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         const SizedBox(height: 10),
         if (_error != null) ...[
-          StatusNotice.error(message: _error!, requestId: _requestId ?? 'dashboard'),
+          StatusNotice.error(
+              message: _error!, requestId: _requestId ?? 'dashboard'),
           const SizedBox(height: 10),
           FilledButton.tonal(onPressed: _refresh, child: const Text('재시도')),
           const SizedBox(height: 10),
@@ -693,7 +703,8 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 10),
           if (_hasBirthProfile)
             OutlinedButton(
-              onPressed: () => Navigator.pushNamed(context, BirthProfileListPage.routeName),
+              onPressed: () =>
+                  Navigator.pushNamed(context, BirthProfileListPage.routeName),
               child: const Text('출생정보 확인/수정'),
             )
           else
@@ -731,7 +742,9 @@ class _DashboardPageState extends State<DashboardPage> {
               title: '만세력(사주팔자)',
               subtitle: '천간/지지 한문(漢字) 표기 + 오행 색상',
               trailing: TextButton(
-                onPressed: () => Navigator.pushNamed(context, ManseoryeokDetailPage.routeName, arguments: _chart),
+                onPressed: () => Navigator.pushNamed(
+                    context, ManseoryeokDetailPage.routeName,
+                    arguments: _chart),
                 child: const Text('상세보기'),
               ),
               child: _MansePillars(chart: _chart!),
@@ -750,12 +763,9 @@ class _DashboardPageState extends State<DashboardPage> {
               title: '오행 분포',
               subtitle: '시각 요소와 수치를 함께 제공합니다.',
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _ElementRow(name: '목', value: _fiveElements!['wood'] ?? 0),
-                  _ElementRow(name: '화', value: _fiveElements!['fire'] ?? 0),
-                  _ElementRow(name: '토', value: _fiveElements!['earth'] ?? 0),
-                  _ElementRow(name: '금', value: _fiveElements!['metal'] ?? 0),
-                  _ElementRow(name: '수', value: _fiveElements!['water'] ?? 0),
+                  ElementDistributionBar(counts: _fiveElements!),
                   const SizedBox(height: 8),
                   const Text('오행 분포는 참고용이며 해석은 리포트에서 제공합니다.'),
                 ],
@@ -763,7 +773,8 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () => Navigator.pushNamed(context, ReportPage.routeName),
+              onPressed: () =>
+                  Navigator.pushNamed(context, ReportPage.routeName),
               child: const Text('상세 리포트 보기'),
             ),
             const SizedBox(height: 8),
@@ -804,7 +815,10 @@ class _DailyFortuneSection extends StatelessWidget {
         title: '오늘 운세',
         child: Row(
           children: [
-            SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)),
+            SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2.2)),
             SizedBox(width: 10),
             Expanded(child: Text('오늘 운세를 준비하고 있어요.')),
           ],
@@ -820,10 +834,13 @@ class _DailyFortuneSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (error != null) ...[
-              StatusNotice.error(message: error!, requestId: requestId ?? 'daily'),
+              StatusNotice.error(
+                  message: error!, requestId: requestId ?? 'daily'),
               const SizedBox(height: 10),
             ],
-            Text(missingChart ? '선택한 출생 프로필의 사주를 먼저 계산해주세요.' : '오늘 운세를 생성하면 금전/연애/직업/건강 흐름이 표시됩니다.'),
+            Text(missingChart
+                ? '선택한 출생 프로필의 사주를 먼저 계산해주세요.'
+                : '오늘 운세를 생성하면 금전/연애/직업/건강 흐름이 표시됩니다.'),
             const SizedBox(height: 10),
             FilledButton(
               onPressed: onGenerate,
@@ -837,18 +854,32 @@ class _DailyFortuneSection extends StatelessWidget {
     final summary = content!['summary']?.toString().trim();
     final showSummary = summary != null && summary.isNotEmpty;
     final hasCategories = _DailyCategoryList.hasCategory(content);
+    final score = _dailyScoreValue(content!['score']);
 
     return Column(
       children: [
         PageSection(
-          title: '오늘 점수 ${content!['score'] ?? '-'}점',
+          title: '오늘 점수',
           subtitle: '기준일: ${content!['date'] ?? '-'} (Asia/Seoul)',
-          trailing: FilledButton.tonal(onPressed: onRefresh, child: const Text('새로고침')),
+          trailing: FilledButton.tonal(
+              onPressed: onRefresh, child: const Text('새로고침')),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (showSummary) Text('총평: $summary'),
-              if (!showSummary) const Text('오늘 액션을 확인해보세요.'),
+              ScoreDonut(
+                score: score,
+                size: 108,
+                label: '오늘의 전체 흐름',
+                caption: showSummary ? null : '오늘 액션을 확인해보세요.',
+              ),
+              if (showSummary) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('총평: $summary',
+                      style: Theme.of(context).textTheme.bodyLarge),
+                ),
+              ],
             ],
           ),
         ),
@@ -862,7 +893,8 @@ class _DailyFortuneSection extends StatelessWidget {
         ],
         PageSection(
           title: '오늘 액션',
-          child: _DailyActionList(actions: content!['actions'] as List<dynamic>?),
+          child:
+              _DailyActionList(actions: content!['actions'] as List<dynamic>?),
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -875,6 +907,12 @@ class _DailyFortuneSection extends StatelessWidget {
       ],
     );
   }
+}
+
+int _dailyScoreValue(dynamic value) {
+  if (value is int) return value.clamp(0, 100).toInt();
+  if (value is num) return value.round().clamp(0, 100).toInt();
+  return int.tryParse(value?.toString() ?? '')?.clamp(0, 100).toInt() ?? 0;
 }
 
 class _DailyCategoryList extends StatelessWidget {
@@ -931,13 +969,25 @@ class _DailyCategoryList extends StatelessWidget {
     if (details != null && details.isNotEmpty) {
       return Column(
         children: [
-          _DailyCategoryCard(label: '금전', icon: Icons.payments_outlined, data: details['money'] as Map<String, dynamic>?),
+          _DailyCategoryCard(
+              label: '금전',
+              icon: Icons.payments_outlined,
+              data: details['money'] as Map<String, dynamic>?),
           const SizedBox(height: 10),
-          _DailyCategoryCard(label: '연애/결혼', icon: Icons.favorite_border, data: details['love'] as Map<String, dynamic>?),
+          _DailyCategoryCard(
+              label: '연애/결혼',
+              icon: Icons.favorite_border,
+              data: details['love'] as Map<String, dynamic>?),
           const SizedBox(height: 10),
-          _DailyCategoryCard(label: '직업', icon: Icons.work_outline, data: details['work'] as Map<String, dynamic>?),
+          _DailyCategoryCard(
+              label: '직업',
+              icon: Icons.work_outline,
+              data: details['work'] as Map<String, dynamic>?),
           const SizedBox(height: 10),
-          _DailyCategoryCard(label: '건강', icon: Icons.health_and_safety_outlined, data: details['health'] as Map<String, dynamic>?),
+          _DailyCategoryCard(
+              label: '건강',
+              icon: Icons.health_and_safety_outlined,
+              data: details['health'] as Map<String, dynamic>?),
         ],
       );
     }
@@ -965,9 +1015,11 @@ class _DailyCategoryList extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_labelForLegacyKey(k), style: Theme.of(context).textTheme.titleMedium),
+                  Text(_labelForLegacyKey(k),
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
-                  Text(legacy[k].toString(), style: Theme.of(context).textTheme.bodySmall),
+                  Text(legacy[k].toString(),
+                      style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             ),
@@ -977,7 +1029,8 @@ class _DailyCategoryList extends StatelessWidget {
 }
 
 class _DailyCategoryCard extends StatelessWidget {
-  const _DailyCategoryCard({required this.label, required this.icon, required this.data});
+  const _DailyCategoryCard(
+      {required this.label, required this.icon, required this.data});
 
   final String label;
   final IconData icon;
@@ -988,60 +1041,45 @@ class _DailyCategoryCard extends StatelessWidget {
     final d = data ?? const <String, dynamic>{};
     final score = d['score'];
     final summary = d['summary']?.toString().trim();
-    final good = (d['good'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final cautions = (d['cautions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final actions = (d['actions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final good = (d['good'] as List?)?.map((e) => e.toString()).toList() ??
+        const <String>[];
+    final cautions =
+        (d['cautions'] as List?)?.map((e) => e.toString()).toList() ??
+            const <String>[];
+    final actions =
+        (d['actions'] as List?)?.map((e) => e.toString()).toList() ??
+            const <String>[];
+
+    final scoreValue = _dailyScoreValue(score);
 
     return PageSection(
       title: label,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 8),
-          StatusBadge(
-            label: score is int ? '$score점' : '-',
-            tone: BadgeTone.neutral,
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (summary != null && summary.isNotEmpty) ...[
-            Text(summary, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 10),
-          ],
+          CategoryScoreRow(
+            icon: icon,
+            label: label,
+            score: scoreValue,
+            summary: summary,
+          ),
           if (good.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text('좋은 흐름', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            for (final g in good) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $g')),
-            const SizedBox(height: 10),
+            AppTextList(items: good),
           ],
           if (cautions.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            for (final w in cautions) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $w')),
-            const SizedBox(height: 10),
+            AppTextList(items: cautions),
           ],
           if (actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text('추천 행동', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            for (final a in actions)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Icon(Icons.check_circle_outline, size: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(a)),
-                  ],
-                ),
-              ),
+            AppTextList(items: actions, marker: AppListMarker.check),
           ],
         ],
       ),
@@ -1058,17 +1096,12 @@ class _DailyActionList extends StatelessWidget {
   Widget build(BuildContext context) {
     final list = actions;
     if (list == null || list.isEmpty) {
-      return const Text('액션 정보가 없습니다.');
+      return const AppTextList(items: [], emptyText: '액션 정보가 없습니다.');
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < list.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text('${i + 1}. ${list[i]}'),
-          ),
-      ],
+    return AppTextList(
+      items: list.map((item) => item.toString()).toList(growable: false),
+      marker: AppListMarker.number,
+      emptyText: '액션 정보가 없습니다.',
     );
   }
 }
@@ -1082,8 +1115,32 @@ class _LuckFlowSection extends StatelessWidget {
   final Map<String, String> chart;
   final int? birthYear;
 
-  static const _stems = <String>['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
-  static const _branches = <String>['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+  static const _stems = <String>[
+    '갑',
+    '을',
+    '병',
+    '정',
+    '무',
+    '기',
+    '경',
+    '신',
+    '임',
+    '계'
+  ];
+  static const _branches = <String>[
+    '자',
+    '축',
+    '인',
+    '묘',
+    '진',
+    '사',
+    '오',
+    '미',
+    '신',
+    '유',
+    '술',
+    '해'
+  ];
 
   int? _ganjiIndexOf(String pillar) {
     final stem = SajuStars.stemOf(pillar);
@@ -1288,24 +1345,29 @@ class _LuckCard extends StatelessWidget {
     final stem = SajuStars.stemOf(item.pillar);
     final branch = SajuStars.branchOf(item.pillar);
     final stemHanja = stem == null ? '-' : (SajuStars.stemHanja(stem) ?? '-');
-    final branchHanja = branch == null ? '-' : (SajuStars.branchHanja(branch) ?? '-');
+    final branchHanja =
+        branch == null ? '-' : (SajuStars.branchHanja(branch) ?? '-');
     final stemElement = stem == null ? null : SajuStars.stemElementKey(stem);
-    final branchElement = branch == null ? null : SajuStars.branchElementKey(branch);
+    final branchElement =
+        branch == null ? null : SajuStars.branchElementKey(branch);
 
     return Container(
       width: 108,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD7DFDB)),
-        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.border),
+        color: AppTheme.surfaceRaised,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             item.title,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           if (item.subtitle.trim().isNotEmpty)
             Text(
@@ -1318,7 +1380,10 @@ class _LuckCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: Text(
                 item.tenGod!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           _LuckGlyphBox(
@@ -1351,17 +1416,19 @@ class _LuckGlyphBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = elementKey == null ? const Color(0xFFF3F4F6) : SajuManseoryeok.elementColor(elementKey!);
-    final border = elementKey == null ? const Color(0xFFE5E7EB) : Colors.transparent;
+    final bg = elementKey == null
+        ? AppTheme.surfaceSunken
+        : AppTheme.elementColor(elementKey!);
+    final border = elementKey == null ? AppTheme.border : Colors.transparent;
     final fg = ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
         ? Colors.white
-        : const Color(0xFF111827);
+        : AppTheme.textStrong;
     return Container(
       height: 44,
       width: double.infinity,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: border),
       ),
       child: Stack(
@@ -1408,25 +1475,16 @@ class _AiInterpretationSection extends StatelessWidget {
 
   static List<String> _toStringList(dynamic value) {
     if (value is! List) return const [];
-    return value.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+    return value
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   static Map<String, dynamic> _toStringMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;
     if (value is Map) return value.cast<String, dynamic>();
     return const {};
-  }
-
-  Widget _bullets(BuildContext context, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final item in items) ...[
-          Text('• $item', style: Theme.of(context).textTheme.bodyMedium),
-          if (item != items.last) const SizedBox(height: 4),
-        ],
-      ],
-    );
   }
 
   String _sanitizeSummary(String? value) {
@@ -1479,7 +1537,8 @@ class _AiInterpretationSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (error != null) ...[
-            StatusNotice.error(message: error!, requestId: requestId ?? 'ai-interpretation'),
+            StatusNotice.error(
+                message: error!, requestId: requestId ?? 'ai-interpretation'),
             const SizedBox(height: 10),
           ],
           if (loading) ...[
@@ -1524,19 +1583,19 @@ class _AiInterpretationSection extends StatelessWidget {
             if (traits.isNotEmpty) ...[
               Text('핵심 성향', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
-              _bullets(context, traits),
+              AppTextList(items: traits),
               const SizedBox(height: 10),
             ],
             if (strengths.isNotEmpty) ...[
               Text('강점', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
-              _bullets(context, strengths),
+              AppTextList(items: strengths),
               const SizedBox(height: 10),
             ],
             if (cautions.isNotEmpty) ...[
               Text('주의 포인트', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
-              _bullets(context, cautions),
+              AppTextList(items: cautions),
               const SizedBox(height: 10),
             ],
             if (themes.isNotEmpty) ...[
@@ -1547,7 +1606,8 @@ class _AiInterpretationSection extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text('금전: ${themes['money']}'),
                 ),
-              if ((themes['relationship']?.toString().trim().isNotEmpty ?? false))
+              if ((themes['relationship']?.toString().trim().isNotEmpty ??
+                  false))
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text('연애/결혼: ${themes['relationship']}'),
@@ -1567,11 +1627,7 @@ class _AiInterpretationSection extends StatelessWidget {
             if (actionTips.isNotEmpty) ...[
               Text('실행 팁', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
-              for (int i = 0; i < actionTips.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('${i + 1}. ${actionTips[i]}'),
-                ),
+              AppTextList(items: actionTips, marker: AppListMarker.number),
               const SizedBox(height: 8),
             ],
             if (disclaimer != null && disclaimer.isNotEmpty)
@@ -1612,20 +1668,44 @@ class _AuspiciousStarsSection extends StatelessWidget {
 
   final Map<String, String> chart;
 
-  List<({String label, String pillar, String? stem, String? branch})> _pillarEntries(Map<String, String> chart) {
+  List<({String label, String pillar, String? stem, String? branch})>
+      _pillarEntries(Map<String, String> chart) {
     final year = chart['year'] ?? '';
     final month = chart['month'] ?? '';
     final day = chart['day'] ?? '';
     final hour = chart['hour'] ?? '';
     return [
-      (label: '년주', pillar: year, stem: SajuStars.stemOf(year), branch: SajuStars.branchOf(year)),
-      (label: '월주', pillar: month, stem: SajuStars.stemOf(month), branch: SajuStars.branchOf(month)),
-      (label: '일주', pillar: day, stem: SajuStars.stemOf(day), branch: SajuStars.branchOf(day)),
-      (label: '시주', pillar: hour, stem: SajuStars.stemOf(hour), branch: SajuStars.branchOf(hour)),
+      (
+        label: '년주',
+        pillar: year,
+        stem: SajuStars.stemOf(year),
+        branch: SajuStars.branchOf(year)
+      ),
+      (
+        label: '월주',
+        pillar: month,
+        stem: SajuStars.stemOf(month),
+        branch: SajuStars.branchOf(month)
+      ),
+      (
+        label: '일주',
+        pillar: day,
+        stem: SajuStars.stemOf(day),
+        branch: SajuStars.branchOf(day)
+      ),
+      (
+        label: '시주',
+        pillar: hour,
+        stem: SajuStars.stemOf(hour),
+        branch: SajuStars.branchOf(hour)
+      ),
     ];
   }
 
-  String? _hintForStems(List<({String label, String pillar, String? stem, String? branch})> entries, Set<String> targets) {
+  String? _hintForStems(
+      List<({String label, String pillar, String? stem, String? branch})>
+          entries,
+      Set<String> targets) {
     if (targets.isEmpty) return null;
     final labels = <String>[];
     for (final e in entries) {
@@ -1635,7 +1715,10 @@ class _AuspiciousStarsSection extends StatelessWidget {
     return labels.isEmpty ? null : labels.join('/');
   }
 
-  String? _hintForBranches(List<({String label, String pillar, String? stem, String? branch})> entries, Set<String> targets) {
+  String? _hintForBranches(
+      List<({String label, String pillar, String? stem, String? branch})>
+          entries,
+      Set<String> targets) {
     if (targets.isEmpty) return null;
     final labels = <String>[];
     for (final e in entries) {
@@ -1664,53 +1747,78 @@ class _AuspiciousStarsSection extends StatelessWidget {
       chart['hour'] ?? '',
     ];
     final entries = _pillarEntries(chart);
-    final stems = pillars.map(SajuStars.stemOf).whereType<String>().toList(growable: false);
-    final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
+    final stems = pillars
+        .map(SajuStars.stemOf)
+        .whereType<String>()
+        .toList(growable: false);
+    final branches = pillars
+        .map(SajuStars.branchOf)
+        .whereType<String>()
+        .toList(growable: false);
 
     final cheonEulTargets = SajuStars.cheonEulTargets(dayStem);
-    final hasCheonEul = cheonEulTargets.any((t) => SajuStars.hasAnyBranch(branches, t));
+    final hasCheonEul =
+        cheonEulTargets.any((t) => SajuStars.hasAnyBranch(branches, t));
 
     final munChangTarget = SajuStars.munChangTarget(dayStem);
-    final hasMunChang = munChangTarget != null && SajuStars.hasAnyBranch(branches, munChangTarget);
+    final hasMunChang = munChangTarget != null &&
+        SajuStars.hasAnyBranch(branches, munChangTarget);
 
     final taeGeukTargets = SajuStars.taeGeukTargets(dayStem);
-    final hasTaeGeuk = taeGeukTargets.any((t) => SajuStars.hasAnyBranch(branches, t));
+    final hasTaeGeuk =
+        taeGeukTargets.any((t) => SajuStars.hasAnyBranch(branches, t));
 
     final cheonJuTarget = SajuStars.cheonJuTarget(dayStem);
-    final hasCheonJu = cheonJuTarget != null && SajuStars.hasAnyBranch(branches, cheonJuTarget);
+    final hasCheonJu = cheonJuTarget != null &&
+        SajuStars.hasAnyBranch(branches, cheonJuTarget);
 
     final hakDangTarget = SajuStars.hakDangTarget(dayStem);
-    final hasHakDang = hakDangTarget != null && SajuStars.hasAnyBranch(branches, hakDangTarget);
+    final hasHakDang = hakDangTarget != null &&
+        SajuStars.hasAnyBranch(branches, hakDangTarget);
 
     final gwanGwiTarget = SajuStars.gwanGwiHakGwanTarget(dayStem);
-    final hasGwanGwi = gwanGwiTarget != null && SajuStars.hasAnyBranch(branches, gwanGwiTarget);
+    final hasGwanGwi = gwanGwiTarget != null &&
+        SajuStars.hasAnyBranch(branches, gwanGwiTarget);
 
     final munGokTarget = SajuStars.munGokTarget(dayStem);
-    final hasMunGok = munGokTarget != null && SajuStars.hasAnyBranch(branches, munGokTarget);
+    final hasMunGok =
+        munGokTarget != null && SajuStars.hasAnyBranch(branches, munGokTarget);
 
     final geumYeoTarget = SajuStars.geumYeoTarget(dayStem);
-    final hasGeumYeo = geumYeoTarget != null && SajuStars.hasAnyBranch(branches, geumYeoTarget);
+    final hasGeumYeo = geumYeoTarget != null &&
+        SajuStars.hasAnyBranch(branches, geumYeoTarget);
 
     final amRokTarget = SajuStars.amRokTarget(dayStem);
-    final hasAmRok = amRokTarget != null && SajuStars.hasAnyBranch(branches, amRokTarget);
+    final hasAmRok =
+        amRokTarget != null && SajuStars.hasAnyBranch(branches, amRokTarget);
 
     final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
-    final wolDeokStem = monthBranch == null ? null : SajuStars.wolDeokStemByMonthBranch(monthBranch);
+    final wolDeokStem = monthBranch == null
+        ? null
+        : SajuStars.wolDeokStemByMonthBranch(monthBranch);
     final hasWolDeok = wolDeokStem != null && stems.contains(wolDeokStem);
 
-    final cheonDeokStem = monthBranch == null ? null : SajuStars.cheonDeokStemByMonthBranch(monthBranch);
+    final cheonDeokStem = monthBranch == null
+        ? null
+        : SajuStars.cheonDeokStemByMonthBranch(monthBranch);
     final hasCheonDeok = cheonDeokStem != null && stems.contains(cheonDeokStem);
 
-    final cheonEuiTarget = monthBranch == null ? null : SajuStars.cheonEuiTargetByMonthBranch(monthBranch);
-    final hasCheonEui = cheonEuiTarget != null && SajuStars.hasAnyBranch(branches, cheonEuiTarget);
+    final cheonEuiTarget = monthBranch == null
+        ? null
+        : SajuStars.cheonEuiTargetByMonthBranch(monthBranch);
+    final hasCheonEui = cheonEuiTarget != null &&
+        SajuStars.hasAnyBranch(branches, cheonEuiTarget);
 
     final geonRokBranch = SajuStars.geonRokBranch(dayStem);
-    final hasGeonRok = geonRokBranch != null && SajuStars.hasAnyBranch(branches, geonRokBranch);
+    final hasGeonRok = geonRokBranch != null &&
+        SajuStars.hasAnyBranch(branches, geonRokBranch);
 
     final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
     final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
-    final yeokMaTarget = SajuStars.yeokMaTarget(yearBranch: yearBranch, dayBranch: dayBranch);
-    final hasYeokMa = yeokMaTarget != null && SajuStars.hasAnyBranch(branches, yeokMaTarget);
+    final yeokMaTarget =
+        SajuStars.yeokMaTarget(yearBranch: yearBranch, dayBranch: dayBranch);
+    final hasYeokMa =
+        yeokMaTarget != null && SajuStars.hasAnyBranch(branches, yeokMaTarget);
     final hasRokMa = hasGeonRok && hasYeokMa;
     final isRokMaDongHyang = hasRokMa && geonRokBranch == yeokMaTarget;
 
@@ -1861,20 +1969,44 @@ class _InauspiciousStarsSection extends StatelessWidget {
 
   final Map<String, String> chart;
 
-  List<({String label, String pillar, String? stem, String? branch})> _pillarEntries(Map<String, String> chart) {
+  List<({String label, String pillar, String? stem, String? branch})>
+      _pillarEntries(Map<String, String> chart) {
     final year = chart['year'] ?? '';
     final month = chart['month'] ?? '';
     final day = chart['day'] ?? '';
     final hour = chart['hour'] ?? '';
     return [
-      (label: '년주', pillar: year, stem: SajuStars.stemOf(year), branch: SajuStars.branchOf(year)),
-      (label: '월주', pillar: month, stem: SajuStars.stemOf(month), branch: SajuStars.branchOf(month)),
-      (label: '일주', pillar: day, stem: SajuStars.stemOf(day), branch: SajuStars.branchOf(day)),
-      (label: '시주', pillar: hour, stem: SajuStars.stemOf(hour), branch: SajuStars.branchOf(hour)),
+      (
+        label: '년주',
+        pillar: year,
+        stem: SajuStars.stemOf(year),
+        branch: SajuStars.branchOf(year)
+      ),
+      (
+        label: '월주',
+        pillar: month,
+        stem: SajuStars.stemOf(month),
+        branch: SajuStars.branchOf(month)
+      ),
+      (
+        label: '일주',
+        pillar: day,
+        stem: SajuStars.stemOf(day),
+        branch: SajuStars.branchOf(day)
+      ),
+      (
+        label: '시주',
+        pillar: hour,
+        stem: SajuStars.stemOf(hour),
+        branch: SajuStars.branchOf(hour)
+      ),
     ];
   }
 
-  String? _hintForBranches(List<({String label, String pillar, String? stem, String? branch})> entries, Set<String> targets) {
+  String? _hintForBranches(
+      List<({String label, String pillar, String? stem, String? branch})>
+          entries,
+      Set<String> targets) {
     if (targets.isEmpty) return null;
     final labels = <String>[];
     for (final e in entries) {
@@ -1896,27 +2028,44 @@ class _InauspiciousStarsSection extends StatelessWidget {
       chart['hour'] ?? '',
     ];
     final entries = _pillarEntries(chart);
-    final branches = pillars.map(SajuStars.branchOf).whereType<String>().toList(growable: false);
+    final branches = pillars
+        .map(SajuStars.branchOf)
+        .whereType<String>()
+        .toList(growable: false);
 
-    final yangInTarget = dayStem == null ? null : SajuStars.yangInTarget(dayStem);
-    final hasYangIn = yangInTarget != null && SajuStars.hasAnyBranch(branches, yangInTarget);
+    final yangInTarget =
+        dayStem == null ? null : SajuStars.yangInTarget(dayStem);
+    final hasYangIn =
+        yangInTarget != null && SajuStars.hasAnyBranch(branches, yangInTarget);
 
     final hasBaekHo = pillars.any(SajuStars.isBaekHoPillar);
-    final hongYeomTarget = dayStem == null ? null : SajuStars.hongYeomTarget(dayStem);
-    final hasHongYeom = hongYeomTarget != null && branches.contains(hongYeomTarget);
+    final hongYeomTarget =
+        dayStem == null ? null : SajuStars.hongYeomTarget(dayStem);
+    final hasHongYeom =
+        hongYeomTarget != null && branches.contains(hongYeomTarget);
 
     final yearBranch = SajuStars.branchOf(chart['year'] ?? '');
     final dayBranch = SajuStars.branchOf(chart['day'] ?? '');
 
-    final hasGyeokGak = SajuStars.isGyeokGak(yearBranch: yearBranch, dayBranch: dayBranch);
+    final hasGyeokGak =
+        SajuStars.isGyeokGak(yearBranch: yearBranch, dayBranch: dayBranch);
 
-    final goJinT1 = yearBranch == null ? null : SajuStars.goJinTargetByBaseBranch(yearBranch);
-    final goJinT2 = dayBranch == null ? null : SajuStars.goJinTargetByBaseBranch(dayBranch);
-    final hasGoJin = (goJinT1 != null && branches.contains(goJinT1)) || (goJinT2 != null && branches.contains(goJinT2));
+    final goJinT1 = yearBranch == null
+        ? null
+        : SajuStars.goJinTargetByBaseBranch(yearBranch);
+    final goJinT2 =
+        dayBranch == null ? null : SajuStars.goJinTargetByBaseBranch(dayBranch);
+    final hasGoJin = (goJinT1 != null && branches.contains(goJinT1)) ||
+        (goJinT2 != null && branches.contains(goJinT2));
 
-    final gwaSukT1 = yearBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(yearBranch);
-    final gwaSukT2 = dayBranch == null ? null : SajuStars.gwaSukTargetByBaseBranch(dayBranch);
-    final hasGwaSuk = (gwaSukT1 != null && branches.contains(gwaSukT1)) || (gwaSukT2 != null && branches.contains(gwaSukT2));
+    final gwaSukT1 = yearBranch == null
+        ? null
+        : SajuStars.gwaSukTargetByBaseBranch(yearBranch);
+    final gwaSukT2 = dayBranch == null
+        ? null
+        : SajuStars.gwaSukTargetByBaseBranch(dayBranch);
+    final hasGwaSuk = (gwaSukT1 != null && branches.contains(gwaSukT1)) ||
+        (gwaSukT2 != null && branches.contains(gwaSukT2));
 
     final hasGwiMun = SajuStars.hasGwiMunGwanSal(
       monthBranch: SajuStars.branchOf(chart['month'] ?? ''),
@@ -1925,18 +2074,28 @@ class _InauspiciousStarsSection extends StatelessWidget {
     );
 
     final monthBranch = SajuStars.branchOf(chart['month'] ?? '');
-    final geupGakTargets = monthBranch == null ? const <String>{} : SajuStars.geupGakTargetsByMonthBranch(monthBranch);
-    final hasGeupGak = geupGakTargets.isNotEmpty && geupGakTargets.any(branches.contains);
+    final geupGakTargets = monthBranch == null
+        ? const <String>{}
+        : SajuStars.geupGakTargetsByMonthBranch(monthBranch);
+    final hasGeupGak =
+        geupGakTargets.isNotEmpty && geupGakTargets.any(branches.contains);
 
-    final danGyoTarget = monthBranch == null ? null : SajuStars.danGyoGwanTargetByMonthBranch(monthBranch);
-    final hasDanGyo = danGyoTarget != null && (dayBranch == danGyoTarget || SajuStars.branchOf(chart['hour'] ?? '') == danGyoTarget);
+    final danGyoTarget = monthBranch == null
+        ? null
+        : SajuStars.danGyoGwanTargetByMonthBranch(monthBranch);
+    final hasDanGyo = danGyoTarget != null &&
+        (dayBranch == danGyoTarget ||
+            SajuStars.branchOf(chart['hour'] ?? '') == danGyoTarget);
 
     final hasGokGak = pillars.any(SajuStars.isGokGakPillar);
 
-    final cheonRaJiMangType = SajuStars.cheonRaJiMangType(dayBranch: dayBranch, allBranches: branches);
+    final cheonRaJiMangType = SajuStars.cheonRaJiMangType(
+        dayBranch: dayBranch, allBranches: branches);
     final hasCheonRaJiMang = cheonRaJiMangType != null;
 
-    final daeMoTarget = yearBranch == null ? null : SajuStars.daeMoTargetByYearBranch(yearBranch);
+    final daeMoTarget = yearBranch == null
+        ? null
+        : SajuStars.daeMoTargetByYearBranch(yearBranch);
     final hasDaeMo = daeMoTarget != null && branches.contains(daeMoTarget);
 
     final hasGuGyo = SajuStars.isGuGyoDayPillar(day);
@@ -1946,9 +2105,14 @@ class _InauspiciousStarsSection extends StatelessWidget {
 
     final hasJangHyeong = SajuStars.hasJangHyeongSal(branches);
 
-    final sangMunTarget = yearBranch == null ? null : SajuStars.sangMunTargetByYearBranch(yearBranch);
-    final hasSangMun = sangMunTarget != null && branches.contains(sangMunTarget);
-    final joGaekTarget = yearBranch == null ? null : SajuStars.joGaekTargetByYearBranch(yearBranch);
+    final sangMunTarget = yearBranch == null
+        ? null
+        : SajuStars.sangMunTargetByYearBranch(yearBranch);
+    final hasSangMun =
+        sangMunTarget != null && branches.contains(sangMunTarget);
+    final joGaekTarget = yearBranch == null
+        ? null
+        : SajuStars.joGaekTargetByYearBranch(yearBranch);
     final hasJoGaek = joGaekTarget != null && branches.contains(joGaekTarget);
 
     const goran = {'갑인', '을사', '정사', '무신', '신해'};
@@ -1994,13 +2158,15 @@ class _InauspiciousStarsSection extends StatelessWidget {
         _StarCardData(
           name: '고진살',
           description: '고독/고립감으로 연결해 풀이하는 경우가 있습니다.',
-          hint: _hintForBranches(entries, {if (goJinT1 != null) goJinT1, if (goJinT2 != null) goJinT2}),
+          hint: _hintForBranches(entries,
+              {if (goJinT1 != null) goJinT1, if (goJinT2 != null) goJinT2}),
         ),
       if (hasGwaSuk)
         _StarCardData(
           name: '과숙살',
           description: '관계의 단절감/혼자 감당하는 기운으로 풀이되는 경우가 있습니다.',
-          hint: _hintForBranches(entries, {if (gwaSukT1 != null) gwaSukT1, if (gwaSukT2 != null) gwaSukT2}),
+          hint: _hintForBranches(entries,
+              {if (gwaSukT1 != null) gwaSukT1, if (gwaSukT2 != null) gwaSukT2}),
         ),
       if (hasGyeokGak)
         const _StarCardData(
@@ -2241,40 +2407,12 @@ class _MansePillarColumn extends StatelessWidget {
   final String label;
   final String pillar;
 
-  static const Color _unknownBg = Color(0xFFF3F4F6);
-  static const Color _unknownBorder = Color(0xFFE5E7EB);
+  static const Color _unknownBg = AppTheme.surfaceSunken;
+  static const Color _unknownBorder = AppTheme.border;
 
-  Color _elementColor(String key) {
-    switch (key) {
-      case 'wood':
-        return const Color(0xFF1F8A5B);
-      case 'fire':
-        return const Color(0xFFE14C3A);
-      case 'earth':
-        return const Color(0xFFF0C24A);
-      case 'metal':
-        return const Color(0xFF9CA3AF);
-      case 'water':
-        return const Color(0xFF0F172A);
-    }
-    return _unknownBg;
-  }
+  Color _elementColor(String key) => AppTheme.elementColor(key);
 
-  String _elementLabel(String key) {
-    switch (key) {
-      case 'wood':
-        return '목';
-      case 'fire':
-        return '화';
-      case 'earth':
-        return '토';
-      case 'metal':
-        return '금';
-      case 'water':
-        return '수';
-    }
-    return '';
-  }
+  String _elementLabel(String key) => AppTheme.elementLabel(key);
 
   @override
   Widget build(BuildContext context) {
@@ -2349,14 +2487,15 @@ class _HanjaTile extends StatelessWidget {
     final bg = elementKey == null ? unknownBg : elementColor(elementKey!);
     final border = elementKey == null ? unknownBorder : Colors.transparent;
     final brightness = ThemeData.estimateBrightnessForColor(bg);
-    final fg = brightness == Brightness.dark ? Colors.white : const Color(0xFF111827);
+    final fg =
+        brightness == Brightness.dark ? Colors.white : AppTheme.textStrong;
 
     return AspectRatio(
       aspectRatio: 1,
       child: Container(
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: border),
         ),
         child: Stack(
@@ -2378,7 +2517,10 @@ class _HanjaTile extends StatelessWidget {
                 bottom: 6,
                 child: Text(
                   hangul!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.92)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: fg.withValues(alpha: 0.92)),
                 ),
               ),
             ],
@@ -2388,34 +2530,15 @@ class _HanjaTile extends StatelessWidget {
                 top: 6,
                 child: Text(
                   elementLabel!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.92)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: fg.withValues(alpha: 0.92)),
                 ),
               ),
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ElementRow extends StatelessWidget {
-  const _ElementRow({required this.name, required this.value});
-
-  final String name;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          SizedBox(width: 26, child: Text(name)),
-          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: value / 4))),
-          const SizedBox(width: 8),
-          Text('$value', style: Theme.of(context).textTheme.bodySmall),
-        ],
       ),
     );
   }

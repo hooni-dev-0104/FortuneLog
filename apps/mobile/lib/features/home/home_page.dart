@@ -67,9 +67,12 @@ class _HomePageState extends State<HomePage> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: '만세력'),
-          NavigationDestination(icon: Icon(Icons.today_outlined), label: '오늘 운세'),
-          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: '프리미엄'),
+          NavigationDestination(
+              icon: Icon(Icons.grid_view_rounded), label: '만세력'),
+          NavigationDestination(
+              icon: Icon(Icons.today_outlined), label: '오늘 운세'),
+          NavigationDestination(
+              icon: Icon(Icons.auto_awesome_outlined), label: '프리미엄'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '내정보'),
         ],
       ),

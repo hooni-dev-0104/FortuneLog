@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ui/app_theme.dart';
 import '../../core/ui/app_widgets.dart';
 import '../auth/login_page.dart';
 import '../saju/saju_guide_page.dart';
@@ -22,7 +23,7 @@ class OnboardingPage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFE9F4F1), Color(0xFFF6F8F7)],
+            colors: [AppTheme.brandTint, AppTheme.surface],
           ),
         ),
         child: SafeArea(
@@ -38,9 +39,13 @@ class OnboardingPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              Text('FortuneLog', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+              Text('FortuneLog',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center),
               const SizedBox(height: 6),
-              Text('당신의 오늘을 더 명확하게', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+              Text('당신의 오늘을 더 명확하게',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  textAlign: TextAlign.center),
               const SizedBox(height: 12),
               Text(
                 '결과는 참고용 해석이며 중요한 의사결정은 전문가 상담을 권장합니다.',
@@ -53,27 +58,12 @@ class OnboardingPage extends StatelessWidget {
                 child: Column(
                   children: [
                     for (final b in bullets) ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 3),
-                            child: Icon(Icons.check_circle_outline, size: 18),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(b.$1, style: Theme.of(context).textTheme.titleMedium),
-                                const SizedBox(height: 4),
-                                Text(b.$2, style: Theme.of(context).textTheme.bodyMedium),
-                              ],
-                            ),
-                          ),
-                        ],
+                      AppInfoRow(
+                        title: b.$1,
+                        subtitle: b.$2,
+                        leadingIcon: Icons.check_circle_outline,
                       ),
-                      if (b != bullets.last) const SizedBox(height: 12),
+                      if (b != bullets.last) const SizedBox(height: 4),
                     ],
                   ],
                 ),
@@ -96,7 +86,8 @@ class OnboardingPage extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
-                        onPressed: () => Navigator.pushNamed(context, SajuGuidePage.routeName),
+                        onPressed: () => Navigator.pushNamed(
+                            context, SajuGuidePage.routeName),
                         icon: const Icon(Icons.menu_book_outlined, size: 18),
                         label: const Text('용어/설명 보기'),
                       ),
@@ -106,7 +97,8 @@ class OnboardingPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               FilledButton(
-                onPressed: () => Navigator.pushReplacementNamed(context, LoginPage.routeName),
+                onPressed: () => Navigator.pushReplacementNamed(
+                    context, LoginPage.routeName),
                 child: const Text('시작하기'),
               ),
             ],
@@ -120,12 +112,19 @@ class OnboardingPage extends StatelessWidget {
 class _FourPillarsMeaningTable extends StatelessWidget {
   const _FourPillarsMeaningTable();
 
-  TableRow _row(BuildContext context, {required String left, required String right, bool header = false}) {
+  TableRow _row(BuildContext context,
+      {required String left, required String right, bool header = false}) {
     final leftStyle = header
-        ? Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)
+        ? Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(fontWeight: FontWeight.w700)
         : Theme.of(context).textTheme.bodySmall;
     final rightStyle = header
-        ? Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)
+        ? Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(fontWeight: FontWeight.w700)
         : Theme.of(context).textTheme.bodySmall;
 
     return TableRow(
@@ -145,11 +144,11 @@ class _FourPillarsMeaningTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFD8E0DC)),
-          color: Colors.white,
+          border: Border.all(color: AppTheme.border),
+          color: AppTheme.surfaceRaised,
         ),
         child: Table(
           columnWidths: const {
@@ -157,8 +156,8 @@ class _FourPillarsMeaningTable extends StatelessWidget {
             1: FlexColumnWidth(),
           },
           border: const TableBorder(
-            horizontalInside: BorderSide(color: Color(0xFFD8E0DC)),
-            verticalInside: BorderSide(color: Color(0xFFD8E0DC)),
+            horizontalInside: BorderSide(color: AppTheme.border),
+            verticalInside: BorderSide(color: AppTheme.border),
           ),
           children: [
             _row(context, left: '구분', right: '의미', header: true),

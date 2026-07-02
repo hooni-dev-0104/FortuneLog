@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_prefs.dart';
+import '../../core/ui/app_theme.dart';
 import '../../core/ui/app_widgets.dart';
 import '../app/app_gate.dart';
 import 'signup_page.dart';
@@ -68,7 +69,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     });
 
     final initialEmail = widget.initialEmail?.trim();
-    if (initialEmail != null && initialEmail.isNotEmpty && !_emailController.text.contains('@')) {
+    if (initialEmail != null &&
+        initialEmail.isNotEmpty &&
+        !_emailController.text.contains('@')) {
       _emailController.text = initialEmail;
     }
 
@@ -196,7 +199,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.passwordReset);
+        _error =
+            AuthErrorMapper.userMessage(e, flow: AuthContextFlow.passwordReset);
       });
     } on FormatException {
       if (!mounted) return;
@@ -222,8 +226,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     await AppPrefs.setKeepSignedIn(_keepSignedIn);
 
     try {
-      final kakaoScopes =
-          provider == OAuthProvider.kakao ? 'profile_nickname profile_image' : null;
+      final kakaoScopes = provider == OAuthProvider.kakao
+          ? 'profile_nickname profile_image'
+          : null;
       final queryParams = <String, String>{
         if (provider == OAuthProvider.kakao) 'lang': 'ko',
         if (provider == OAuthProvider.google) 'hl': 'ko',
@@ -248,7 +253,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       _oauthInFlight = false;
       setState(() {
         _loading = false;
-        _error = AuthErrorMapper.userMessage(e, flow: AuthContextFlow.socialLogin);
+        _error =
+            AuthErrorMapper.userMessage(e, flow: AuthContextFlow.socialLogin);
       });
     } on FormatException {
       if (!mounted) return;
@@ -290,9 +296,11 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 12),
-          Text('오늘의 흐름을 이어볼까요', style: Theme.of(context).textTheme.headlineSmall),
+          Text('오늘의 흐름을 이어볼까요',
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text('로그인하고 금전·연애·일·건강의 흐름을 한 번에 확인하세요.', style: Theme.of(context).textTheme.bodyMedium),
+          Text('로그인하고 금전·연애·일·건강의 흐름을 한 번에 확인하세요.',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 16),
           if (_error != null) ...[
             StatusNotice.error(message: _error!, requestId: 'auth-login-001'),
@@ -321,25 +329,32 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                     obscureText: true,
                     decoration: const InputDecoration(labelText: '비밀번호'),
                     validator: (v) {
-                      if (v == null || v.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+                      if (v == null || v.length < 8) {
+                        return '비밀번호는 8자 이상이어야 합니다.';
+                      }
                       return null;
                     },
                   ),
                   const SizedBox(height: 10),
                   Builder(
                     builder: (context) {
-                      final titleStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          );
-                      final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontSize: 12,
-                            color: const Color(0xFF5B6B65),
-                          );
+                      final titleStyle =
+                          Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              );
+                      final subtitleStyle =
+                          Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontSize: 12,
+                                color: AppTheme.textWeak,
+                              );
 
                       return InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: _loading ? null : () => setState(() => _keepSignedIn = !_keepSignedIn),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                        onTap: _loading
+                            ? null
+                            : () =>
+                                setState(() => _keepSignedIn = !_keepSignedIn),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Row(
@@ -352,7 +367,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                                   onChanged: _loading
                                       ? null
                                       : (v) {
-                                          setState(() => _keepSignedIn = v ?? true);
+                                          setState(
+                                              () => _keepSignedIn = v ?? true);
                                         },
                                 ),
                               ),
@@ -363,7 +379,8 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                                   children: [
                                     Text('로그인 유지하기', style: titleStyle),
                                     const SizedBox(height: 2),
-                                    Text('앱을 다시 열어도 로그인 상태를 유지합니다.', style: subtitleStyle),
+                                    Text('앱을 다시 열어도 로그인 상태를 유지합니다.',
+                                        style: subtitleStyle),
                                   ],
                                 ),
                               ),
@@ -381,11 +398,15 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           Row(
             children: [
               TextButton(
-                onPressed: _loading ? null : () => Navigator.pushNamed(context, SignupPage.routeName),
+                onPressed: _loading
+                    ? null
+                    : () => Navigator.pushNamed(context, SignupPage.routeName),
                 child: const Text('회원가입'),
               ),
               const SizedBox(width: 6),
-              TextButton(onPressed: _loading ? null : _sendPasswordReset, child: const Text('비밀번호 찾기')),
+              TextButton(
+                  onPressed: _loading ? null : _sendPasswordReset,
+                  child: const Text('비밀번호 찾기')),
             ],
           ),
           const SizedBox(height: 16),
@@ -419,7 +440,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                   backgroundColor: const Color(0xFFFEE500),
                   foregroundColor: Colors.black,
                   borderColor: const Color(0xFFE7D200),
-                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.kakao),
+                  onPressed: _loading
+                      ? null
+                      : () => _startSocialLogin(OAuthProvider.kakao),
                   loading: _loading,
                 ),
                 const SizedBox(height: 10),
@@ -432,9 +455,11 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                     height: 22,
                   ),
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF16211D),
-                  borderColor: const Color(0xFFD8E0DC),
-                  onPressed: _loading ? null : () => _startSocialLogin(OAuthProvider.google),
+                  foregroundColor: AppTheme.textStrong,
+                  borderColor: AppTheme.border,
+                  onPressed: _loading
+                      ? null
+                      : () => _startSocialLogin(OAuthProvider.google),
                   loading: _loading,
                 ),
               ],
@@ -447,7 +472,10 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         child: FilledButton(
           onPressed: _loading ? null : _submitEmailLogin,
           child: _loading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('이메일 로그인'),
         ),
       ),
@@ -494,7 +522,9 @@ class _SocialLoginButton extends StatelessWidget {
               backgroundColor: backgroundColor,
               foregroundColor: foregroundColor,
               side: BorderSide(color: borderColor),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              ),
               textStyle: const TextStyle(fontWeight: FontWeight.w700),
             ),
             child: Row(

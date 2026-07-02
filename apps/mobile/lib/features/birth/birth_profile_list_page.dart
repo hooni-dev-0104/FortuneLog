@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ui/app_theme.dart';
 import '../../core/ui/app_widgets.dart';
 import 'birth_input_page.dart';
 
@@ -231,8 +232,19 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                       ),
                       const SizedBox(height: 8),
                       for (final p in profiles) ...[
-                        InkWell(
-                          borderRadius: BorderRadius.circular(12),
+                        AppInfoRow(
+                          title: _profileNameFor(p),
+                          subtitle: _detailFor(p),
+                          leadingIcon: Icons.person_outline,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_profileTagFor(p).isNotEmpty)
+                                StatusBadge(label: _profileTagFor(p)),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.chevron_right),
+                            ],
+                          ),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -241,42 +253,6 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                                       BirthInputPage(initialProfile: p)),
                             ).then((_) => _refresh());
                           },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              _profileNameFor(p),
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium,
-                                            ),
-                                          ),
-                                          if (_profileTagFor(p).isNotEmpty)
-                                            StatusBadge(
-                                                label: _profileTagFor(p)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(_detailFor(p),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right),
-                              ],
-                            ),
-                          ),
                         ),
                         const Divider(height: 1),
                       ],
@@ -303,8 +279,9 @@ class _BirthProfileListPageState extends State<BirthProfileListPage> {
                               ? null
                               : () => _deleteAllMyProfiles(profiles.length),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF9A3025),
-                            side: const BorderSide(color: Color(0xFFF3C4C1)),
+                            foregroundColor: AppTheme.danger,
+                            side:
+                                const BorderSide(color: AppTheme.dangerBorder),
                           ),
                           child: _deletingAll
                               ? const SizedBox(

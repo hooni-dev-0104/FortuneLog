@@ -11,7 +11,8 @@ class ReportPage extends StatefulWidget {
   State<ReportPage> createState() => _ReportPageState();
 }
 
-class _ReportPageState extends State<ReportPage> with SingleTickerProviderStateMixin {
+class _ReportPageState extends State<ReportPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   bool _loading = false;
   String? _error;
@@ -61,14 +62,16 @@ class _ReportPageState extends State<ReportPage> with SingleTickerProviderStateM
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-                    child: StatusNotice.error(message: _error!, requestId: 'report-req-001'),
+                    child: StatusNotice.error(
+                        message: _error!, requestId: 'report-req-001'),
                   ),
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     children: const [
                       _ReportTab(
-                        summary: '핵심 에너지는 추진력과 몰입에 강점이 있으나, 과도한 자기압박이 발생하기 쉽습니다.',
+                        summary:
+                            '핵심 에너지는 추진력과 몰입에 강점이 있으나, 과도한 자기압박이 발생하기 쉽습니다.',
                         strengths: '강점: 목표 집중력, 실행 속도, 변동성 대응력',
                         caution: '주의: 과한 완벽주의로 인한 피로 누적',
                         actions: [
@@ -78,7 +81,8 @@ class _ReportPageState extends State<ReportPage> with SingleTickerProviderStateM
                         ],
                       ),
                       _ReportTab(
-                        summary: '관계에서는 감정 표현보다 맥락 설명이 효과적이며, 즉흥 반응을 줄일수록 안정적입니다.',
+                        summary:
+                            '관계에서는 감정 표현보다 맥락 설명이 효과적이며, 즉흥 반응을 줄일수록 안정적입니다.',
                         strengths: '강점: 배려 중심의 관계 유지, 문제 해결 지향 대화',
                         caution: '주의: 감정 누적 후 급격한 거리두기',
                         actions: [
@@ -88,7 +92,8 @@ class _ReportPageState extends State<ReportPage> with SingleTickerProviderStateM
                         ],
                       ),
                       _ReportTab(
-                        summary: '업무에서는 빠른 실행이 장점이지만, 우선순위 정렬 없이 확장하면 효율이 떨어집니다.',
+                        summary:
+                            '업무에서는 빠른 실행이 장점이지만, 우선순위 정렬 없이 확장하면 효율이 떨어집니다.',
                         strengths: '강점: 초기 세팅 속도, 책임감, 마감 대응력',
                         caution: '주의: 동시다발 과제 수용으로 인한 품질 저하',
                         actions: [
@@ -150,25 +155,7 @@ class _ReportTab extends StatelessWidget {
         PageSection(
           title: '행동 가이드',
           subtitle: '즉시 실행 가능한 체크리스트',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: actions
-                .map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Icon(Icons.check_circle_outline, size: 16),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(item)),
-                        ],
-                      ),
-                    ))
-                .toList(),
-          ),
+          child: AppTextList(items: actions, marker: AppListMarker.check),
         ),
       ],
     );
@@ -202,12 +189,6 @@ class _SkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8ECEA),
-        borderRadius: BorderRadius.circular(16),
-      ),
-    );
+    return AppSkeleton(height: height);
   }
 }

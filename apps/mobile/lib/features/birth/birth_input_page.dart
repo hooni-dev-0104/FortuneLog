@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ui/app_theme.dart';
 import '../../core/ui/app_widgets.dart';
 import '../../core/ui/korean_cities.dart';
 import '../../core/network/location_search_client.dart';
@@ -343,23 +344,34 @@ class _BirthInputPageState extends State<BirthInputPage> {
     return Scaffold(
       appBar: AppBar(title: Text(isEdit ? '출생정보 수정' : '출생정보 입력')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        padding: const EdgeInsets.fromLTRB(
+          AppTheme.pagePadding,
+          12,
+          AppTheme.pagePadding,
+          AppTheme.pagePadding,
+        ),
         children: [
-          Text(
-            '사주 계산에 사용할 정보를 입력해주세요.\n입력값은 운세/리포트 생성에만 사용됩니다.',
-            style: Theme.of(context).textTheme.bodyMedium,
+          PageSection(
+            title: isEdit ? '기존 프로필을 수정합니다' : '처음 계산할 정보를 입력합니다',
+            subtitle: '입력값은 운세와 리포트 생성에만 사용됩니다.',
+            child: const AppTextList(
+              items: [
+                '생년월일, 시간, 장소를 기준으로 사주 차트를 계산합니다.',
+                '출생시간을 모르면 미상으로 저장할 수 있습니다.',
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppTheme.sectionGap),
           if (_summaryErrors.isNotEmpty) ...[
             StatusNotice.error(
                 message: _summaryErrors.join('\n'),
                 requestId: 'dev-birth-validate'),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppTheme.sectionGap),
           ],
           if (_error != null) ...[
             StatusNotice.error(
                 message: _error!, requestId: _lastRequestId ?? 'birth-submit'),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppTheme.sectionGap),
           ],
           Form(
             key: _formKey,
@@ -401,7 +413,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppTheme.sectionGap),
                 PageSection(
                   title: '기본 정보',
                   subtitle: '필수값: 생년월일, 달력종류, 성별',
@@ -455,7 +467,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppTheme.sectionGap),
                 PageSection(
                   title: '시간 / 장소',
                   subtitle: '출생시간이 없으면 정확도 안내 문구가 함께 노출됩니다.',
@@ -535,8 +547,13 @@ class _BirthInputPageState extends State<BirthInputPage> {
                           return Align(
                             alignment: Alignment.topLeft,
                             child: Material(
-                              elevation: 6,
-                              borderRadius: BorderRadius.circular(12),
+                              elevation: 0,
+                              color: AppTheme.surfaceRaised,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusLg),
+                                side: const BorderSide(color: AppTheme.border),
+                              ),
                               child: ConstrainedBox(
                                 constraints: const BoxConstraints(
                                     maxHeight: 260, maxWidth: 420),
@@ -545,8 +562,8 @@ class _BirthInputPageState extends State<BirthInputPage> {
                                       const EdgeInsets.symmetric(vertical: 6),
                                   shrinkWrap: true,
                                   itemCount: options.length,
-                                  separatorBuilder: (_, __) =>
-                                      const Divider(height: 1),
+                                  separatorBuilder: (_, __) => const Divider(
+                                      height: 1, color: AppTheme.divider),
                                   itemBuilder: (context, index) {
                                     final o = options.elementAt(index);
                                     return ListTile(
@@ -557,7 +574,9 @@ class _BirthInputPageState extends State<BirthInputPage> {
                                               width: 16,
                                               height: 16,
                                               child: CircularProgressIndicator(
-                                                  strokeWidth: 2))
+                                                strokeWidth: 2,
+                                                color: AppTheme.brand,
+                                              ))
                                           : null,
                                       onTap: () => onSelected(o),
                                     );
@@ -571,7 +590,7 @@ class _BirthInputPageState extends State<BirthInputPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppTheme.sectionGap),
                 PageSection(
                   title: '캘린더 옵션',
                   subtitle: '음력 선택 시 윤달 설정 가능',
@@ -595,15 +614,32 @@ class _BirthInputPageState extends State<BirthInputPage> {
         ],
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(20, 6, 20, 16),
-        child: FilledButton(
-          onPressed: _saving ? null : () => _validateAndSubmit(),
-          child: _saving
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(isEdit ? '수정하고 결과 보기' : '저장하고 결과 보기'),
+        minimum: EdgeInsets.zero,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppTheme.surfaceRaised,
+            border: Border(top: BorderSide(color: AppTheme.border)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.pagePadding,
+              10,
+              AppTheme.pagePadding,
+              16,
+            ),
+            child: FilledButton(
+              onPressed: _saving ? null : () => _validateAndSubmit(),
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.textOnBrand,
+                      ))
+                  : Text(isEdit ? '수정하고 결과 보기' : '저장하고 결과 보기'),
+            ),
+          ),
         ),
       ),
     );
