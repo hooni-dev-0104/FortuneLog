@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/engine_api_client.dart';
 import '../../core/network/engine_api_client_factory.dart';
@@ -11,15 +12,31 @@ import '../birth/birth_input_page.dart';
 import '../birth/birth_profile_list_page.dart';
 import '../policy/policy_document_page.dart';
 
+typedef SupportLauncher = Future<bool> Function(Uri uri);
+
 class MyPage extends StatefulWidget {
-  const MyPage({super.key});
+  const MyPage({
+    super.key,
+    this.launchSupport = _defaultLaunchSupport,
+  });
+
+  final SupportLauncher launchSupport;
 
   @override
   State<MyPage> createState() => _MyPageState();
 }
 
+Future<bool> _defaultLaunchSupport(Uri uri) {
+  return launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 class _MyPageState extends State<MyPage> {
   static const int _maxProfilesForFreeTier = 4;
+  static const String _supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: 'support@fortunelog.app',
+  );
+  static const String _supportUrl = String.fromEnvironment('SUPPORT_URL');
   static final Uri _termsPolicyUrl = Uri.parse(const String.fromEnvironment(
     'POLICY_TERMS_URL',
     defaultValue: 'https://fortunelog.app/terms',
@@ -244,6 +261,25 @@ class _MyPageState extends State<MyPage> {
       PolicyDocumentPage.routeName,
       arguments: PolicyDocumentRouteArgs(type: type, externalUrl: uri),
     );
+  }
+
+  Uri _supportDestination() {
+    final supportUrl = _supportUrl.trim();
+    if (supportUrl.isNotEmpty) {
+      return Uri.parse(supportUrl);
+    }
+
+    return Uri(
+      scheme: 'mailto',
+      path: _supportEmail,
+      queryParameters: const {'subject': 'FortuneLog 문의'},
+    );
+  }
+
+  Future<void> _openSupport() async {
+    final opened = await widget.launchSupport(_supportDestination());
+    if (opened || !mounted) return;
+    showAppSnackBar(context, '고객지원 채널을 열 수 없습니다.');
   }
 
   String _formatDateTime(dynamic value) {
@@ -544,6 +580,16 @@ class _MyPageState extends State<MyPage> {
                     _openPolicy(PolicyDocumentType.refund, _refundPolicyUrl),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        PageSection(
+          title: '고객지원',
+          child: AppInfoRow(
+            title: '문의하기',
+            subtitle: _supportEmail,
+            leadingIcon: Icons.support_agent,
+            onTap: _openSupport,
           ),
         ),
       ],

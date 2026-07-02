@@ -29,6 +29,46 @@ void main() {
 
     expect(find.text('정책 문서'), findsOneWidget);
     expect(find.text('환불 정책'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('고객지원'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('고객지원'), findsOneWidget);
+    expect(find.text('support@fortunelog.app'), findsOneWidget);
+  });
+
+  testWidgets('opens configured support channel', (tester) async {
+    Uri? openedUri;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MyPage(
+            launchSupport: (uri) async {
+              openedUri = uri;
+              return true;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('문의하기'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('문의하기'));
+    await tester.pumpAndSettle();
+
+    expect(openedUri?.scheme, 'mailto');
+    expect(openedUri?.path, 'support@fortunelog.app');
   });
 
   testWidgets('opens in-app policy document page', (tester) async {

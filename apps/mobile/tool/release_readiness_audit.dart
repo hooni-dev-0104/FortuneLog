@@ -77,8 +77,8 @@ ReleaseAuditReport auditReleaseReadiness({String rootPath = '.'}) {
     );
   }
 
-  final hasDebugReleaseFallback =
-      androidGradle.contains('signingConfig = signingConfigs.getByName("debug")');
+  final hasDebugReleaseFallback = androidGradle
+      .contains('signingConfig = signingConfigs.getByName("debug")');
   final hasExplicitDebugReleaseOptIn =
       androidGradle.contains('ALLOW_DEBUG_SIGNED_RELEASE');
   if (hasDebugReleaseFallback && !hasExplicitDebugReleaseOptIn) {
@@ -194,6 +194,20 @@ ReleaseAuditReport auditReleaseReadiness({String rootPath = '.'}) {
             'Policy copy references a customer inquiry channel, but no concrete support URL/email is surfaced in MyPage or PolicyDocumentPage.',
         recommendation:
             'Add the real support URL/email to app settings and mirror it in App Store Connect / Play Console listing metadata.',
+      ),
+    );
+  } else {
+    findings.add(
+      const ReleaseFinding(
+        code: 'support_contact_present',
+        severity: FindingSeverity.pass,
+        summary:
+            'The mobile settings or policy surface exposes a concrete support contact.',
+        file: 'apps/mobile/lib/features/mypage/my_page.dart',
+        evidence:
+            'A support email or support URL is present in the app surface.',
+        recommendation:
+            'Keep the support channel aligned with store listing metadata and policy documents.',
       ),
     );
   }

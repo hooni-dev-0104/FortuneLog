@@ -7,8 +7,6 @@ void main() {
     final report = auditReleaseReadiness(rootPath: '.');
     final blockerCodes =
         report.bySeverity(FindingSeverity.blocker).map((it) => it.code).toSet();
-    final warningCodes =
-        report.bySeverity(FindingSeverity.warning).map((it) => it.code).toSet();
     final passCodes =
         report.bySeverity(FindingSeverity.pass).map((it) => it.code).toSet();
 
@@ -18,10 +16,13 @@ void main() {
         'ios_development_team_missing',
       }),
     );
-    expect(warningCodes, contains('support_contact_missing'));
     expect(
       passCodes,
-      containsAll(<String>{'policy_urls_present', 'store_icons_present'}),
+      containsAll(<String>{
+        'policy_urls_present',
+        'store_icons_present',
+        'support_contact_present',
+      }),
     );
   });
 }
