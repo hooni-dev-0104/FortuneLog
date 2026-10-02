@@ -102,23 +102,17 @@ public class EngineService {
 
     public ReportResult generateReport(String userId, GenerateReportRequest request) {
         ensureUserIsActive(userId);
-        Map<String, Object> content = Map.of(
-                "summary", "실행력은 강하지만 과부하 관리가 핵심입니다.",
-                "strengths", List.of("빠른 판단", "높은 집중력"),
-                "cautions", List.of("무리한 일정", "감정 과열"),
-                "actions", List.of("오늘 1개 우선순위만 완료", "오후 30분 회복 시간 확보")
-        );
-
-        persistenceService.upsertNonDailyReport(
-                userId,
-                request.chartId(),
-                request.reportType(),
-                content,
-                true,
-                true
-        );
-
-        return new ReportResult(request.chartId(), request.reportType(), content);
+        if (!List.of("personality", "relationship", "career").contains(request.reportType())) {
+            throw new ApiClientException("REPORT_TYPE_UNSUPPORTED", HttpStatus.BAD_REQUEST,
+                    "지원하지 않는 상세 리포트 유형입니다.");
+        }
+        if (persistenceService.findChartSnapshot(userId, request.chartId()) == null) {
+            throw new ApiClientException("CHART_NOT_FOUND", HttpStatus.NOT_FOUND,
+                    "사주 차트를 먼저 계산해주세요.");
+        }
+        // Keep this server-side gate closed until type-specific personalization is verified.
+        throw new ApiClientException("REPORT_NOT_READY", HttpStatus.SERVICE_UNAVAILABLE,
+                "개인화 상세 리포트는 준비 중입니다. 이용권은 차감되지 않습니다.");
     }
 
     public DailyFortuneResult generateDailyFortune(String userId, GenerateDailyFortuneRequest request) {
@@ -490,6 +484,16 @@ public class EngineService {
                 snapshot.chart(),
                 snapshot.fiveElements()
         );
+        if ("fallback".equals(content.get("source"))) {
+            Map<String, Object> freeContent = new LinkedHashMap<>(content);
+            freeContent.put("creditCharged", false);
+            return new ReportResult(request.chartId(), "ai_interpretation", freeContent);
+        }
+        if (!"openai".equals(content.get("source"))
+                || !(content.get("summary") instanceof String summary) || summary.isBlank()) {
+            throw new ApiClientException("AI_RESPONSE_INVALID", HttpStatus.BAD_GATEWAY,
+                    "AI 해석 결과를 확인하지 못했습니다. 이용권은 차감되지 않았습니다.");
+        }
         content = new LinkedHashMap<>(content);
         content.put("analysisInput", buildAiAnalysisInput(snapshot.chart(), snapshot.fiveElements()));
         content.put("analysisInputText", buildAiAnalysisInputText(snapshot.chart(), snapshot.fiveElements()));

@@ -20,6 +20,10 @@ class EngineErrorMapper {
         return '입력된 출생정보를 확인해주세요.';
       case 'CHART_NOT_FOUND':
         return '사주 차트를 먼저 계산해주세요.';
+      case 'REPORT_NOT_READY':
+        return '개인화 상세 리포트는 준비 중입니다. 이용권은 차감되지 않습니다.';
+      case 'REPORT_TYPE_UNSUPPORTED':
+        return '지원하지 않는 상세 리포트 유형입니다.';
       case 'AI_CREDIT_REQUIRED':
         return 'AI 사주풀이 이용권이 필요합니다. 이용권을 구매한 뒤 다시 시도해주세요.';
       case 'ACCOUNT_DELETION_INVALID_USER':

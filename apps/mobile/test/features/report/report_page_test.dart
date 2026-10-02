@@ -5,70 +5,33 @@ import 'package:fortune_log_mobile/core/network/engine_api_client.dart';
 import 'package:fortune_log_mobile/features/report/report_page.dart';
 
 void main() {
-  testWidgets('shows empty state when chart id is missing', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: ReportPage()),
-    );
+  testWidgets('preparation message stays readable at narrow width and large text', (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
+        child: child!,
+      ),
+      home: const ReportPage(),
+    ));
     await tester.pumpAndSettle();
-
-    expect(find.text('사주 차트가 필요합니다'), findsOneWidget);
-    expect(
-      find.text('출생정보로 사주 계산을 완료한 뒤 상세 리포트를 확인할 수 있습니다.'),
-      findsOneWidget,
-    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('개인화 상세 리포트 준비 중'), findsOneWidget);
   });
 
-  testWidgets('loads report content from engine', (tester) async {
+  testWidgets('preparation screen never generates or sells a report', (tester) async {
     final client = _FakeEngineApiClient();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ReportPage(
-          args: const ReportPageArgs(chartId: 'chart-1'),
-          engineClient: client,
-        ),
-      ),
-    );
+    await tester.pumpWidget(MaterialApp(
+      home: ReportPage(args: const ReportPageArgs(chartId: 'chart-1'), engineClient: client),
+    ));
     await tester.pumpAndSettle();
-
-    expect(client.reportRequests.map((request) => request.reportType), [
-      'personality',
-    ]);
-    expect(find.text('personality 요약'), findsOneWidget);
-    expect(find.text('personality 강점'), findsOneWidget);
-    expect(find.text('personality 주의'), findsOneWidget);
-    expect(find.text('personality 행동'), findsOneWidget);
-  });
-
-  testWidgets('loads selected report tab once', (tester) async {
-    final client = _FakeEngineApiClient();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ReportPage(
-          args: const ReportPageArgs(chartId: 'chart-1'),
-          engineClient: client,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('연애'));
-    await tester.pumpAndSettle();
-
-    expect(client.reportRequests.map((request) => request.reportType), [
-      'personality',
-      'relationship',
-    ]);
-    expect(find.text('relationship 요약'), findsOneWidget);
-
-    await tester.tap(find.text('성향'));
-    await tester.pumpAndSettle();
-
-    expect(client.reportRequests.map((request) => request.reportType), [
-      'personality',
-      'relationship',
-    ]);
+    expect(find.text('개인화 상세 리포트 준비 중'), findsOneWidget);
+    expect(client.reportRequests, isEmpty);
+    expect(find.text('리포트 재생성'), findsNothing);
+    expect(find.byType(FilledButton), findsNothing);
   });
 }
 

@@ -1,6 +1,7 @@
 package com.fortunelog.engine.application;
 
 import com.fortunelog.engine.application.dto.CalculateChartRequest;
+import com.fortunelog.engine.application.dto.GenerateReportRequest;
 import com.fortunelog.engine.application.dto.GenerateAiInterpretationRequest;
 import com.fortunelog.engine.common.ApiClientException;
 import com.fortunelog.engine.infra.llm.OpenAiAnalysisClient;
@@ -70,7 +71,7 @@ class EngineServiceAccessGuardTest {
         when(aiAnalysisClient.generateSajuInterpretation(
                 org.mockito.ArgumentMatchers.anyMap(),
                 org.mockito.ArgumentMatchers.anyMap()
-        )).thenReturn(Map.of("summary", "ok"));
+        )).thenReturn(Map.of("summary", "ok", "source", "openai"));
         when(persistenceService.finalizeAiInterpretationReport(
                 org.mockito.ArgumentMatchers.eq(userId),
                 org.mockito.ArgumentMatchers.eq(chartId),
@@ -107,7 +108,7 @@ class EngineServiceAccessGuardTest {
         when(aiAnalysisClient.generateSajuInterpretation(
                 org.mockito.ArgumentMatchers.anyMap(),
                 org.mockito.ArgumentMatchers.anyMap()
-        )).thenReturn(Map.of("summary", "ok"));
+        )).thenReturn(Map.of("summary", "ok", "source", "openai"));
         when(persistenceService.finalizeAiInterpretationReport(
                 org.mockito.ArgumentMatchers.eq(userId),
                 org.mockito.ArgumentMatchers.eq(chartId),
@@ -123,6 +124,62 @@ class EngineServiceAccessGuardTest {
 
         assertEquals("AI_CREDIT_REQUIRED", ex.code());
         assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.status());
+    }
+
+    @Test
+    void shouldReturnFallbackWithoutSavingOrConsumingCredits() {
+        when(persistenceService.findChartSnapshot("user", "chart")).thenReturn(
+                new SupabasePersistenceService.ChartSnapshot(Map.of(), Map.of()));
+        when(persistenceService.creditBalance("user", "ai_interpretation")).thenReturn(1);
+        when(aiAnalysisClient.generateSajuInterpretation(Map.of(), Map.of()))
+                .thenReturn(Map.of("summary", "free guidance", "source", "fallback"));
+
+        var result = engineService.generateAiInterpretation("user", new GenerateAiInterpretationRequest("chart"));
+        assertEquals("fallback", result.content().get("source"));
+        assertEquals(false, result.content().get("creditCharged"));
+        verify(persistenceService, never()).finalizeAiInterpretationReport(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyMap(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyMap());
+    }
+
+    @Test
+    void shouldRejectUnverifiedAiContentWithoutCharging() {
+        when(persistenceService.findChartSnapshot("user", "chart")).thenReturn(
+                new SupabasePersistenceService.ChartSnapshot(Map.of(), Map.of()));
+        when(persistenceService.creditBalance("user", "ai_interpretation")).thenReturn(1);
+        when(aiAnalysisClient.generateSajuInterpretation(Map.of(), Map.of()))
+                .thenReturn(Map.of("summary", "unverified"));
+        var error = assertThrows(ApiClientException.class, () -> engineService.generateAiInterpretation(
+                "user", new GenerateAiInterpretationRequest("chart")));
+        assertEquals("AI_RESPONSE_INVALID", error.code());
+        verify(persistenceService, never()).finalizeAiInterpretationReport(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyMap(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyMap());
+    }
+
+    @Test
+    void shouldKeepPersonalizedReportsClosedWithoutPersistingExamples() {
+        when(persistenceService.findChartSnapshot("user", "chart")).thenReturn(
+                new SupabasePersistenceService.ChartSnapshot(Map.of(), Map.of()));
+        for (String type : java.util.List.of("personality", "relationship", "career")) {
+            var error = assertThrows(ApiClientException.class, () -> engineService.generateReport(
+                    "user", new GenerateReportRequest("chart", type)));
+            assertEquals("REPORT_NOT_READY", error.code());
+        }
+        verify(persistenceService, never()).upsertNonDailyReport(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyMap(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void shouldRejectUnknownChartAndUnsupportedReportType() {
+        assertEquals("CHART_NOT_FOUND", assertThrows(ApiClientException.class,
+                () -> engineService.generateReport("user", new GenerateReportRequest("other-chart", "career"))).code());
+        assertEquals("REPORT_TYPE_UNSUPPORTED", assertThrows(ApiClientException.class,
+                () -> engineService.generateReport("user", new GenerateReportRequest("chart", "unknown"))).code());
     }
 
     @Test

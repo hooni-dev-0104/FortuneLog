@@ -20,7 +20,7 @@ class CreditPackOffering {
   final String? badge;
   final bool canPurchase;
 
-  String get displayPriceText => storePriceText ?? fallbackPriceText;
+  String get displayPriceText => storePriceText ?? '가격 확인 필요';
 
   CreditPackOffering copyWith({
     String? storePriceText,
@@ -58,7 +58,6 @@ class RevenueCatService {
       credits: 5,
       title: 'AI 사주풀이 5회권',
       fallbackPriceText: '5,500원',
-      badge: '추천',
       canPurchase: false,
     ),
     CreditPackOffering(
@@ -66,7 +65,6 @@ class RevenueCatService {
       credits: 10,
       title: 'AI 사주풀이 10회권',
       fallbackPriceText: '10,000원',
-      badge: '가장 합리적',
       canPurchase: false,
     ),
   ];
@@ -147,10 +145,11 @@ class RevenueCatService {
     _lastSyncedUserId = normalizedUserId;
   }
 
+  // Compatibility parameter never enables checkout without a store product.
   static List<CreditPackOffering> fallbackCreditPacks(
       {bool canPurchase = false}) {
     return _fallbackCreditPacks
-        .map((pack) => pack.copyWith(canPurchase: canPurchase && isEnabled))
+        .map((pack) => pack.copyWith(canPurchase: false))
         .toList();
   }
 
@@ -162,14 +161,14 @@ class RevenueCatService {
     final offerings = await Purchases.getOfferings();
     final current = offerings.current;
     if (current == null) {
-      return fallbackCreditPacks(canPurchase: true);
+      return fallbackCreditPacks();
     }
 
     return _fallbackCreditPacks.map((pack) {
       final match = current.availablePackages
           .where((package) => package.storeProduct.identifier == pack.productId)
           .toList();
-      if (match.isEmpty) return pack.copyWith(canPurchase: true);
+      if (match.isEmpty) return pack.copyWith(canPurchase: false);
       return pack.copyWith(
         storePriceText: match.first.storeProduct.priceString,
         canPurchase: true,

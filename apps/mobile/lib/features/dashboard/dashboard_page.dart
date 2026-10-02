@@ -404,7 +404,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _generateAiInterpretation() async {
+    if (_aiLoading) return;
     final chartId = _chartId;
+    final userId = _supabase().auth.currentUser?.id;
     if (chartId == null || chartId.isEmpty) {
       setState(() {
         _aiError = '사주 차트가 없어 AI 해석을 생성할 수 없습니다.';
@@ -423,6 +425,10 @@ class _DashboardPageState extends State<DashboardPage> {
         GenerateAiInterpretationRequestDto(chartId: chartId),
       );
       if (!mounted) return;
+      if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
+        setState(() => _aiLoading = false);
+        return;
+      }
       setState(() {
         _aiRequestId = response.requestId;
         _aiContent = response.content;
@@ -430,12 +436,22 @@ class _DashboardPageState extends State<DashboardPage> {
         _aiError = null;
       });
     } on EngineApiException catch (e) {
+      if (!mounted) return;
+      if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
+        setState(() => _aiLoading = false);
+        return;
+      }
       setState(() {
         _aiLoading = false;
         _aiError = EngineErrorMapper.userMessage(e);
         _aiRequestId = e.requestId;
       });
     } on FormatException {
+      if (!mounted) return;
+      if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
+        setState(() => _aiLoading = false);
+        return;
+      }
       setState(() {
         _aiLoading = false;
         _aiError = kDebugMode
@@ -443,6 +459,11 @@ class _DashboardPageState extends State<DashboardPage> {
             : 'AI 해석 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
       });
     } catch (_) {
+      if (!mounted) return;
+      if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
+        setState(() => _aiLoading = false);
+        return;
+      }
       setState(() {
         _aiLoading = false;
         _aiError = 'AI 해석 생성에 실패했습니다.';
@@ -774,7 +795,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ReportPage.routeName,
                 arguments: ReportPageArgs(chartId: _chartId!),
               ),
-              child: const Text('상세 리포트 보기'),
+              child: const Text('상세 리포트 · 준비 중'),
             ),
             const SizedBox(height: 8),
           ],
@@ -1415,52 +1436,20 @@ class _AiInterpretationSection extends StatelessWidget {
     return const {};
   }
 
-  String _sanitizeSummary(String? value) {
-    if (value == null) return '';
-    final normalized = value.trim();
-    const legacyPrefix = '현재 AI 응답이 불안정해 기본 해석으로 제공합니다.';
-    if (normalized.startsWith(legacyPrefix)) {
-      return normalized.substring(legacyPrefix.length).trim();
-    }
-    return normalized;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final summary = _sanitizeSummary(content?['summary']?.toString());
+    final summary = content?['summary']?.toString().trim() ?? '';
+    final isFallback = content?['source'] == 'fallback';
     final traits = _toStringList(content?['coreTraits']);
     final strengths = _toStringList(content?['strengths']);
     final cautions = _toStringList(content?['cautions']);
     final actionTips = _toStringList(content?['actionTips']);
     final themes = _toStringMap(content?['themes']);
     final disclaimer = content?['disclaimer']?.toString().trim();
-    final canGenerate = content == null && !loading;
 
     return PageSection(
       title: 'AI 사주 해석',
-      subtitle: 'GPT-5 mini 기반 상세 해석',
-      trailing: FilledButton.tonal(
-        onPressed: canGenerate ? onGenerate : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (loading) ...[
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.onSecondaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(loading ? '생성 중...' : (content == null ? '해석 생성' : '생성 완료')),
-          ],
-        ),
-      ),
+      subtitle: isFallback ? '기본 참고 해석' : '나의 사주를 이해하는 참고용 해석',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1492,7 +1481,7 @@ class _AiInterpretationSection extends StatelessWidget {
             const Text('아직 AI 해석이 없습니다. 해석 생성을 눌러 결과를 확인하세요.'),
             const SizedBox(height: 8),
             Text(
-              '정식 결제 적용 전까지는 테스트 형태로 동작합니다.',
+              'AI 결과가 정상 생성·저장되면 이용권 1회를 사용합니다. 무료 대체 해석은 차감하지 않습니다.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 10),
@@ -1504,6 +1493,20 @@ class _AiInterpretationSection extends StatelessWidget {
               ),
             ),
           ] else ...[
+            if (isFallback) ...[
+              Text(content?['creditCharged'] == false
+                  ? '무료 대체 해석 · 이용권을 사용하지 않았습니다.'
+                  : '저장된 기본 해석 · 이용권 차감 여부는 내역을 확인해주세요.'),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonal(
+                  onPressed: loading ? null : onGenerate,
+                  child: const Text('AI 해석 다시 시도 · 정상 저장 시 1회 사용'),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             if (summary.isNotEmpty) ...[
               Text(summary, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 10),

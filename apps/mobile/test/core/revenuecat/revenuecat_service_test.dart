@@ -62,6 +62,16 @@ void main() {
     RevenueCatService.debugReset();
   });
 
+  test('fallback products never authorize purchase or claim a recommendation', () {
+    RevenueCatService.debugApiKeyOverride = 'rc_test_key';
+    final packs = RevenueCatService.fallbackCreditPacks(canPurchase: true);
+    expect(packs, hasLength(3));
+    expect(packs.every((pack) => !pack.canPurchase), isTrue);
+    expect(packs.every((pack) => pack.storePriceText == null), isTrue);
+    expect(packs.every((pack) => pack.badge == null), isTrue);
+    expect(packs.every((pack) => pack.displayPriceText == '가격 확인 필요'), isTrue);
+  });
+
   test('returns early when RevenueCat is disabled', () async {
     await RevenueCatService.syncWithUserId('user-1');
 
