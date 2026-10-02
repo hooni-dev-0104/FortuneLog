@@ -507,37 +507,38 @@ public class SupabasePersistenceService {
         return 0;
     }
 
-    public boolean finalizeAiInterpretationReport(
-            String userId,
-            String chartId,
-            Map<String, ?> content,
-            String sourceEventId,
-            Map<String, Object> metadata
-    ) {
-        ensureConfigured();
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("p_user_id", userId);
-        body.put("p_chart_id", chartId);
-        body.put("p_content", content);
-        body.put("p_source_event_id", sourceEventId);
-        body.put("p_metadata", metadata == null ? Map.of() : metadata);
+    public record AiRequestResult(String status, Map<String, Object> content) {}
 
-        String responseBody = sendPost("/rest/v1/rpc/finalize_ai_interpretation_report", body, false);
+    public AiRequestResult prepareAiInterpretationRequest(String userId, String chartId, String requestKey) {
+        return aiRequestRpc("prepare_ai_interpretation_request", Map.of(
+                "p_user_id", userId, "p_chart_id", chartId, "p_request_key", requestKey));
+    }
+
+    public AiRequestResult finalizeAiInterpretationRequest(
+            String userId, String chartId, String requestKey, Map<String, Object> content) {
+        return aiRequestRpc("finalize_ai_interpretation_request", Map.of(
+                "p_user_id", userId, "p_chart_id", chartId, "p_request_key", requestKey,
+                "p_content", content));
+    }
+
+    private AiRequestResult aiRequestRpc(String function, Map<String, Object> body) {
+        ensureConfigured();
+        String responseBody = sendPost("/rest/v1/rpc/" + function, body, false);
         try {
             JsonNode node = objectMapper.readTree(responseBody);
-            if (node == null || node.isNull()) {
-                return false;
+            if (node == null || !node.isObject() || !node.path("status").isTextual()) {
+                throw new IllegalStateException("invalid AI request response");
             }
-            if (node.isTextual()) {
-                return !node.asText().isBlank();
+            String status = node.get("status").asText();
+            if ("completed".equals(status) && !node.path("content").isObject()) {
+                throw new IllegalStateException("missing completed AI request content");
             }
-            if (node.isArray() && !node.isEmpty()) {
-                JsonNode first = node.get(0);
-                return first != null && !first.isNull() && !first.asText().isBlank();
-            }
-            return false;
+            Map<String, Object> content = node.path("content").isObject()
+                    ? objectMapper.convertValue(node.get("content"), new TypeReference<Map<String, Object>>() {})
+                    : Map.of();
+            return new AiRequestResult(status, content);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("failed to parse finalize AI interpretation response", e);
+            throw new IllegalStateException("failed to parse AI request response", e);
         }
     }
 

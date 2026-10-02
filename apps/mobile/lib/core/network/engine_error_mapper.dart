@@ -24,6 +24,10 @@ class EngineErrorMapper {
         return '개인화 상세 리포트는 준비 중입니다. 이용권은 차감되지 않습니다.';
       case 'REPORT_TYPE_UNSUPPORTED':
         return '지원하지 않는 상세 리포트 유형입니다.';
+      case 'AI_RESULT_UNCONFIRMED':
+        return '저장 상태를 확인하고 있습니다. 다시 시도하면 같은 요청으로 결과를 복구하며 추가 차감하지 않습니다.';
+      case 'AI_REQUEST_CONFLICT':
+        return '다른 사용자 또는 차트에 사용된 요청입니다. 지원팀에 문의해주세요.';
       case 'AI_CREDIT_REQUIRED':
         return 'AI 사주풀이 이용권이 필요합니다. 이용권을 구매한 뒤 다시 시도해주세요.';
       case 'ACCOUNT_DELETION_INVALID_USER':

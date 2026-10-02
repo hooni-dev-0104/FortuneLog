@@ -80,13 +80,16 @@ class GenerateDailyFortuneRequestDto {
 
 class GenerateAiInterpretationRequestDto {
   final String chartId;
+  final String requestKey;
 
   const GenerateAiInterpretationRequestDto({
     required this.chartId,
+    required this.requestKey,
   });
 
   Map<String, dynamic> toJson() => {
         'chartId': chartId,
+        'requestKey': requestKey,
       };
 }
 

@@ -472,7 +472,26 @@ public class EngineService {
             );
         }
 
+        SupabasePersistenceService.AiRequestResult prepared;
+        try {
+            prepared = persistenceService.prepareAiInterpretationRequest(userId, request.chartId(), request.requestKey());
+        } catch (IllegalStateException ex) {
+            throw aiStorageUncertain();
+        }
+        checkAiRequestStatus(prepared);
+        if ("completed".equals(prepared.status())) {
+            return new ReportResult(request.chartId(), "ai_interpretation", prepared.content());
+        }
         if (persistenceService.creditBalance(userId, AI_INTERPRETATION_CREDIT) < 1) {
+            try {
+                var replay = persistenceService.prepareAiInterpretationRequest(userId, request.chartId(), request.requestKey());
+                checkAiRequestStatus(replay);
+                if ("completed".equals(replay.status())) {
+                    return new ReportResult(request.chartId(), "ai_interpretation", replay.content());
+                }
+            } catch (IllegalStateException ex) {
+                throw aiStorageUncertain();
+            }
             throw new ApiClientException(
                     "AI_CREDIT_REQUIRED",
                     HttpStatus.PAYMENT_REQUIRED,
@@ -484,38 +503,49 @@ public class EngineService {
                 snapshot.chart(),
                 snapshot.fiveElements()
         );
-        if ("fallback".equals(content.get("source"))) {
-            Map<String, Object> freeContent = new LinkedHashMap<>(content);
-            freeContent.put("creditCharged", false);
-            return new ReportResult(request.chartId(), "ai_interpretation", freeContent);
-        }
-        if (!"openai".equals(content.get("source"))
+        if (!("openai".equals(content.get("source")) || "fallback".equals(content.get("source")))
                 || !(content.get("summary") instanceof String summary) || summary.isBlank()) {
             throw new ApiClientException("AI_RESPONSE_INVALID", HttpStatus.BAD_GATEWAY,
                     "AI 해석 결과를 확인하지 못했습니다. 이용권은 차감되지 않았습니다.");
         }
         content = new LinkedHashMap<>(content);
-        content.put("analysisInput", buildAiAnalysisInput(snapshot.chart(), snapshot.fiveElements()));
-        content.put("analysisInputText", buildAiAnalysisInputText(snapshot.chart(), snapshot.fiveElements()));
-
-        String consumptionId = "ai_interpretation:" + userId + ":" + request.chartId() + ":" + System.currentTimeMillis();
-        boolean finalized = persistenceService.finalizeAiInterpretationReport(
-                userId,
-                request.chartId(),
-                content,
-                consumptionId,
-                Map.of("chartId", request.chartId(), "reportType", "ai_interpretation")
-        );
-        if (!finalized) {
-            log.warn("ai interpretation finalization failed: userId={} chartId={}", userId, request.chartId());
-            throw new ApiClientException(
-                    "AI_CREDIT_REQUIRED",
-                    HttpStatus.PAYMENT_REQUIRED,
-                    "AI 사주풀이 이용권 확인에 실패했습니다. 잔액을 확인한 뒤 다시 시도해주세요."
-            );
+        if ("openai".equals(content.get("source"))) {
+            content.put("analysisInput", buildAiAnalysisInput(snapshot.chart(), snapshot.fiveElements()));
+            content.put("analysisInputText", buildAiAnalysisInputText(snapshot.chart(), snapshot.fiveElements()));
         }
 
-        return new ReportResult(request.chartId(), "ai_interpretation", content);
+        SupabasePersistenceService.AiRequestResult finalized;
+        try {
+            finalized = persistenceService.finalizeAiInterpretationRequest(
+                    userId, request.chartId(), request.requestKey(), content);
+        } catch (IllegalStateException ex) {
+            throw aiStorageUncertain();
+        }
+        checkAiRequestStatus(finalized);
+        if (!"completed".equals(finalized.status())) throw aiStorageUncertain();
+        return new ReportResult(request.chartId(), "ai_interpretation", finalized.content());
+    }
+
+    private ApiClientException aiStorageUncertain() {
+        return new ApiClientException("AI_RESULT_UNCONFIRMED", HttpStatus.SERVICE_UNAVAILABLE,
+                "저장 상태를 확인하지 못했습니다. 같은 요청으로 다시 확인하면 추가 차감 없이 결과를 복구합니다.");
+    }
+
+    private void checkAiRequestStatus(SupabasePersistenceService.AiRequestResult result) {
+        switch (result.status()) {
+            case "pending", "completed" -> { }
+            case "insufficient_credits" -> throw new ApiClientException("AI_CREDIT_REQUIRED", HttpStatus.PAYMENT_REQUIRED,
+                    "AI 사주풀이 이용권이 필요합니다.");
+            case "key_conflict" -> throw new ApiClientException("AI_REQUEST_CONFLICT", HttpStatus.CONFLICT,
+                    "다른 사용자 또는 차트에 사용된 요청입니다.");
+            case "chart_not_found" -> throw new ApiClientException("CHART_NOT_FOUND", HttpStatus.NOT_FOUND,
+                    "사주 차트를 먼저 계산해주세요.");
+            case "account_locked" -> throw new ApiClientException("ACCOUNT_DELETION_LOCKED", HttpStatus.FORBIDDEN,
+                    "탈퇴 요청이 접수된 계정입니다.");
+            case "invalid_content" -> throw new ApiClientException("AI_RESPONSE_INVALID", HttpStatus.BAD_GATEWAY,
+                    "AI 결과를 검증하지 못했습니다. 이용권은 차감되지 않았습니다.");
+            default -> throw aiStorageUncertain();
+        }
     }
 
     private void ensureUserIsActive(String userId) {

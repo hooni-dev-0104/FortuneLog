@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/credits/ai_request_store.dart';
 import '../../core/saju/saju_manseoryeok.dart';
 import '../../core/saju/saju_stars.dart';
 import '../../core/saju/saju_chart_persistence.dart';
@@ -47,6 +48,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, int>? _fiveElements;
   Map<String, dynamic>? _aiContent;
   bool _aiLoading = false;
+  int _aiOperation = 0;
+  int _refreshOperation = 0;
   String? _aiError;
   String? _aiRequestId;
   Map<String, dynamic>? _dailyContent;
@@ -274,7 +277,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _refresh() async {
+    final refreshOperation = ++_refreshOperation;
+    ++_aiOperation;
     setState(() {
+      _aiLoading = false;
       _loading = true;
       _error = null;
       _requestId = null;
@@ -318,6 +324,8 @@ class _DashboardPageState extends State<DashboardPage> {
       final rows =
           await chartQuery.order('created_at', ascending: false).limit(1);
 
+      if (!mounted || refreshOperation != _refreshOperation ||
+          _supabase().auth.currentUser?.id != userId) return;
       if (rows.isEmpty) {
         setState(() {
           _loading = false;
@@ -363,6 +371,14 @@ class _DashboardPageState extends State<DashboardPage> {
           ? null
           : (aiRows.first['content_json'] as Map).cast<String, dynamic>();
 
+      final completedKey = aiContent?['requestKey'];
+      if (completedKey is String) {
+        try {
+          await AiRequestStore.complete(userId, chartId, completedKey);
+        } catch (_) {
+          // A retained key is safe to replay if local storage is unavailable.
+        }
+      }
       Map<String, dynamic>? dailyContent;
       String? dailyError;
       try {
@@ -371,6 +387,8 @@ class _DashboardPageState extends State<DashboardPage> {
         dailyError = e.message;
       }
 
+      if (!mounted || refreshOperation != _refreshOperation ||
+          _supabase().auth.currentUser?.id != userId) return;
       setState(() {
         _loading = false;
         _birthProfiles = profiles;
@@ -386,16 +404,19 @@ class _DashboardPageState extends State<DashboardPage> {
         _hasBirthProfile = profiles.isNotEmpty;
       });
     } on PostgrestException catch (e) {
+      if (!mounted || refreshOperation != _refreshOperation) return;
       setState(() {
         _loading = false;
         _error = e.message;
       });
     } on StateError catch (e) {
+      if (!mounted || refreshOperation != _refreshOperation) return;
       setState(() {
         _loading = false;
         _error = e.message;
       });
     } catch (_) {
+      if (!mounted || refreshOperation != _refreshOperation) return;
       setState(() {
         _loading = false;
         _error = '대시보드 데이터를 불러오지 못했습니다.';
@@ -405,9 +426,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _generateAiInterpretation() async {
     if (_aiLoading) return;
+    final operation = ++_aiOperation;
     final chartId = _chartId;
     final userId = _supabase().auth.currentUser?.id;
-    if (chartId == null || chartId.isEmpty) {
+    if (userId == null || chartId == null || chartId.isEmpty) {
       setState(() {
         _aiError = '사주 차트가 없어 AI 해석을 생성할 수 없습니다.';
       });
@@ -421,14 +443,26 @@ class _DashboardPageState extends State<DashboardPage> {
     });
 
     try {
+      final requestKey = await AiRequestStore.getOrCreate(userId, chartId);
+      if (!mounted || operation != _aiOperation ||
+          _supabase().auth.currentUser?.id != userId) return;
       final response = await _engineClient().generateAiInterpretation(
-        GenerateAiInterpretationRequestDto(chartId: chartId),
+        GenerateAiInterpretationRequestDto(chartId: chartId, requestKey: requestKey),
       );
-      if (!mounted) return;
+      if (!mounted || operation != _aiOperation) return;
       if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
         setState(() => _aiLoading = false);
         return;
       }
+      if (response.content['source'] == 'openai' || response.content['source'] == 'fallback') {
+        try {
+          await AiRequestStore.complete(userId, chartId, requestKey);
+        } catch (_) {
+          // Keep the key for a safe replay if local storage is unavailable.
+        }
+      }
+      if (!mounted || operation != _aiOperation ||
+          _supabase().auth.currentUser?.id != userId) return;
       setState(() {
         _aiRequestId = response.requestId;
         _aiContent = response.content;
@@ -436,7 +470,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _aiError = null;
       });
     } on EngineApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || operation != _aiOperation) return;
       if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
         setState(() => _aiLoading = false);
         return;
@@ -447,7 +481,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _aiRequestId = e.requestId;
       });
     } on FormatException {
-      if (!mounted) return;
+      if (!mounted || operation != _aiOperation) return;
       if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
         setState(() => _aiLoading = false);
         return;
@@ -459,7 +493,7 @@ class _DashboardPageState extends State<DashboardPage> {
             : 'AI 해석 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || operation != _aiOperation) return;
       if (_chartId != chartId || _supabase().auth.currentUser?.id != userId) {
         setState(() => _aiLoading = false);
         return;

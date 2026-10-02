@@ -241,41 +241,25 @@ class SupabasePersistenceServiceTest {
     }
 
     @Test
-    void shouldFinalizeAiInterpretationViaRpc() throws InterruptedException {
-        server.enqueue(new MockResponse().setResponseCode(200).setBody("\"report-1\""));
-
-        boolean finalized = service.finalizeAiInterpretationReport(
-                "11111111-1111-1111-1111-111111111111",
-                "22222222-2222-2222-2222-222222222222",
-                Map.of("summary", "ok"),
-                "consume-1",
-                Map.of("chartId", "22222222-2222-2222-2222-222222222222")
-        );
-
-        assertTrue(finalized);
-
-        RecordedRequest request = server.takeRequest();
-        assertEquals("POST", request.getMethod());
-        assertTrue(request.getPath().contains("/rest/v1/rpc/finalize_ai_interpretation_report"));
-        String body = request.getBody().readUtf8();
-        assertTrue(body.contains("\"p_user_id\":\"11111111-1111-1111-1111-111111111111\""));
-        assertTrue(body.contains("\"p_chart_id\":\"22222222-2222-2222-2222-222222222222\""));
-        assertTrue(body.contains("\"p_source_event_id\":\"consume-1\""));
+    void shouldReturnAuthoritativeContentFromIdempotentRpc() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody(
+                "{\"status\":\"completed\",\"content\":{\"summary\":\"original\"}}"));
+        var result = service.finalizeAiInterpretationRequest("user", "chart", "request-key",
+                Map.of("summary", "new candidate", "source", "openai"));
+        assertEquals("original", result.content().get("summary"));
+        var request = server.takeRequest();
+        assertTrue(request.getPath().contains("/rpc/finalize_ai_interpretation_request"));
+        assertTrue(request.getBody().readUtf8().contains("\"p_request_key\":\"request-key\""));
     }
 
     @Test
-    void shouldReturnFalseWhenFinalizeRpcReturnsNull() throws InterruptedException {
-        server.enqueue(new MockResponse().setResponseCode(200).setBody("null"));
-
-        boolean finalized = service.finalizeAiInterpretationReport(
-                "11111111-1111-1111-1111-111111111111",
-                "22222222-2222-2222-2222-222222222222",
-                Map.of("summary", "ok"),
-                "consume-1",
-                Map.of()
-        );
-
-        assertFalse(finalized);
+    void shouldPrepareStableKeyAndRejectInvalidRpcResponse() throws InterruptedException {
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":\"pending\"}"));
+        assertEquals("pending", service.prepareAiInterpretationRequest("user", "chart", "request-key").status());
+        assertTrue(server.takeRequest().getPath().contains("/rpc/prepare_ai_interpretation_request"));
+        server.enqueue(new MockResponse().setResponseCode(200).setBody("{\"status\":\"completed\"}"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> service.prepareAiInterpretationRequest("user", "chart", "request-key"));
     }
 
     @Test

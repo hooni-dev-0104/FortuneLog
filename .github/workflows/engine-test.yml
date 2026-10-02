@@ -2,14 +2,18 @@ name: Engine API Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fix/credits-and-report-safety ]
     paths:
       - 'services/engine-api/**'
+      - 'infra/supabase/**'
+      - 'scripts/test-ai-credit-db.sh'
       - '.github/workflows/engine-test.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'services/engine-api/**'
+      - 'infra/supabase/**'
+      - 'scripts/test-ai-credit-db.sh'
       - '.github/workflows/engine-test.yml'
 
 permissions:
@@ -41,9 +45,8 @@ jobs:
           cache: gradle
 
       - name: Run tests (and PR assemble gate)
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            ./gradlew test assemble --no-daemon
-          else
-            ./gradlew test --no-daemon
-          fi
+        run: ./gradlew test assemble --no-daemon
+
+      - name: Verify credit transactions in an isolated Postgres
+        working-directory: .
+        run: bash scripts/test-ai-credit-db.sh
