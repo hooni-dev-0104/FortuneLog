@@ -3,6 +3,7 @@ import concurrent.futures
 import json
 import pathlib
 import subprocess
+import sys
 import time
 import uuid
 
@@ -16,7 +17,7 @@ def command(*args, input=None, check=True):
 
 
 def sql(statement):
-    result = command("docker", "exec", "-i", NAME, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-Atq", input=statement)
+    result = command("docker", "exec", "-i", NAME, "psql", "-h", "127.0.0.1", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-Atq", input=statement)
     return result.stdout.strip()
 
 
@@ -40,8 +41,10 @@ def balance(user):
 try:
     command("docker", "run", "--detach", "--rm", "--name", NAME, "--network", "none",
             "-e", "POSTGRES_HOST_AUTH_METHOD=trust", IMAGE)
-    for _ in range(100):
-        if command("docker", "exec", NAME, "pg_isready", "-U", "postgres", check=False).returncode == 0:
+    # The entrypoint temporarily starts a socket-only server during initdb.
+    # Wait for TCP so we cannot race its shutdown/restart into the final server.
+    for _ in range(150):
+        if command("docker", "exec", NAME, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", check=False).returncode == 0:
             break
         time.sleep(0.2)
     else:
@@ -139,5 +142,9 @@ try:
     assert sql(f"select count(*) from ai_interpretation_requests where user_id='{ident(1)}'") == "0"
     print("PASS: full migration chain, fallback/invalid no-charge, replay, 8-way duplicate, competing keys,")
     print("      atomic rollback/retry, user/chart binding, account lock, legacy visibility, RPC privileges, deletion")
+except subprocess.CalledProcessError as error:
+    # This process only handles generated local fixtures, never production data.
+    print(error.stderr or error.stdout or str(error), file=sys.stderr)
+    raise
 finally:
     command("docker", "rm", "--force", NAME, check=False)
