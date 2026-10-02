@@ -107,3 +107,18 @@
    cd ../..
    scripts/check-mobile-release-readiness.sh --check-policy-links
    ```
+
+
+## 2026-10-02 기능 브랜치 CI 재검증 (배포 중단 상태)
+
+- 검증 커밋: `2474818866f21e6fc8d5c0ece4857e2aada26dff` (`fix/credits-and-report-safety`).
+- 부모 조율자가 확인한 [Mobile CI 실행 36953763934](https://github.com/hooni-dev-0104/FortuneLog/actions/runs/36953763934), job `110672113440`: Flutter 분석, widget/unit 테스트, Android debug APK 빌드 통과.
+- 실패 항목은 `Reject uncommitted dependency drift`: CI가 해결한 의존성 잠금 파일과 저장소의 `pubspec.lock`이 다름. `mobile-resolved-lock` 산출물의 정확한 내용을 대조·반영한 뒤 재검증해야 함. Drift 검사는 유지함.
+- 서명 설정 및 release APK 단계는 미실행이며, debug APK 성공을 스토어 출시 검증으로 간주하지 않음.
+- 이 결과는 위 SHA에만 적용됨. 로컬의 미커밋 구매 화면·웹훅 변경은 이 CI 결과에 포함되지 않음.
+- 부모 조율자 보고 기준 Supabase 프로젝트 복원은 `ACTIVE_HEALTHY` 및 `SELECT 1` 확인 완료. 이번 작업에서 운영 스키마 변경은 수행하지 않음.
+- 실제 엔진 호스팅 공급자·배포 대상 확인을 기다리는 동안 기능 확장, main 통합, 배포를 중단하고 현재 작업을 보존함.
+
+### 잠금 파일 정합성 수정
+
+승인된 GitHub 연결로 위 실행의 `mobile-resolved-lock` artifact `11204853552`를 내려받아 ZIP SHA-256 `38d8bfd05f61620d7a9c35ad1e187a09ec5176a76eb9bea78847c46bd92e1b3e`와 원본 SHA를 검증한 뒤 `apps/mobile/pubspec.lock`에 반영함. 변경은 intl 0.20.3, matcher 0.12.20, meta 1.19.0, test_api 0.7.12, vector_math 2.4.3 및 Dart 최소 버전 >=3.11.0-0이며 수동 추정한 버전/해시는 없음. Drift 검사는 유지하며 수정 커밋의 CI 통과는 별도로 확인해야 함.
