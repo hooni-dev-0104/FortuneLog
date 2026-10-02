@@ -122,3 +122,10 @@ PR에서는 `.github/workflows/mobile-ci.yml` 이 아래를 수행합니다.
 5. release APK 빌드
 
 실제 비밀값을 저장소에 넣지 않고도 release signing 경로가 깨지지 않았는지 CI에서 확인하기 위한 구성입니다.
+
+
+## Reproducible Android verification
+
+CI pins Flutter **3.47.6**, Java **17**, Gradle **8.14.3**, AGP **8.11.1**, and Kotlin **2.2.20**. These satisfy the pinned Flutter dependency validator without disabling checks. Run `flutter pub get`, review and commit any `pubspec.lock` changes, then run `flutter analyze`, `flutter test`, and `flutter build apk --debug`. CI uploads its resolved lockfile as `mobile-resolved-lock` and rejects an uncommitted difference. The initial lock reconciliation for this SDK update must be reviewed before release.
+
+References: [Flutter 3.47.6 dependency validator](https://github.com/flutter/flutter/blob/3.47.6/packages/flutter_tools/gradle/src/main/kotlin/DependencyVersionChecker.kt), [Gradle 8.14.3](https://docs.gradle.org/8.14.3/release-notes.html), [AGP 8.11 compatibility](https://developer.android.com/build/releases/agp-8-11-0-release-notes).
